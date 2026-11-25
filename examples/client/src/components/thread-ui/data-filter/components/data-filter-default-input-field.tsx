@@ -1,8 +1,8 @@
 import { useState } from "react";
+import { Input } from "@/components/ui/input";
 import type { FC } from "react";
 
 import type { DataFilterItemInputProps } from "../types";
-import { Input } from "@/components/ui/input";
 
 interface DataFilterDefaultInputFieldProps {
   item: DataFilterItemInputProps;

@@ -9,12 +9,12 @@ import { t } from "i18next";
 import { ThemeProvider } from "next-themes";
 import { useTranslation } from "react-i18next";
 
-import appCss from "../styles.css?url";
-import type i18n from "i18next";
-import type { ApolloClientIntegration } from "@apollo/client-integration-tanstack-start";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { AppProvider } from "@/components/thread-ui/app-provider";
 import i18next from "@/lib/i18n";
+import appCss from "../styles.css?url";
+import type i18n from "i18next";
+import type { ApolloClientIntegration } from "@apollo/client-integration-tanstack-start";
 
 export const Route = createRootRouteWithContext<
   ApolloClientIntegration.RouterContext & {

@@ -2,7 +2,6 @@ import { createFileRoute } from "@tanstack/react-router";
 import { t } from "i18next";
 import { useTranslation } from "react-i18next";
 import { KeyRound, UsersRound } from "lucide-react";
-import { useSelectedWorkspaceContext } from "./contexts/selected-workspace-context";
 import { Link } from "@/components/link";
 import { OverviewCard } from "@/components/overview-card";
 import { Button } from "@/components/thread-ui/button";
@@ -12,6 +11,7 @@ import {
   PageLayoutSection,
 } from "@/components/thread-ui/page-layout";
 import { useAbility } from "@/contexts/ability-context";
+import { useSelectedWorkspaceContext } from "./contexts/selected-workspace-context";
 
 export const Route = createFileRoute(
   "/_authenticated/workspaces/$workspaceId/",

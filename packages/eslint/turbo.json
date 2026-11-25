@@ -1,0 +1,34 @@
+{
+  "$schema": "https://turborepo.com/schema.json",
+  "extends": ["//"],
+  "tasks": {
+    "lint": {
+      "dependsOn": ["build"],
+      "cache": false
+    },
+    "lint:fix": {
+      "dependsOn": ["build"],
+      "cache": false
+    },
+    "test": {
+      "dependsOn": ["build", "@nest-boot/eslint-test-fixtures#build"],
+      "cache": false
+    },
+    "test:unit": {
+      "dependsOn": ["build", "@nest-boot/eslint-test-fixtures#build"],
+      "cache": false
+    },
+    "test:integration": {
+      "dependsOn": ["build", "@nest-boot/eslint-test-fixtures#build"],
+      "cache": false
+    },
+    "test:e2e": {
+      "dependsOn": ["build", "@nest-boot/eslint-test-fixtures#build"],
+      "cache": false
+    },
+    "test:cov": {
+      "dependsOn": ["build", "@nest-boot/eslint-test-fixtures#build"],
+      "cache": false
+    }
+  }
+}

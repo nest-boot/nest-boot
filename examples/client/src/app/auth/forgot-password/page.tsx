@@ -6,7 +6,6 @@ import { MailCheck } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { z } from "zod";
 
-import { AuthPageShell } from "../components/auth-page-shell";
 import { defaultFormOptions, handleFieldBlur, submitForm } from "@/lib/form";
 import { getFormErrorMessage } from "@/lib/form-errors";
 import { FormLayout, FormLayoutItem } from "@/components/thread-ui/form-layout";
@@ -24,6 +23,7 @@ import { FieldDescription, FieldError } from "@/components/ui/field";
 import { graphql } from "@/gql";
 import { SubmitButton } from "@/components/form/submit-button";
 import { Input } from "@/components/thread-ui/input";
+import { AuthPageShell } from "../components/auth-page-shell";
 
 const REQUEST_PASSWORD_RESET_FROM_FORGOT_PASSWORD = graphql(`
   mutation requestPasswordResetFromForgotPassword(

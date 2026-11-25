@@ -2,13 +2,13 @@ import { useMutation } from "@apollo/client/react";
 import { Outlet, createFileRoute, redirect } from "@tanstack/react-router";
 import { useTranslation } from "react-i18next";
 
-import { AuthUserProvider } from "./contexts/auth-user-context";
-import { CreatedApiKeyProvider } from "./contexts/created-api-key-context";
 import { Button } from "@/components/thread-ui/button";
 import { graphql } from "@/gql";
 import { createAbility } from "@/lib/ability";
 import { AbilityProvider } from "@/contexts/ability-context";
 import { isAccessDenied } from "@/lib/auth-errors";
+import { CreatedApiKeyProvider } from "./contexts/created-api-key-context";
+import { AuthUserProvider } from "./contexts/auth-user-context";
 
 const GET_CURRENT_USER_FROM_AUTHENTICATED_ROUTE = graphql(`
   query getCurrentUserFromAuthenticatedRoute {

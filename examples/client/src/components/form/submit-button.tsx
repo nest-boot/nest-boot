@@ -1,7 +1,7 @@
 import { useSelector } from "@tanstack/react-form";
+import { Button } from "@/components/thread-ui/button";
 import type { AnyFormApi } from "@tanstack/react-form";
 import type { ButtonProps } from "@/components/thread-ui/button";
-import { Button } from "@/components/thread-ui/button";
 
 /** Subscribe locally; request errors allow retries, while schemas guard writes. */
 export function SubmitButton({

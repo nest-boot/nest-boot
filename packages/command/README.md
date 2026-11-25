@@ -79,6 +79,6 @@ After publication, `npm install -g @nest-boot/command` provides a global `nb` ex
 
 The repository example is runnable with `pnpm --filter @nest-boot/example-server command greet Alice --loud` after configuring its services and applying database migrations.
 
-Unit tests live beside the source and run with `pnpm --filter @nest-boot/command test:cov`. CLI e2e tests run with `pnpm --filter @nest-boot/command test:e2e` after building the package. Vitest reports module coverage in `coverage`; c8 reports coverage from the CLI child processes and loader threads in `coverage/e2e`. Both reports contribute to Codecov, together covering every production source file.
+Unit tests live beside the source and run with `pnpm --filter @nest-boot/command test:unit`. CLI e2e tests live under `test/e2e/` and run with `pnpm --filter @nest-boot/command test:e2e` after building the package. `pnpm --filter @nest-boot/command test:cov` runs all projects with V8 subprocess coverage (`autoAttachSubprocess: true`) into `coverage`.
 
 [Full documentation](https://github.com/nest-boot/nest-boot/blob/main/apps/docs/content/docs/tutorial/command.mdx)

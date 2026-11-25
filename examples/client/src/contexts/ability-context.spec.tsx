@@ -2,9 +2,9 @@
 import { cleanup, render, screen } from "@testing-library/react";
 import { afterEach, describe, expect, it } from "vitest";
 
+import { createAbility, createAbilitySubject } from "@/lib/ability";
 import { AbilityProvider, useAbility } from "./ability-context";
 import type { SerializedAbilityRule } from "@/lib/ability";
-import { createAbility, createAbilitySubject } from "@/lib/ability";
 
 const userRules: Array<SerializedAbilityRule> = [
   { actions: ["read"], subjects: ["User"], inverted: false },

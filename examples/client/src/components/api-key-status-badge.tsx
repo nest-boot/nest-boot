@@ -1,8 +1,7 @@
 import dayjs from "dayjs";
 import { useTranslation } from "react-i18next";
-import type { ComponentProps } from "react";
-
 import { Badge } from "@/components/thread-ui/badge";
+import type { ComponentProps } from "react";
 
 interface ApiKeyStatusBadgeProps extends Omit<
   ComponentProps<typeof Badge>,

@@ -1,3 +1,4 @@
+import { cn } from "@/lib/utils";
 import {
   DataFilterProvider,
   DataFilterSearch,
@@ -9,7 +10,6 @@ import type { FC } from "react";
 import type { DataFilterSearchProps } from "./components/data-filter-search";
 import type { DataFilterSortProps } from "./components/data-filter-sort";
 import type { DataFilterField, DataFilterValue } from "./types";
-import { cn } from "@/lib/utils";
 
 export interface DataFilterProps {
   className?: string;

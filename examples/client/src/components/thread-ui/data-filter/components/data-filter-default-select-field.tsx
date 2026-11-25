@@ -1,12 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 
-import { useDataFilterContext } from "./data-filter-context";
-import type { FC } from "react";
-import type {
-  DataFilterItemSelectProps,
-  DataFilterSelectOption,
-} from "../types";
 import {
   Combobox,
   ComboboxChip,
@@ -17,6 +11,12 @@ import {
   ComboboxValue,
 } from "@/components/ui/combobox";
 import { Spinner } from "@/components/ui/spinner";
+import { useDataFilterContext } from "./data-filter-context";
+import type { FC } from "react";
+import type {
+  DataFilterItemSelectProps,
+  DataFilterSelectOption,
+} from "../types";
 
 type DataFilterDefaultSelectFieldValue = Array<string> | string | undefined;
 type DataFilterDefaultSelectFieldChangeValue = Array<string> | undefined;

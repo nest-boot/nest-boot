@@ -3,7 +3,6 @@ import { createFileRoute, redirect, useRouter } from "@tanstack/react-router";
 import { t } from "i18next";
 import { useCallback } from "react";
 
-import type { ResourceNavigationQueryOptions } from "@/hooks/use-resource-navigation";
 import { REVOKE_WORKSPACE_API_KEY } from "@/graphql/mutations/revoke-workspace-api-key";
 import { graphql } from "@/gql";
 import { UPDATE_WORKSPACE_API_KEY } from "@/graphql/mutations/update-workspace-api-key";
@@ -22,6 +21,7 @@ import {
   workspaceApiKeyPermissionValues,
 } from "@/lib/permissions";
 import { isAccessDenied } from "@/lib/auth-errors";
+import type { ResourceNavigationQueryOptions } from "@/hooks/use-resource-navigation";
 
 const DELETE_WORKSPACE_API_KEY = graphql(`
   mutation deleteWorkspaceApiKey($id: ID!) {

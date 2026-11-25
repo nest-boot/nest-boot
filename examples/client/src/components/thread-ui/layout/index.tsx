@@ -11,7 +11,6 @@ import {
 } from "react";
 import { ScrollArea } from "@base-ui/react/scroll-area";
 import { useTranslation } from "react-i18next";
-import type { ComponentProps } from "react";
 import {
   Sidebar,
   SidebarHeader,
@@ -27,6 +26,7 @@ import {
   TooltipTrigger,
 } from "@/components/ui/tooltip";
 import { cn } from "@/lib/utils";
+import type { ComponentProps } from "react";
 
 export type LayoutProps = ComponentProps<"div">;
 export type LayoutSidebarProps = ComponentProps<typeof Sidebar>;

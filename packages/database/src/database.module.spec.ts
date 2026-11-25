@@ -35,12 +35,15 @@ type RootOptionsFactory = (
  */
 function getRootOptionsFactory(): RootOptionsFactory {
   const baseModule = vi.mocked(BaseDatabaseModule);
-  const [rootOptions] = baseModule.forRootAsync.mock.calls[0] as unknown as [
-    { useFactory: RootOptionsFactory },
-  ];
+  DatabaseModule.forRoot({});
+  const [rootOptions] = baseModule.forRootAsync.mock.calls.at(
+    -1,
+  ) as unknown as [{ useFactory: RootOptionsFactory }];
 
   return (options) =>
-    rootOptions.useFactory(options, { getEntities: () => Promise.resolve([]) });
+    rootOptions.useFactory(options, {
+      getEntities: () => Promise.resolve([]),
+    });
 }
 
 /**

@@ -7,8 +7,6 @@ import dayjs from "dayjs";
 import { t } from "i18next";
 import { useTranslation } from "react-i18next";
 
-import { useAuthUserContext } from "../../../contexts/auth-user-context";
-import type { ResourceNavigationQueryOptions } from "@/hooks/use-resource-navigation";
 import {
   defaultFormOptions,
   handleFieldBlur,
@@ -54,6 +52,8 @@ import { getPermissionOptions } from "@/lib/permissions";
 import { createAbilitySubject } from "@/lib/ability";
 import { SubmitButton } from "@/components/form/submit-button";
 import { Input } from "@/components/thread-ui/input";
+import { useAuthUserContext } from "../../../contexts/auth-user-context";
+import type { ResourceNavigationQueryOptions } from "@/hooks/use-resource-navigation";
 
 const GET_ADMIN_USER_NEIGHBORS = graphql(`
   query getAdminUserNeighbors(

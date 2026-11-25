@@ -2,7 +2,6 @@ import { defineConfig, loadEnv } from "vite";
 import { devtools } from "@tanstack/devtools-vite";
 import { tanstackStart } from "@tanstack/react-start/plugin/vite";
 import viteReact from "@vitejs/plugin-react";
-import viteTsConfigPaths from "vite-tsconfig-paths";
 import tailwindcss from "@tailwindcss/vite";
 
 const config = defineConfig(({ mode }) => {
@@ -11,11 +10,11 @@ const config = defineConfig(({ mode }) => {
   return {
     // Local development and E2E servers run concurrently in this worktree.
     cacheDir: `node_modules/.vite/${mode}`,
+    resolve: {
+      tsconfigPaths: true,
+    },
     plugins: [
       mode === "development" && devtools(),
-      viteTsConfigPaths({
-        projects: ["./tsconfig.json"],
-      }),
       tailwindcss(),
       tanstackStart({
         spa: {

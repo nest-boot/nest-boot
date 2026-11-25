@@ -2,11 +2,11 @@
 
 import { ChevronLeftIcon, ChevronRightIcon } from "lucide-react";
 import { useTranslation } from "react-i18next";
-import type { ComponentProps } from "react";
-import type { PageActionProps } from "./index";
 import { Button } from "@/components/thread-ui/button";
 import { ButtonGroup } from "@/components/ui/button-group";
 import { cn } from "@/lib/utils";
+import type { PageActionProps } from "./index";
+import type { ComponentProps } from "react";
 
 export type PagePaginationProps = Omit<
   ComponentProps<typeof ButtonGroup>,

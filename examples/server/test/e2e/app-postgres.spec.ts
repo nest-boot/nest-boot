@@ -1,0 +1,6623 @@
+import {
+  type ChildProcessWithoutNullStreams,
+  execFile,
+  spawn,
+} from 'node:child_process';
+import { randomUUID } from 'node:crypto';
+import { readdir } from 'node:fs/promises';
+import { createServer } from 'node:net';
+import { pathToFileURL } from 'node:url';
+import { promisify } from 'node:util';
+
+import {
+  EntitySchema,
+  MikroORM,
+  PostgreSqlDriver,
+} from '@mikro-orm/postgresql';
+import { Queue as BullmqQueue } from 'bullmq';
+import request from 'supertest';
+
+import { ReportQueue } from '../../src/app/reports/report.queue.js';
+
+interface DbProbe {
+  id: number;
+}
+
+const DbProbeSchema = new EntitySchema<DbProbe>({
+  name: 'ExampleServerE2eDbProbe',
+  tableName: 'example_server_e2e_db_probe',
+  properties: {
+    id: {
+      type: 'number',
+      primary: true,
+    },
+  },
+});
+
+const adminDatabaseUrl =
+  process.env.SERVER_E2E_DATABASE_URL ??
+  'postgresql://postgres:secret@localhost:35432/postgres';
+const mailpitUrl =
+  process.env.SERVER_E2E_MAILPIT_URL ?? 'http://127.0.0.1:38025';
+const databaseName = `nest_boot_example_e2e_${process.pid}_${Date.now()}`;
+const databaseUrl = databaseUrlFor(databaseName);
+const execFileAsync = promisify(execFile);
+const envKeys = [
+  'NODE_ENV',
+  'DB_URL',
+  'DATABASE_URL',
+  'REDIS_URL',
+  'APP_URL',
+  'AUTH_URL',
+  'APP_SECRET',
+  'AUTH_SECRET',
+  'AUTH_GITHUB_ENABLED',
+  'AUTH_GITHUB_CLIENT_ID',
+  'AUTH_GITHUB_CLIENT_SECRET',
+  'AUTH_OIDC_ENABLED',
+  'AUTH_OIDC_CLIENT_ID',
+  'AUTH_OIDC_CLIENT_SECRET',
+  'AUTH_OIDC_DISCOVERY_URL',
+  'SMTP_URL',
+  'PORT',
+] as const;
+const oldEnv = new Map<string, string | undefined>();
+let uniqueCounter = 0;
+
+interface AuthenticatedUser {
+  cookies: string[];
+  email: string;
+  password: string;
+  user: {
+    id: string;
+    name: string;
+    email: string;
+  };
+}
+
+interface WorkspaceFixture {
+  id: string;
+  name: string;
+}
+
+type AdminOrm = Awaited<ReturnType<typeof adminOrm>>;
+
+interface MigrationInstance {
+  getQueries(): string[];
+  up(): Promise<void> | void;
+}
+
+type MigrationConstructor = new () => MigrationInstance;
+
+describe('Server application PostgreSQL integration (e2e)', () => {
+  let migrationOrm: AdminOrm;
+  let serverProcess: ChildProcessWithoutNullStreams;
+  let workerProcess: ChildProcessWithoutNullStreams;
+  let workerOutput = '';
+  let serverOutput = '';
+  let baseUrl: string;
+
+  beforeAll(async () => {
+    setTestEnv();
+    await createDatabase();
+    migrationOrm = await adminOrm(databaseUrl);
+    await applyMigrations(migrationOrm);
+
+    await execFileAsync('pnpm', ['build'], {
+      cwd: process.cwd(),
+      env: process.env,
+    });
+
+    const port = await getFreePort();
+    process.env.PORT = String(port);
+    baseUrl = `http://127.0.0.1:${port}`;
+    process.env.AUTH_URL = baseUrl;
+    serverProcess = spawn(
+      process.execPath,
+      ['--trace-uncaught', 'dist/main.js'],
+      {
+        cwd: process.cwd(),
+        env: createServerEnv(),
+      },
+    );
+    serverProcess.stdout.on('data', (chunk) => {
+      serverOutput += chunk.toString();
+    });
+    serverProcess.stderr.on('data', (chunk) => {
+      serverOutput += chunk.toString();
+    });
+
+    await waitForServer(baseUrl, serverProcess, () => serverOutput);
+    workerProcess = spawn(process.execPath, ['dist/cli.js', 'queue', 'start'], {
+      cwd: process.cwd(),
+      env: createServerEnv(),
+    });
+    workerProcess.stdout.on('data', (chunk) => {
+      workerOutput += chunk.toString();
+    });
+    workerProcess.stderr.on('data', (chunk) => {
+      workerOutput += chunk.toString();
+    });
+    await vi.waitFor(
+      () => {
+        if (workerProcess.exitCode !== null) {
+          throw new Error(workerOutput);
+        }
+        expect(workerOutput).toContain('Queue workers running:');
+      },
+      { timeout: 15_000 },
+    );
+  }, 60_000);
+
+  afterAll(async () => {
+    if (workerProcess) {
+      await stopServer(workerProcess);
+    }
+    if (serverProcess) {
+      await stopServer(serverProcess);
+    }
+
+    if (migrationOrm) {
+      await migrationOrm.close(true);
+    }
+
+    await dropDatabase();
+    restoreEnv();
+  }, 30_000);
+
+  it.each(['source', 'compiled'])(
+    'executes the %s CLI entry with the shared AppModule and closes its resources',
+    async (entry) => {
+      const executable = entry === 'source' ? 'pnpm' : process.execPath;
+      const args =
+        entry === 'source'
+          ? ['exec', 'nb', 'greet', 'Alice', '--loud']
+          : ['dist/cli.js', 'greet', 'Alice', '--loud'];
+      const result = await execFileAsync(executable, args, {
+        cwd: process.cwd(),
+        env: createServerEnv(),
+        timeout: 15_000,
+      });
+      expect(result.stdout).toContain('Hello ALICE!');
+    },
+    20_000,
+  );
+
+  it('exposes database and queue health without authentication', async () => {
+    const response = await request(baseUrl).get('/api/health').expect(200);
+    expect(response.body).toMatchObject({
+      status: 'ok',
+      details: {
+        database: { status: 'up' },
+        'queue.schedule': { status: 'up' },
+        'queue.report-queue': { status: 'up' },
+      },
+    });
+  });
+
+  it('processes example reports and exposes job status only to their owner', async () => {
+    const owner = await createAuthenticatedUser('Report owner');
+    const other = await createAuthenticatedUser('Other report viewer');
+    const reports = new ReportQueue();
+    try {
+      const task = await reports.add('summarize', {
+        userId: owner.user.id,
+        values: [10, 20, 30],
+      });
+      await vi.waitFor(
+        async () => {
+          const completed = await reports.getJob(task.id);
+          expect(await completed.getState()).toBe('completed');
+          expect(completed.progress).toBe(100);
+          expect(completed.returnvalue).toEqual({
+            count: 3,
+            total: 60,
+            average: 20,
+          });
+        },
+        { timeout: 10_000 },
+      );
+
+      let historyId: string;
+      await vi.waitFor(
+        async () => {
+          const rows = await migrationOrm.em.execute<
+            { id: string; status: string }[]
+          >('select id, status from job where queue = ? and job_id = ?', [
+            'report-queue',
+            task.id,
+          ]);
+          expect(rows[0]?.status).toBe('completed');
+          historyId = rows[0].id;
+        },
+        { timeout: 10000 },
+      );
+      const source = `query {
+        userJob(id: "${historyId}") { id status progress }
+      }`;
+      const result = await gql(source, { cookies: owner.cookies });
+      expectNoGraphQLErrors(result);
+      expect(result.body.data.userJob).toEqual({
+        id: historyId,
+        status: 'COMPLETED',
+        progress: 100,
+      });
+      const hidden = await gql(source, { cookies: other.cookies });
+      expectNoGraphQLErrors(hidden);
+      expect(hidden.body.data.userJob).toBeNull();
+    } finally {
+      await reports.close();
+    }
+  });
+
+  it('registers cron and interval schedules and dispatches work through the injected report queue', async () => {
+    const reports = new ReportQueue();
+    const schedules = new BullmqQueue('schedule', {
+      connection: reports.opts.connection,
+      prefix: reports.opts.prefix,
+    });
+    try {
+      expect(await schedules.getJobSchedulers()).toEqual(
+        expect.arrayContaining([
+          expect.objectContaining({
+            key: 'ReportSchedule.daily',
+            name: 'run',
+            pattern: '0 0 * * *',
+            tz: 'UTC',
+          }),
+          expect.objectContaining({
+            key: 'ReportSchedule.sample',
+            name: 'run',
+            every: 300_000,
+          }),
+        ]),
+      );
+      // Exercise the same dispatch path without waiting until midnight.
+      const scheduled = await schedules.add('run', {
+        name: 'ReportSchedule.daily',
+      });
+      await vi.waitFor(
+        async () => {
+          expect(await scheduled.getState()).toBe('completed');
+          const completed = await reports.getJobs(['completed']);
+          expect(completed).toEqual(
+            expect.arrayContaining([
+              expect.objectContaining({
+                data: { values: [10, 20, 30] },
+                returnvalue: { count: 3, total: 60, average: 20 },
+                opts: expect.objectContaining({
+                  attempts: 3,
+                  backoff: { type: 'exponential', delay: 1000 },
+                  removeOnComplete: { age: 86_400, count: 100 },
+                }),
+              }),
+            ]),
+          );
+        },
+        { timeout: 10_000 },
+      );
+    } finally {
+      await Promise.all([schedules.close(), reports.close()]);
+    }
+  });
+
+  it('exposes the password policy without authentication', async () => {
+    const result = await gql(
+      'query { passwordPolicy { minLength maxLength } }',
+    );
+    expectNoGraphQLErrors(result);
+    expect(result.body.data.passwordPolicy).toEqual({
+      minLength: 8,
+      maxLength: 128,
+    });
+  });
+
+  it('queries scoped Job history through authenticated sessions and member API keys', async () => {
+    const user = await createAuthenticatedUser('Job viewer');
+    const other = await createAuthenticatedUser('Other job viewer');
+    const workspace = await createWorkspace(user, 'Job workspace');
+    const otherWorkspace = await createWorkspace(other, 'Other job workspace');
+    const payloads = {
+      own: { userId: user.user.id, workspaceId: otherWorkspace.id },
+      shared: { userId: other.user.id, workspaceId: workspace.id },
+      foreign: { userId: other.user.id, workspaceId: otherWorkspace.id },
+      background: {},
+    };
+    const ids = Object.fromEntries(
+      Object.keys(payloads).map((name) => [name, randomUUID()]),
+    );
+    for (const [name, data] of Object.entries(payloads)) {
+      await migrationOrm.em.execute(
+        "insert into job (id, queue, job_id, name, data, progress, status, created_at) values (?, 'report-queue', ?, 'generate-report', ?::jsonb, '0'::jsonb, 'completed', now())",
+        [ids[name], name, JSON.stringify(data)],
+      );
+    }
+    const source = `query {
+      own: userJob(id: "${ids.own}") {id status progress}
+      shared: userJob(id: "${ids.shared}") {id}
+      foreign: userJob(id: "${ids.foreign}") {id}
+      workspaceJob(id: "${ids.shared}") {id}
+      userJobs(first:10, filter:{queue:"report-queue",name:"generate-report"}) {edges{node{id}}}
+      workspaceJobs(first:10, filter:{queue:"report-queue",name:"generate-report"}) {edges{node{id}}}
+    }`;
+    const response = await gql(source, {
+      cookies: user.cookies,
+      workspaceId: workspace.id,
+    });
+    expectNoGraphQLErrors(response);
+    expect(response.body.data.own).toEqual({
+      id: ids.own,
+      status: 'COMPLETED',
+      progress: 0,
+    });
+    expect(response.body.data.shared).toBeNull();
+    expect(response.body.data.foreign).toBeNull();
+    expect(response.body.data.workspaceJob).toEqual({ id: ids.shared });
+    expect(response.body.data.userJobs.edges).toHaveLength(1);
+    expect(response.body.data.workspaceJobs.edges).toHaveLength(1);
+    const key = await createWorkspaceApiKey(user, workspace.id, {
+      memberId: null,
+      name: 'Job history key',
+    });
+    const keyed = await gql(
+      `{workspaceJobs(first:10,filter:{queue:"report-queue",name:"generate-report"}){edges{node{id}}}}`,
+      { bearerToken: key.apiKey, workspaceId: workspace.id },
+    );
+    expectNoGraphQLErrors(keyed);
+    expect(keyed.body.data.workspaceJobs.edges).toHaveLength(1);
+    expect(
+      keyed.body.data.workspaceJobs.edges.map(({ node }) => node.id),
+    ).toEqual([ids.shared]);
+    expectGraphQLError(
+      await gql('{userJobs(first:10){ edges { node { id } } }}', {
+        bearerToken: key.apiKey,
+        workspaceId: workspace.id,
+      }),
+    );
+    const system = `{systemJob(id:"${ids.background}"){id} systemJobs(first:10,filter:{queue:"report-queue",name:"generate-report"}){ edges { node { id } } }}`;
+    expectGraphQLError(await gql(system, { cookies: user.cookies }));
+    await migrationOrm.em.execute(
+      'update "user" set roles = array[\'admin\'] where id = ?',
+      [user.user.id],
+    );
+    const administrator = await gql(system, { cookies: user.cookies });
+    expectNoGraphQLErrors(administrator);
+    expect(administrator.body.data.systemJob).toEqual({ id: ids.background });
+    expect(administrator.body.data.systemJobs.edges).toHaveLength(1);
+    const anonymous = await gql(
+      '{userJobs(first:10){ edges { node { id } } }}',
+    );
+    expectGraphQLError(anonymous);
+    expect(anonymous.body.errors[0].extensions.code).toBe('UNAUTHORIZED');
+  });
+
+  it('exposes only social providers enabled by the server', async () => {
+    const result = await gql(/* GraphQL */ `
+      query {
+        socialProviders {
+          id
+          name
+        }
+      }
+    `);
+
+    expectNoGraphQLErrors(result);
+    expect(result.body.data.socialProviders).toEqual([
+      { id: 'github', name: 'GitHub' },
+    ]);
+
+    const socialSignIn = await gql(
+      /* GraphQL */ `
+        mutation SignInSocial($input: AuthSignInSocialInput!) {
+          signInSocial(input: $input) {
+            redirect
+            url
+            token
+            user {
+              id
+            }
+          }
+        }
+      `,
+      {
+        variables: {
+          input: {
+            provider: 'github',
+            callbackURL: 'http://127.0.0.1/user/workspaces',
+            errorCallbackURL: 'http://127.0.0.1/auth/login',
+          },
+        },
+      },
+    );
+
+    expectNoGraphQLErrors(socialSignIn);
+    expect(socialSignIn.body.data.signInSocial).toMatchObject({
+      redirect: false,
+      token: null,
+      user: null,
+    });
+    expect(new URL(socialSignIn.body.data.signInSocial.url).origin).toBe(
+      'https://github.com',
+    );
+    expect(collectRawSetCookies(socialSignIn).length).toBeGreaterThan(0);
+  });
+
+  it('authenticates users with real email and password sessions', async () => {
+    const email = uniqueEmail('alice');
+    const password = 'correct-horse-battery-staple';
+
+    const registered = await signUpWithEmail({
+      name: 'Alice',
+      email,
+      password,
+    });
+
+    expect(registered.status).toBe(200);
+    expect(registered.body.user).toMatchObject({
+      name: 'Alice',
+      email,
+    });
+    expect(collectSetCookies(registered)).toEqual([]);
+
+    const [credentialAccount] = await migrationOrm.em
+      .getConnection()
+      .execute<
+        { account_id: string; issuer: string }[]
+      >('select account_id, issuer from account where user_id = ?', [registered.body.user.id]);
+    expect(credentialAccount).toEqual({
+      account_id: String(registered.body.user.id),
+      issuer: 'local:credential',
+    });
+
+    const rejectedLogin = await signInWithEmail({
+      email,
+      password: 'wrong-password',
+    });
+
+    expect(rejectedLogin.status).toBe(401);
+
+    const rejectedUnverifiedLogin = await signInWithEmail({
+      email,
+      password,
+    });
+
+    expect(rejectedUnverifiedLogin.status).toBe(403);
+
+    await verifyEmail(email);
+
+    const loggedIn = await signInWithEmail({
+      email,
+      password,
+    });
+    const sessionCookies = collectSetCookies(loggedIn);
+
+    expect(loggedIn.status).toBe(200);
+    expect(loggedIn.body.user).toMatchObject({
+      name: 'Alice',
+      email,
+    });
+    expect(sessionCookies.length).toBeGreaterThan(0);
+
+    const rejectedCurrentUser = await gql(/* GraphQL */ `
+      query {
+        currentUser {
+          id
+        }
+      }
+    `);
+
+    expectNoGraphQLErrors(rejectedCurrentUser);
+    expect(rejectedCurrentUser.body.data.currentUser).toBeNull();
+
+    const currentUser = await gql(
+      /* GraphQL */ `
+        query {
+          currentUser {
+            id
+            name
+            email
+          }
+        }
+      `,
+      { cookies: sessionCookies },
+    );
+
+    expectNoGraphQLErrors(currentUser);
+    expect(currentUser.body.data.currentUser).toMatchObject({
+      name: 'Alice',
+      email,
+    });
+
+    const passwordResetRequested = await request(baseUrl)
+      .post('/api/auth/request-password-reset')
+      .send({
+        email,
+        redirectTo: `${baseUrl}/auth/reset-password`,
+      });
+
+    expect(passwordResetRequested.status).toBe(200);
+    const passwordResetUrl = new URL(
+      await waitForEmailUrl(email, 'Reset your password'),
+    );
+    const passwordResetToken = passwordResetUrl.pathname.split('/').at(-1);
+
+    expect(passwordResetToken).toBeTypeOf('string');
+
+    const passwordResetCallback = await request(baseUrl).get(
+      `${passwordResetUrl.pathname}${passwordResetUrl.search}`,
+    );
+
+    expect(passwordResetCallback.status).toBe(302);
+    expect(passwordResetCallback.headers.location).toContain(
+      '/auth/reset-password?token=',
+    );
+
+    const newPassword = 'updated-correct-horse-battery-staple';
+    const passwordReset = await request(baseUrl)
+      .post('/api/auth/reset-password')
+      .send({
+        newPassword,
+        token: passwordResetToken,
+      });
+
+    expect(passwordReset.status).toBe(200);
+    expect(passwordReset.body).toEqual({ status: true });
+    expect((await signInWithEmail({ email, password })).status).toBe(401);
+    expect(
+      (await signInWithEmail({ email, password: newPassword })).status,
+    ).toBe(200);
+  });
+
+  it('rejects registration user relations before creating an account', async () => {
+    const email = uniqueEmail('graphql-signup-relations');
+    const response = await gql(
+      'mutation($input: AuthSignUpInput!) { signUp(input: $input) { user { accounts(first: 1) { edges { node { id } } } } } }',
+      {
+        variables: {
+          input: {
+            email,
+            name: 'Rejected Selection',
+            password: 'correct-horse-battery-staple',
+          },
+        },
+      },
+    );
+    expect(response.body.errors).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          message: expect.stringContaining(
+            'Cannot query field "user" on type "SignUpPayload"',
+          ),
+        }),
+      ]),
+    );
+    expect(
+      await migrationOrm.em
+        .getConnection()
+        .execute('select id from "user" where email = ?', [email]),
+    ).toEqual([]);
+  });
+
+  it('supports email authentication through GraphQL with cookie sessions', async () => {
+    const email = uniqueEmail('graphql-auth');
+    const password = 'correct-horse-battery-staple';
+    const registered = await gql(
+      /* GraphQL */ `
+        mutation SignUp($input: AuthSignUpInput!) {
+          signUp(input: $input) {
+            id
+            token
+          }
+        }
+      `,
+      {
+        variables: {
+          input: { email, name: 'GraphQL User', password },
+        },
+      },
+    );
+
+    expectNoGraphQLErrors(registered);
+    expect(registered.body.data.signUp).toEqual({
+      id: expect.any(String),
+      token: null,
+    });
+    const registeredUsers = await migrationOrm.em
+      .getConnection()
+      .execute('select id, name, email from "user" where email = ?', [email]);
+    expect(registeredUsers).toEqual([
+      { id: registered.body.data.signUp.id, name: 'GraphQL User', email },
+    ]);
+    const unauthenticated = await gql('query { currentUser { id } }', {
+      cookies: collectSetCookies(registered),
+    });
+    expectNoGraphQLErrors(unauthenticated);
+    expect(unauthenticated.body.data.currentUser).toBeNull();
+    await verifyEmail(email);
+
+    const loggedIn = await gql(
+      /* GraphQL */ `
+        mutation SignIn($input: AuthSignInInput!) {
+          signIn(input: $input) {
+            token
+            user {
+              id
+              email
+              roles
+              accounts(first: 20) {
+                edges {
+                  node {
+                    id
+                    providerId
+                    scopes
+                  }
+                }
+              }
+              sessions(first: 1) {
+                edges {
+                  node {
+                    id
+                    current
+                  }
+                }
+              }
+              workspaces(first: 1) {
+                edges {
+                  node {
+                    id
+                  }
+                }
+              }
+            }
+          }
+        }
+      `,
+      { variables: { input: { email, password, rememberMe: false } } },
+    );
+    const cookies = collectSetCookies(loggedIn);
+    const sessionCookie = collectRawSetCookies(loggedIn).find((cookie) =>
+      cookie.includes('session_token='),
+    );
+
+    expectNoGraphQLErrors(loggedIn);
+    expect(loggedIn.body.data.signIn.user.email).toBe(email);
+    expect(loggedIn.body.data.signIn.user.roles).toEqual(['USER']);
+    expect(loggedIn.body.data.signIn.user.sessions.edges[0].node.current).toBe(
+      true,
+    );
+    expect(
+      loggedIn.body.data.signIn.user.accounts.edges[0].node.providerId,
+    ).toBe('credential');
+    expect(cookies.length).toBeGreaterThan(0);
+    expect(sessionCookie).toBeDefined();
+    expect(sessionCookie).not.toMatch(/(?:max-age|expires)=/iu);
+
+    const otherLogin = await signInWithEmail({ email, password });
+    const otherCookies = collectSetCookies(otherLogin);
+    const listedSessions = await gql(
+      /* GraphQL */ `
+        query {
+          currentUser {
+            sessions(first: 100) {
+              edges {
+                node {
+                  id
+                  current
+                  ipAddress
+                  userAgent
+                  createdAt
+                  expiresAt
+                }
+              }
+            }
+          }
+        }
+      `,
+      { cookies },
+    );
+
+    expectNoGraphQLErrors(listedSessions);
+    expect(
+      listedSessions.body.data.currentUser.sessions.edges.map(
+        ({ node }: any) => node,
+      ),
+    ).toHaveLength(2);
+    expect(
+      listedSessions.body.data.currentUser.sessions.edges
+        .map(({ node }: any) => node)
+        .filter((session: { current: boolean }) => session.current),
+    ).toHaveLength(1);
+    const otherSession = listedSessions.body.data.currentUser.sessions.edges
+      .map(({ node }: any) => node)
+      .find((session: { current: boolean }) => !session.current);
+    expect(otherSession?.id).toBeTypeOf('string');
+    expect(otherSession).not.toHaveProperty('token');
+
+    const revokedSession = await gql(
+      /* GraphQL */ `
+        mutation RevokeSession($sessionId: ID!) {
+          revokeCurrentUserSession(id: $sessionId)
+        }
+      `,
+      {
+        cookies,
+        variables: { sessionId: otherSession.id },
+      },
+    );
+
+    expectNoGraphQLErrors(revokedSession);
+    expect(revokedSession.body.data.revokeCurrentUserSession).toBe(true);
+    const revokedIdentity = await gql('query { currentUser { id } }', {
+      cookies: otherCookies,
+    });
+    expectNoGraphQLErrors(revokedIdentity);
+    expect(revokedIdentity.body.data.currentUser).toBeNull();
+
+    const changedPassword = 'graphql-changed-password';
+    const passwordChanged = await gql(
+      /* GraphQL */ `
+        mutation ChangePassword($input: AuthChangePasswordInput!) {
+          changeCurrentUserPassword(input: $input) {
+            token
+          }
+        }
+      `,
+      {
+        cookies,
+        variables: {
+          input: {
+            currentPassword: password,
+            newPassword: changedPassword,
+            revokeOtherSessions: true,
+          },
+        },
+      },
+    );
+    const replacementCookies = collectSetCookies(passwordChanged);
+
+    expectNoGraphQLErrors(passwordChanged);
+    expect(
+      passwordChanged.body.data.changeCurrentUserPassword.token,
+    ).toBeTypeOf('string');
+    expect(replacementCookies.length).toBeGreaterThan(0);
+    expect((await signInWithEmail({ email, password })).status).toBe(401);
+    expect(
+      (await signInWithEmail({ email, password: changedPassword })).status,
+    ).toBe(200);
+
+    const passwordResetRequested = await gql(
+      /* GraphQL */ `
+        mutation RequestPasswordReset($input: AuthRequestPasswordResetInput!) {
+          requestPasswordReset(input: $input) {
+            status
+          }
+        }
+      `,
+      {
+        variables: {
+          input: {
+            email,
+            redirectTo: `${baseUrl}/auth/reset-password`,
+          },
+        },
+      },
+    );
+
+    expectNoGraphQLErrors(passwordResetRequested);
+    expect(passwordResetRequested.body.data.requestPasswordReset.status).toBe(
+      true,
+    );
+
+    const passwordResetUrl = new URL(
+      await waitForEmailUrl(email, 'Reset your password'),
+    );
+    const passwordResetCallback = await request(baseUrl).get(
+      `${passwordResetUrl.pathname}${passwordResetUrl.search}`,
+    );
+    const passwordResetLocation = new URL(
+      passwordResetCallback.headers.location ?? '',
+      baseUrl,
+    );
+    const passwordResetToken = passwordResetLocation.searchParams.get('token');
+
+    expect(passwordResetCallback.status).toBe(302);
+    expect(passwordResetToken).toBeTypeOf('string');
+    if (!passwordResetToken) {
+      throw new Error('Password reset token is missing');
+    }
+
+    const resetPassword = 'graphql-reset-password';
+    const passwordReset = await gql(
+      /* GraphQL */ `
+        mutation ResetPassword($input: AuthResetPasswordInput!) {
+          resetPassword(input: $input)
+        }
+      `,
+      {
+        variables: {
+          input: {
+            newPassword: resetPassword,
+            token: passwordResetToken,
+          },
+        },
+      },
+    );
+
+    expectNoGraphQLErrors(passwordReset);
+    expect(passwordReset.body.data.resetPassword).toBe(true);
+    expect(
+      (await signInWithEmail({ email, password: changedPassword })).status,
+    ).toBe(401);
+    const resetPasswordLogin = await signInWithEmail({
+      email,
+      password: resetPassword,
+    });
+    expect(resetPasswordLogin.status).toBe(200);
+
+    const signedOut = await gql(
+      /* GraphQL */ `
+        mutation {
+          signOut
+        }
+      `,
+      { cookies: collectSetCookies(resetPasswordLogin) },
+    );
+
+    expectNoGraphQLErrors(signedOut);
+    expect(signedOut.body.data.signOut).toBe(true);
+    expect(collectSetCookies(signedOut).length).toBeGreaterThan(0);
+  });
+
+  it('changes a verified email through GraphQL after verifying the new address', async () => {
+    const email = uniqueEmail('graphql-change-email');
+    const newEmail = uniqueEmail('graphql-changed-email');
+    const password = 'correct-horse-battery-staple';
+    const registered = await signUpWithEmail({
+      email,
+      name: 'Email Change User',
+      password,
+    });
+
+    expect(registered.status).toBe(200);
+    await verifyEmail(email);
+
+    const loggedIn = await signInWithEmail({ email, password });
+    const cookies = collectSetCookies(loggedIn);
+    expect(loggedIn.status).toBe(200);
+
+    const changeRequested = await gql(
+      /* GraphQL */ `
+        mutation ChangeEmail($input: AuthChangeEmailInput!) {
+          changeCurrentUserEmail(input: $input)
+        }
+      `,
+      {
+        cookies,
+        variables: {
+          input: {
+            callbackURL: `${baseUrl}/user?emailChangeCallback=true&newEmail=${encodeURIComponent(newEmail)}`,
+            newEmail,
+          },
+        },
+      },
+    );
+
+    expectNoGraphQLErrors(changeRequested);
+    expect(changeRequested.body.data.changeCurrentUserEmail).toBe(true);
+
+    const confirmationUrl = new URL(
+      await waitForEmailUrl(email, 'Confirm your email change'),
+    );
+    const confirmed = await request(baseUrl).get(
+      `${confirmationUrl.pathname}${confirmationUrl.search}`,
+    );
+
+    expect(confirmed.status).toBe(302);
+    expect(confirmed.headers.location).toContain('emailChangeCallback=true');
+
+    const verificationUrl = new URL(
+      await waitForEmailUrl(newEmail, 'Verify your email address'),
+    );
+    const verified = await request(baseUrl).get(
+      `${verificationUrl.pathname}${verificationUrl.search}`,
+    );
+    const verificationCookies = collectSetCookies(verified);
+
+    expect(verified.status).toBe(302);
+    expect(verified.headers.location).toContain('emailChangeCallback=true');
+    expect(verificationCookies.length).toBeGreaterThan(0);
+
+    const currentUser = await gql(
+      /* GraphQL */ `
+        query {
+          currentUser {
+            email
+          }
+        }
+      `,
+      { cookies: verificationCookies },
+    );
+
+    expectNoGraphQLErrors(currentUser);
+    expect(currentUser.body.data.currentUser).toEqual({ email: newEmail });
+    const [updatedUser] = await migrationOrm.em
+      .getConnection()
+      .execute<
+        { email: string; email_verified: boolean }[]
+      >('select email, email_verified from "user" where email = ?', [newEmail]);
+    expect(updatedUser).toEqual({ email: newEmail, email_verified: true });
+    expect((await signInWithEmail({ email, password })).status).toBe(401);
+    expect((await signInWithEmail({ email: newEmail, password })).status).toBe(
+      200,
+    );
+  });
+
+  it('lists API-key grants using the current issuer and credential ceilings', async () => {
+    const owner = await createAuthenticatedUser('Key Catalog Owner');
+    const issuer = await createAuthenticatedUser('Key Catalog Issuer');
+    const workspace = await createWorkspace(owner, 'Key Catalog Workspace');
+    const member = await addWorkspaceMember(owner, workspace.id, issuer.email);
+    await setWorkspaceMemberPermissions(owner, workspace.id, member.id, [
+      'WORKSPACE__UPDATE',
+    ]);
+
+    const query = `query {
+      userApiKeyPermissions { permission grantable }
+      workspaceApiKeyPermissions { permission grantable }
+    }`;
+    const result = await gql(query, {
+      cookies: issuer.cookies,
+      workspaceId: workspace.id,
+    });
+    expectNoGraphQLErrors(result);
+    expect(
+      result.body.data.workspaceApiKeyPermissions.filter(
+        (option: { grantable: boolean }) => option.grantable,
+      ),
+    ).toEqual(
+      ['WORKSPACE__READ', 'WORKSPACE__UPDATE', 'WORKSPACE_MEMBER__READ'].map(
+        (permission) => ({ permission, grantable: true }),
+      ),
+    );
+    expect(result.body.data.workspaceApiKeyPermissions).toContainEqual({
+      permission: 'WORKSPACE_MEMBER__INVITE',
+      grantable: false,
+    });
+    expect(result.body.data.userApiKeyPermissions).toContainEqual({
+      permission: 'USER_API_KEY__WRITE',
+      grantable: true,
+    });
+    expect(result.body.data.userApiKeyPermissions).toContainEqual({
+      permission: 'USER__DELETE',
+      grantable: false,
+    });
+
+    const key = await createUserApiKey(issuer, {
+      name: 'Catalog-only key',
+      permissions: ['WORKSPACE__UPDATE'],
+    });
+    const keyResult = await gql(query, {
+      bearerToken: key.apiKey,
+      workspaceId: workspace.id,
+    });
+    expectNoGraphQLErrors(keyResult);
+    for (const options of Object.values<
+      { permission: string; grantable: boolean }[]
+    >(keyResult.body.data)) {
+      expect(options.filter((option) => option.grantable)).toEqual([
+        { permission: 'WORKSPACE__UPDATE', grantable: true },
+      ]);
+    }
+  });
+
+  it('lists configured user roles and assigns them through GraphQL', async () => {
+    const administrator = await createAuthenticatedUser('Role Administrator');
+    const target = await createAuthenticatedUser('Role Target');
+    await migrationOrm.em
+      .getConnection()
+      .execute(`update "user" set roles = array['admin'] where id = ?`, [
+        administrator.user.id,
+      ]);
+
+    const catalog = await gql(
+      /* GraphQL */ `
+        query UserRoleCatalog {
+          userRoles {
+            role
+            grantable
+          }
+          userPermissions {
+            permission
+            grantable
+          }
+        }
+      `,
+      { cookies: administrator.cookies },
+    );
+
+    expectNoGraphQLErrors(catalog);
+    expect(catalog.body.data.userRoles).toEqual(
+      expect.arrayContaining([
+        { role: 'ADMIN', grantable: true },
+        { role: 'USER', grantable: true },
+      ]),
+    );
+    expect(catalog.body.data.userPermissions).toContainEqual({
+      permission: 'USER__SET_ROLES',
+      grantable: true,
+    });
+
+    await migrationOrm.em
+      .getConnection()
+      .execute(
+        `update "user" set roles = array['user'], permissions = array['user:set-roles', 'user:set-permissions'] where id = ?`,
+        [administrator.user.id],
+      );
+    const limitedCatalog = await gql(
+      `query { userRoles { role grantable } userPermissions { permission grantable } }`,
+      { cookies: administrator.cookies },
+    );
+    expectNoGraphQLErrors(limitedCatalog);
+    expect(limitedCatalog.body.data.userRoles).toEqual(
+      expect.arrayContaining([
+        { role: 'ADMIN', grantable: false },
+        { role: 'USER', grantable: true },
+      ]),
+    );
+    expect(limitedCatalog.body.data.userPermissions).toContainEqual({
+      permission: 'USER__DELETE',
+      grantable: false,
+    });
+    await migrationOrm.em
+      .getConnection()
+      .execute(
+        `update "user" set roles = array['admin'], permissions = '{}' where id = ?`,
+        [administrator.user.id],
+      );
+
+    const assigned = await gql(
+      /* GraphQL */ `
+        mutation SetUserRoles($id: ID!, $input: SetUserRolesInput!) {
+          setUserRoles(id: $id, input: $input) {
+            id
+          }
+        }
+      `,
+      {
+        cookies: administrator.cookies,
+        variables: {
+          id: target.user.id,
+          input: { roles: ['ADMIN'] },
+        },
+      },
+    );
+
+    expectNoGraphQLErrors(assigned);
+    expect(assigned.body.data.setUserRoles).toEqual({
+      id: target.user.id,
+    });
+    expect(
+      await migrationOrm.em
+        .getConnection()
+        .execute('select roles from "user" where id = ?', [target.user.id]),
+    ).toEqual([{ roles: ['admin'] }]);
+  });
+
+  it('returns ID-only payloads for administrative user writes and rejects relation selections before persistence', async () => {
+    const administrator = await createAuthenticatedUser(
+      'Payload Administrator',
+    );
+    const connection = migrationOrm.em.getConnection();
+    await connection.execute(
+      `update "user" set roles = array['admin'] where id = ?`,
+      [administrator.user.id],
+    );
+    const email = uniqueEmail('admin-payload');
+    const create = (selection: string) =>
+      gql(
+        `mutation($input: CreateUserInput!) { createUser(input: $input) { ${selection} } }`,
+        {
+          cookies: administrator.cookies,
+          variables: {
+            input: {
+              email,
+              name: 'Created',
+              password: 'correct-horse-battery-staple',
+            },
+          },
+        },
+      );
+    const rejected = await create(
+      'accounts(first: 1) { edges { node { id } } }',
+    );
+    expect(rejected.body.errors[0].message).toContain(
+      'Cannot query field "accounts"',
+    );
+    expect(
+      await connection.execute('select id from "user" where email = ?', [
+        email,
+      ]),
+    ).toEqual([]);
+    const created = await create('id');
+    expectNoGraphQLErrors(created);
+    const id = created.body.data.createUser.id as string;
+    expect(created.body.data.createUser).toEqual({ id: expect.any(String) });
+    const readUser = () =>
+      connection.execute(
+        'select name, roles, permissions, banned from "user" where id = ?',
+        [id],
+      );
+    for (const [operation, inputType, input, expected] of [
+      [
+        'updateUser',
+        'UpdateUserInput!',
+        { name: 'Updated' },
+        { name: 'Updated' },
+      ],
+      [
+        'setUserRoles',
+        'SetUserRolesInput!',
+        { roles: ['USER'] },
+        { roles: ['user'] },
+      ],
+      [
+        'setUserPermissions',
+        'SetUserPermissionsInput!',
+        { permissions: ['USER__READ'] },
+        { permissions: ['user:read'] },
+      ],
+      ['banUser', 'BanUserInput', { reason: 'Test ban' }, { banned: true }],
+      ['unbanUser', null, null, { banned: false }],
+    ] as const) {
+      const mutate = (selection: string) =>
+        gql(
+          `mutation($id: ID!${inputType ? `, $input: ${inputType}` : ''}) { ${operation}(id: $id${inputType ? ', input: $input' : ''}) { ${selection} } }`,
+          {
+            cookies: administrator.cookies,
+            variables: { id, ...(inputType ? { input } : {}) },
+          },
+        );
+      const before = await readUser();
+      const invalid = await mutate(
+        'accounts(first: 1) { edges { node { id } } }',
+      );
+      expect(invalid.body.errors[0].message).toContain(
+        'Cannot query field "accounts"',
+      );
+      expect(await readUser()).toEqual(before);
+      const updated = await mutate('id');
+      expectNoGraphQLErrors(updated);
+      expect(updated.body.data[operation]).toEqual({ id });
+      expect((await readUser())[0]).toMatchObject(expected);
+    }
+  });
+
+  it.each(['session', 'apiKey'] as const)(
+    'caps user grants for a restricted %s',
+    async (authentication) => {
+      const issuer = await createAuthenticatedUser('Restricted Grant Issuer');
+      const permissions = [
+        'user:read',
+        'user:create',
+        'user:set-roles',
+        'user:set-permissions',
+      ];
+      const connection = migrationOrm.em.getConnection();
+      await connection.execute(
+        'update "user" set roles = ?, permissions = ? where id = ?',
+        [
+          authentication === 'apiKey' ? '{admin}' : '{}',
+          `{${permissions.join(',')}}`,
+          issuer.user.id,
+        ],
+      );
+      const credentials =
+        authentication === 'session'
+          ? { cookies: issuer.cookies }
+          : {
+              bearerToken: (
+                await createUserApiKey(issuer, {
+                  name: 'Limited administration',
+                  permissions: [
+                    'USER__READ',
+                    'USER__CREATE',
+                    'USER__SET_ROLES',
+                    'USER__SET_PERMISSIONS',
+                  ],
+                })
+              ).apiKey,
+            };
+      const grant = (grantedPermissions: string[]) =>
+        gql(
+          `mutation ($id: ID!, $input: SetUserPermissionsInput!) {
+      setUserPermissions(id: $id, input: $input) { id }
+    }`,
+          {
+            ...credentials,
+            variables: {
+              id: issuer.user.id,
+              input: { permissions: grantedPermissions },
+            },
+          },
+        );
+      for (const [permission, enumName] of [
+        ['user:delete', 'USER__DELETE'],
+        ['user:impersonate-admin', 'USER__IMPERSONATE_ADMIN'],
+      ]) {
+        const denied = await grant([enumName]);
+        expect(denied.body.errors).toEqual([
+          expect.objectContaining({
+            message: `User permissions exceed issuer permissions: ${permission}`,
+          }),
+        ]);
+      }
+      const rolesDenied = await gql(
+        `mutation ($id: ID!, $input: SetUserRolesInput!) {
+      setUserRoles(id: $id, input: $input) { id }
+    }`,
+        {
+          ...credentials,
+          variables: { id: issuer.user.id, input: { roles: ['ADMIN'] } },
+        },
+      );
+      expect(rolesDenied.body.errors[0].message).toContain(
+        'User permissions exceed issuer permissions',
+      );
+      const email = uniqueEmail('Denied Grant');
+      const createDenied = await gql(
+        `mutation ($input: CreateUserInput!) { createUser(input: $input) { id } }`,
+        {
+          ...credentials,
+          variables: {
+            input: {
+              name: 'Denied Grant',
+              email,
+              password: issuer.password,
+              roles: ['ADMIN'],
+            },
+          },
+        },
+      );
+      expect(createDenied.body.errors[0].message).toContain(
+        'User permissions exceed issuer permissions',
+      );
+      expect(
+        await connection.execute('select id from "user" where email = ?', [
+          email,
+        ]),
+      ).toEqual([]);
+      const [unchanged] = await connection.execute(
+        'select roles, permissions from "user" where id = ?',
+        [issuer.user.id],
+      );
+      expect(unchanged).toEqual({
+        roles: authentication === 'apiKey' ? ['admin'] : [],
+        permissions,
+      });
+      expectNoGraphQLErrors(await grant(['USER__READ']));
+    },
+  );
+
+  it.each(['self', 'administrator'] as const)(
+    'preserves ownerless workspaces and key audit records through %s deletion',
+    async (mode) => {
+      const administrator = await createAuthenticatedUser(
+        'Deletion Administrator',
+      );
+      const target = await createAuthenticatedUser('Deletion Target');
+      await migrationOrm.em
+        .getConnection()
+        .execute(`update "user" set roles = array['admin'] where id = ?`, [
+          administrator.user.id,
+        ]);
+
+      const workspace = await createWorkspace(target, 'Deletion Workspace');
+      const personalKey = await createUserApiKey(target, {
+        name: 'Deletion target key',
+        permissions: ['WORKSPACE__UPDATE'],
+      });
+
+      const connection = migrationOrm.em.getConnection();
+      await connection.execute(
+        "insert into workspace_member (workspace_id, user_id, name, roles) values (?, ?, ?, array['member'])",
+        [workspace.id, administrator.user.id, 'Retained member'],
+      );
+      const deletedKey = await createWorkspaceApiKey(target, workspace.id, {
+        name: 'Deleted user member key',
+        permissions: [],
+      });
+      const retainedKey = await createWorkspaceApiKey(target, workspace.id, {
+        memberId: null,
+        name: 'Retained service account key',
+        permissions: ['WORKSPACE_SERVICE_ACCOUNT__READ'],
+      });
+      const deleted = await gql(
+        mode === 'self'
+          ? /* GraphQL */ `
+              mutation {
+                deleteCurrentUser {
+                  success
+                }
+              }
+            `
+          : /* GraphQL */ `
+              mutation DeleteUser($id: ID!) {
+                deleteUser(id: $id) {
+                  __typename
+                  id
+                }
+              }
+            `,
+        {
+          cookies: mode === 'self' ? target.cookies : administrator.cookies,
+          variables: { id: target.user.id },
+        },
+      );
+      expectNoGraphQLErrors(deleted);
+      if (mode === 'self') {
+        expect(deleted.body.data.deleteCurrentUser.success).toBe(true);
+      } else {
+        expect(deleted.body.data.deleteUser).toEqual({
+          __typename: 'DeleteUserPayload',
+          id: target.user.id,
+        });
+      }
+      const [retained] = await connection.execute(
+        'select name from workspace where id = ?',
+        [workspace.id],
+      );
+      expect(retained).toEqual({
+        name: 'Deletion Workspace',
+      });
+      expect(
+        await connection.execute(
+          `select user_id::text, roles from workspace_member where workspace_id = ? and type = 'USER'`,
+          [workspace.id],
+        ),
+      ).toEqual([{ user_id: administrator.user.id, roles: ['member'] }]);
+      expect(
+        await connection.execute(
+          "select k.id from api_key k join workspace_member m on m.id = k.owner_id where k.owner_type = 'workspace_member' and m.workspace_id = ?",
+          [workspace.id],
+        ),
+      ).toEqual([{ id: retainedKey.entity.id }]);
+      expect(
+        await connection.execute('select id from api_key where id = ?', [
+          deletedKey.entity.id,
+        ]),
+      ).toEqual([{ id: deletedKey.entity.id }]);
+
+      const [counts] = await migrationOrm.em.getConnection().execute<
+        {
+          accounts: number;
+          api_keys: number;
+          members: number;
+          sessions: number;
+          users: number;
+        }[]
+      >(
+        /* SQL */ `
+        select
+          (select count(*)::int from "user" where id = ?) as users,
+          (select count(*)::int from account where user_id = ?) as accounts,
+          (select count(*)::int from session where user_id = ?) as sessions,
+          (select count(*)::int from api_key where owner_type = 'user' and owner_id = ?) as api_keys,
+          (select count(*)::int from workspace_member where user_id = ? and workspace_id = ?) as members
+      `,
+        [
+          target.user.id,
+          target.user.id,
+          target.user.id,
+          target.user.id,
+          target.user.id,
+          workspace.id,
+        ],
+      );
+      expect(counts).toEqual({
+        accounts: 0,
+        api_keys: 1,
+        members: 0,
+        sessions: 0,
+        users: 0,
+      });
+      for (const credential of [personalKey, deletedKey]) {
+        const rejected = await gql('query { currentUser { id } }', {
+          bearerToken: credential.apiKey,
+          workspaceId: workspace.id,
+        });
+        expect(rejected.status).toBe(401);
+      }
+      expectNoGraphQLErrors(
+        await gql('query { currentWorkspaceMember { id } }', {
+          bearerToken: retainedKey.apiKey,
+          workspaceId: workspace.id,
+        }),
+      );
+    },
+  );
+
+  it('rejects permissions outside the configured owner catalogs', async () => {
+    const administrator = await createAuthenticatedUser(
+      'Permission Catalog Administrator',
+    );
+    const target = await createAuthenticatedUser('Permission Catalog Target');
+    await migrationOrm.em
+      .getConnection()
+      .execute(`update "user" set roles = array['admin'] where id = ?`, [
+        administrator.user.id,
+      ]);
+
+    const invalidUserPermission = await gql(
+      /* GraphQL */ `
+        mutation SetUserPermissions(
+          $id: ID!
+          $input: SetUserPermissionsInput!
+        ) {
+          setUserPermissions(id: $id, input: $input) {
+            id
+          }
+        }
+      `,
+      {
+        cookies: administrator.cookies,
+        variables: {
+          id: target.user.id,
+          input: { permissions: ['WORKSPACE__UPDATE'] },
+        },
+      },
+    );
+    expectGraphQLError(invalidUserPermission);
+
+    const workspace = await createWorkspace(
+      administrator,
+      'Permission Catalog Workspace',
+    );
+    const currentWorkspaceMember = await gql(
+      /* GraphQL */ `
+        query {
+          currentWorkspaceMember {
+            id
+          }
+        }
+      `,
+      {
+        cookies: administrator.cookies,
+        workspaceId: workspace.id,
+      },
+    );
+    expectNoGraphQLErrors(currentWorkspaceMember);
+
+    const invalidWorkspaceMemberPermission = await gql(
+      /* GraphQL */ `
+        mutation SetWorkspaceMemberPermissions(
+          $id: ID!
+          $input: SetWorkspaceMemberPermissionsInput!
+        ) {
+          setWorkspaceMemberPermissions(id: $id, input: $input) {
+            id
+          }
+        }
+      `,
+      {
+        cookies: administrator.cookies,
+        variables: {
+          id: currentWorkspaceMember.body.data.currentWorkspaceMember.id,
+          input: { permissions: ['USER__READ'] },
+        },
+        workspaceId: workspace.id,
+      },
+    );
+    expectGraphQLError(invalidWorkspaceMemberPermission);
+
+    const invalidWorkspaceMemberKey = await gql(
+      /* GraphQL */ `
+        mutation CreateApiKey($input: CreateWorkspaceApiKeyInput!) {
+          createWorkspaceApiKey(input: $input) {
+            apiKey
+          }
+        }
+      `,
+      {
+        cookies: administrator.cookies,
+        variables: {
+          input: {
+            name: 'Invalid workspace key',
+            permissions: ['USER__READ'],
+          },
+        },
+        workspaceId: workspace.id,
+      },
+    );
+    expectGraphQLError(invalidWorkspaceMemberKey);
+
+    const invalidUserKey = await gql(
+      /* GraphQL */ `
+        mutation CreateUserApiKey($input: CreateUserApiKeyInput!) {
+          createUserApiKey(input: $input) {
+            apiKey
+          }
+        }
+      `,
+      {
+        cookies: target.cookies,
+        variables: {
+          input: {
+            name: 'Invalid user key',
+            permissions: ['UNKNOWN__EXECUTE'],
+          },
+        },
+      },
+    );
+    expectGraphQLError(invalidUserKey);
+  });
+
+  it('resolves User.sessions as application Session objects without exposing tokens', async () => {
+    const administrator = await createAuthenticatedUser(
+      'Session Administrator',
+    );
+    const target = await createAuthenticatedUser('Session Target');
+    await migrationOrm.em
+      .getConnection()
+      .execute(`update "user" set roles = array['admin'] where id = ?`, [
+        administrator.user.id,
+      ]);
+    const query = `query($id: ID!) { user(id: $id) { sessions(first: 100) { edges { node { __typename id current expiresAt ipAddress userAgent impersonatedById createdAt updatedAt } } } } }`;
+    const listed = await gql(query, {
+      cookies: administrator.cookies,
+      variables: { id: target.user.id },
+    });
+    expectNoGraphQLErrors(listed);
+    expect(listed.body.data.user.sessions.edges).toHaveLength(1);
+    expect(listed.body.data.user.sessions.edges[0].node).toMatchObject({
+      __typename: 'Session',
+      current: false,
+      impersonatedById: null,
+    });
+    const own = await gql(query, {
+      cookies: administrator.cookies,
+      variables: { id: administrator.user.id },
+    });
+    expectNoGraphQLErrors(own);
+    expect(own.body.data.user.sessions.edges[0].node.current).toBe(true);
+    const denied = await gql(
+      'query { currentUser { sessions(first: 100) { edges { node { id } } } } }',
+      {
+        cookies: target.cookies,
+      },
+    );
+    expectNoGraphQLErrors(denied);
+    expect(denied.body.data.currentUser.sessions.edges).toHaveLength(1);
+    const missingPageSize = await gql(
+      'query { currentUser { sessions { edges { node { id } } } } }',
+      { cookies: target.cookies },
+    );
+    expectGraphQLError(missingPageSize);
+    expect(missingPageSize.body.errors[0].extensions.code).toBe(
+      'BAD_USER_INPUT',
+    );
+
+    const credentials = await gql(
+      'query { currentUser { sessions(first: 1) { edges { node { token } } } } }',
+      {
+        cookies: target.cookies,
+      },
+    );
+    expectGraphQLError(credentials);
+    expect(credentials.body.errors[0].extensions.code).toBe(
+      'GRAPHQL_VALIDATION_FAILED',
+    );
+  });
+
+  it('paginates users and own sessions with cursors, without returning expired or foreign sessions', async () => {
+    const prefix = `Pagination${Date.now()}`;
+    const owner = await createAuthenticatedUser(`${prefix} First`);
+    const other = await createAuthenticatedUser(`${prefix} Second`);
+    const admin = await createAuthenticatedUser('Connection Administrator');
+    await migrationOrm.em
+      .getConnection()
+      .execute(`update "user" set roles = array['admin'] where id = ?`, [
+        admin.user.id,
+      ]);
+    const query = `query($after: String, $query: String) { users(first: 1, after: $after, query: $query) { edges { node { id } } pageInfo { hasNextPage endCursor } } }`;
+    const first = await gql(query, {
+      cookies: admin.cookies,
+      variables: { query: prefix + '*' },
+    });
+    expectNoGraphQLErrors(first);
+    expect(first.body.data.users.pageInfo.hasNextPage).toBe(true);
+    const second = await gql(query, {
+      cookies: admin.cookies,
+      variables: {
+        query: prefix + '*',
+        after: first.body.data.users.pageInfo.endCursor,
+      },
+    });
+    expectNoGraphQLErrors(second);
+    expect(second.body.data.users.pageInfo.hasNextPage).toBe(false);
+    expect(
+      [
+        first.body.data.users.edges[0].node.id,
+        second.body.data.users.edges[0].node.id,
+      ].sort(),
+    ).toEqual([owner.user.id, other.user.id].sort());
+    expectGraphQLError(await gql(query, { cookies: owner.cookies }));
+
+    await signInWithEmail({ email: owner.email, password: owner.password });
+    await migrationOrm.em
+      .getConnection()
+      .execute(
+        `insert into session (id, token, user_id, expires_at) values (gen_random_uuid(), ?, ?, now() - interval '1 day')`,
+        [`expired-${prefix}`, owner.user.id],
+      );
+    const sessions = `query($after: String) { currentUser { sessions(first: 1, after: $after) { edges { node { id current } } pageInfo { hasNextPage endCursor } } accounts(first: 20) { edges { node { id } } } } }`;
+    const sessionFirst = await gql(sessions, { cookies: owner.cookies });
+    expectNoGraphQLErrors(sessionFirst);
+    const connection = sessionFirst.body.data.currentUser.sessions;
+    expect(connection.pageInfo.hasNextPage).toBe(true);
+    const sessionNext = await gql(sessions, {
+      cookies: owner.cookies,
+      variables: { after: connection.pageInfo.endCursor },
+    });
+    expectNoGraphQLErrors(sessionNext);
+    expect(
+      sessionNext.body.data.currentUser.sessions.pageInfo.hasNextPage,
+    ).toBe(false);
+    expect(
+      sessionNext.body.data.currentUser.sessions.edges[0].node.id,
+    ).not.toBe(connection.edges[0].node.id);
+    const secret = await gql(
+      'query { currentUser { accounts(first: 20) { edges { node { password accessToken refreshToken idToken } } } } }',
+      { cookies: owner.cookies },
+    );
+    expectGraphQLError(secret);
+    expect(secret.body.errors[0].extensions.code).toBe(
+      'GRAPHQL_VALIDATION_FAILED',
+    );
+  });
+
+  it('paginates account bindings without exposing another user or accepting API keys', async () => {
+    const owner = await createAuthenticatedUser('Account pagination owner');
+    const other = await createAuthenticatedUser('Other account owner');
+    const connection = migrationOrm.em.getConnection();
+    for (const provider of ['test-a', 'test-b']) {
+      await connection.execute(
+        `insert into account (id, account_id, issuer, provider_id, user_id, access_token, refresh_token, id_token) values (gen_random_uuid(), ?, ?, ?, ?, 'private-access', 'private-refresh', 'private-id')`,
+        [provider, provider, provider, owner.user.id],
+      );
+    }
+    const query = `query($after: String, $before: String, $first: Int, $last: Int, $filter: AccountFilter) {
+      currentUser { accounts(first: $first, last: $last, after: $after, before: $before, filter: $filter) {
+        edges { node { id providerId } } pageInfo { hasNextPage endCursor startCursor }
+      } }
+    }`;
+    const first = await gql(query, {
+      cookies: owner.cookies,
+      variables: { first: 2 },
+    });
+    expectNoGraphQLErrors(first);
+    const page = first.body.data.currentUser.accounts;
+    expect(page.edges).toHaveLength(2);
+    expect(page.pageInfo.hasNextPage).toBe(true);
+    const second = await gql(query, {
+      cookies: owner.cookies,
+      variables: { first: 2, after: page.pageInfo.endCursor },
+    });
+    expectNoGraphQLErrors(second);
+    const nextPage = second.body.data.currentUser.accounts;
+    expect(nextPage.pageInfo.hasNextPage).toBe(false);
+    expect(
+      [...page.edges, ...nextPage.edges]
+        .map(({ node }: { node: { providerId: string } }) => node.providerId)
+        .sort(),
+    ).toEqual(['credential', 'test-a', 'test-b']);
+    const previous = await gql(query, {
+      cookies: owner.cookies,
+      variables: { last: 2, before: nextPage.pageInfo.startCursor },
+    });
+    expectNoGraphQLErrors(previous);
+    expect(previous.body.data.currentUser.accounts.edges).toEqual(page.edges);
+    await connection.execute(
+      `insert into account (id, account_id, issuer, provider_id, user_id) values (gen_random_uuid(), 'foreign-only', 'foreign-only', 'foreign-only', ?)`,
+      [other.user.id],
+    );
+    const filtered = await gql(query, {
+      cookies: owner.cookies,
+      variables: {
+        first: 10,
+        filter: { provider_id: { $eq: 'foreign-only' } },
+      },
+    });
+    expectNoGraphQLErrors(filtered);
+    expect(filtered.body.data.currentUser.accounts.edges).toHaveLength(0);
+    const key = await createUserApiKey(owner, {
+      name: 'No account access',
+      permissions: [],
+    });
+    expectGraphQLError(
+      await gql(query, { bearerToken: key.apiKey, variables: { first: 10 } }),
+    );
+    const anonymous = await gql(query, { variables: { first: 10 } });
+    expectNoGraphQLErrors(anonymous);
+    expect(anonymous.body.data.currentUser).toBeNull();
+    expectGraphQLError(
+      await gql(
+        'query($id: ID!) { user(id: $id) { accounts(first: 10) { edges { node { id } } } } }',
+        {
+          cookies: owner.cookies,
+          variables: { id: other.user.id },
+        },
+      ),
+    );
+  });
+
+  it('starts and stops administrator impersonation with signed session cookies', async () => {
+    const administrator = await createAuthenticatedUser(
+      'Impersonation Administrator',
+    );
+    const target = await createAuthenticatedUser('Impersonation Target');
+    await migrationOrm.em
+      .getConnection()
+      .execute(`update "user" set roles = array['admin'] where id = ?`, [
+        administrator.user.id,
+      ]);
+    await migrationOrm.em
+      .getConnection()
+      .execute(`update "user" set roles = array['admin'] where id = ?`, [
+        target.user.id,
+      ]);
+
+    const restrictedKey = await createUserApiKey(administrator, {
+      name: 'Restricted impersonation key',
+      permissions: ['USER__IMPERSONATE'],
+    });
+    const rejectedAdminImpersonation = await gql(
+      /* GraphQL */ `
+        mutation ImpersonateUser($id: ID!) {
+          impersonateUser(id: $id) {
+            id
+            accounts(first: 20) {
+              edges {
+                node {
+                  id
+                }
+              }
+            }
+            sessions(first: 100) {
+              edges {
+                node {
+                  id
+                  current
+                }
+              }
+            }
+          }
+        }
+      `,
+      {
+        bearerToken: restrictedKey.apiKey,
+        variables: { id: target.user.id },
+      },
+    );
+
+    expectGraphQLError(rejectedAdminImpersonation);
+
+    const started = await gql(
+      /* GraphQL */ `
+        mutation ImpersonateUser($id: ID!) {
+          impersonateUser(id: $id) {
+            id
+            accounts(first: 20) {
+              edges {
+                node {
+                  id
+                }
+              }
+            }
+            sessions(first: 100) {
+              edges {
+                node {
+                  id
+                  current
+                }
+              }
+            }
+          }
+        }
+      `,
+      {
+        cookies: administrator.cookies,
+        variables: { id: target.user.id },
+      },
+    );
+    const impersonationCookies = collectSetCookies(started);
+
+    expectNoGraphQLErrors(started);
+    expect(started.body.data.impersonateUser.id).toBe(target.user.id);
+    expect(started.body.data.impersonateUser.accounts.edges).toHaveLength(1);
+    expect(
+      started.body.data.impersonateUser.sessions.edges.some(
+        ({ node }: { node: { current: boolean } }) => node.current,
+      ),
+    ).toBe(true);
+    expect(impersonationCookies).toEqual(
+      expect.arrayContaining([
+        expect.stringContaining('better-auth.session_token='),
+      ]),
+    );
+
+    const impersonated = await gql(
+      /* GraphQL */ `
+        query {
+          currentUser {
+            id
+          }
+          currentSession {
+            impersonatedById
+          }
+        }
+      `,
+      { cookies: impersonationCookies },
+    );
+
+    expectNoGraphQLErrors(impersonated);
+    expect(impersonated.body.data).toEqual({
+      currentUser: { id: target.user.id },
+      currentSession: { impersonatedById: administrator.user.id },
+    });
+
+    const visibleImpersonator = await gql(
+      'query { currentSession { impersonatedBy { id name email } } }',
+      { cookies: impersonationCookies },
+    );
+    expectNoGraphQLErrors(visibleImpersonator);
+    expect(visibleImpersonator.body.data.currentSession.impersonatedBy.id).toBe(
+      administrator.user.id,
+    );
+    await migrationOrm.em
+      .getConnection()
+      .execute(`update "user" set roles = array['user'] where id = ?`, [
+        target.user.id,
+      ]);
+    const privateImpersonator = await gql(
+      'query { currentSession { impersonatedBy { id name email } } }',
+      { cookies: impersonationCookies },
+    );
+    expectGraphQLError(privateImpersonator);
+    expect(
+      privateImpersonator.body.data.currentSession.impersonatedBy,
+    ).toBeNull();
+    expect(privateImpersonator.body.errors[0].extensions.code).toBe(
+      'FORBIDDEN',
+    );
+
+    const stopped = await gql(
+      /* GraphQL */ `
+        mutation {
+          stopImpersonating {
+            id
+            accounts(first: 20) {
+              edges {
+                node {
+                  id
+                }
+              }
+            }
+            sessions(first: 100) {
+              edges {
+                node {
+                  id
+                  current
+                }
+              }
+            }
+          }
+        }
+      `,
+      { cookies: impersonationCookies },
+    );
+    const restoredCookies = collectSetCookies(stopped);
+
+    expectNoGraphQLErrors(stopped);
+    expect(stopped.body.data.stopImpersonating.id).toBe(administrator.user.id);
+    expect(stopped.body.data.stopImpersonating.accounts.edges).toHaveLength(1);
+    expect(
+      stopped.body.data.stopImpersonating.sessions.edges.some(
+        ({ node }: { node: { current: boolean } }) => node.current,
+      ),
+    ).toBe(true);
+
+    const restored = await gql(
+      /* GraphQL */ `
+        query {
+          currentUser {
+            id
+          }
+          currentSession {
+            impersonatedById
+          }
+        }
+      `,
+      { cookies: restoredCookies },
+    );
+    expectNoGraphQLErrors(restored);
+    expect(restored.body.data).toEqual({
+      currentUser: { id: administrator.user.id },
+      currentSession: { impersonatedById: null },
+    });
+    const expiredIdentity = await gql('query { currentUser { id } }', {
+      cookies: impersonationCookies,
+    });
+    expectNoGraphQLErrors(expiredIdentity);
+    expect(expiredIdentity.body.data.currentUser).toBeNull();
+  });
+
+  it('commits impersonation revocation before rejecting restoration of a banned administrator', async () => {
+    const administrator = await createAuthenticatedUser('Banned Impersonator');
+    const target = await createAuthenticatedUser('Restoration Target');
+    const connection = migrationOrm.em.getConnection();
+    await connection.execute(
+      `update "user" set roles = array['admin'] where id = ?`,
+      [administrator.user.id],
+    );
+    const started = await gql(
+      'mutation($id: ID!) { impersonateUser(id: $id) { id } }',
+      {
+        cookies: administrator.cookies,
+        variables: { id: target.user.id },
+      },
+    );
+    expectNoGraphQLErrors(started);
+    const cookies = collectSetCookies(started);
+    const readSessions = () =>
+      connection.execute(
+        'select id from session where impersonated_by_id = ?',
+        [administrator.user.id],
+      );
+    expect(await readSessions()).toHaveLength(1);
+    await connection.execute(
+      'update "user" set banned = true, ban_expires_at = null where id = ?',
+      [administrator.user.id],
+    );
+    const stopped = await gql(
+      'mutation($name: String!) { stopImpersonating { id } createWorkspace(input: { name: $name, slug: "after-impersonation" }) { id } }',
+      {
+        cookies,
+        variables: { name: `Revoked restoration ${target.user.id}` },
+      },
+    );
+    expect(stopped.body.errors).toEqual([
+      expect.objectContaining({
+        message: 'Banned administrators cannot restore their session',
+      }),
+      expect.objectContaining({
+        path: ['createWorkspace'],
+        extensions: expect.objectContaining({ code: 'UNAUTHORIZED' }),
+      }),
+    ]);
+    expect(
+      await connection.execute('select id from workspace where name = ?', [
+        `Revoked restoration ${target.user.id}`,
+      ]),
+    ).toEqual([]);
+    expect(await readSessions()).toEqual([]);
+    const expiredIdentity = await gql('query { currentUser { id } }', {
+      cookies,
+    });
+    expectNoGraphQLErrors(expiredIdentity);
+    expect(expiredIdentity.body.data.currentUser).toBeNull();
+    expectNoGraphQLErrors(
+      await gql('query { currentUser { id } }', { cookies: target.cookies }),
+    );
+  });
+
+  it('revokes administrator impersonation sessions without revoking the target user sessions', async () => {
+    const administrator = await createAuthenticatedUser(
+      'Revoked Administrator',
+    );
+    const target = await createAuthenticatedUser('Impersonated User');
+    await migrationOrm.em
+      .getConnection()
+      .execute(`update "user" set roles = array['admin'] where id = ?`, [
+        administrator.user.id,
+      ]);
+
+    const started = await gql(
+      /* GraphQL */ `
+        mutation ImpersonateUser($id: ID!) {
+          impersonateUser(id: $id) {
+            id
+          }
+        }
+      `,
+      { cookies: administrator.cookies, variables: { id: target.user.id } },
+    );
+    expectNoGraphQLErrors(started);
+    const impersonationCookies = collectSetCookies(started);
+
+    const revoked = await gql(
+      /* GraphQL */ `
+        mutation RevokeUserSessions($userId: ID!) {
+          revokeUserSessions(userId: $userId)
+        }
+      `,
+      {
+        cookies: administrator.cookies,
+        variables: { userId: administrator.user.id },
+      },
+    );
+    expectNoGraphQLErrors(revoked);
+    expect(revoked.body.data.revokeUserSessions).toBe(true);
+
+    const restored = await gql(
+      /* GraphQL */ `
+        mutation {
+          stopImpersonating {
+            id
+          }
+        }
+      `,
+      { cookies: impersonationCookies },
+    );
+    expect(restored.body.errors).toEqual([
+      expect.objectContaining({
+        extensions: expect.objectContaining({ code: 'UNAUTHORIZED' }),
+      }),
+    ]);
+    expect(
+      collectRawSetCookies(restored).some((cookie) =>
+        /session_token=[^;]/.test(cookie),
+      ),
+    ).toBe(false);
+
+    for (const cookies of [administrator.cookies, impersonationCookies]) {
+      const rejected = await gql(
+        /* GraphQL */ `
+          query {
+            currentUser {
+              id
+            }
+          }
+        `,
+        { cookies },
+      );
+      expectNoGraphQLErrors(rejected);
+      expect(rejected.body.data.currentUser).toBeNull();
+    }
+
+    const unaffected = await gql(
+      /* GraphQL */ `
+        query {
+          currentUser {
+            id
+          }
+        }
+      `,
+      { cookies: target.cookies },
+    );
+    expectNoGraphQLErrors(unaffected);
+    expect(unaffected.body.data.currentUser.id).toBe(target.user.id);
+    const sessions = await migrationOrm.em
+      .getConnection()
+      .execute(
+        'select id from session where user_id = ? or impersonated_by_id = ?',
+        [administrator.user.id, administrator.user.id],
+      );
+    expect(sessions).toEqual([]);
+  });
+
+  it('uses the replacement password-change session in subsequent mutation fields', async () => {
+    const administrator = await createAuthenticatedUser(
+      'Rotation administrator',
+    );
+    const user = await createAuthenticatedUser('Password rotation user');
+    const connection = migrationOrm.em.getConnection();
+    await connection.execute(
+      `update "user" set roles = array['admin'] where id = ?`,
+      [administrator.user.id],
+    );
+    const impersonated = await gql(
+      'mutation($id: ID!) { impersonateUser(id: $id) { id } }',
+      { cookies: administrator.cookies, variables: { id: user.user.id } },
+    );
+    expectNoGraphQLErrors(impersonated);
+    const impersonatedCookies = collectSetCookies(impersonated);
+    const oldSessions = await connection.execute<{ id: string }[]>(
+      'select id from session where user_id = ?',
+      [user.user.id],
+    );
+    expect(oldSessions).toHaveLength(2);
+    const response = await gql(
+      `mutation($input: AuthChangePasswordInput!) {
+        changeCurrentUserPassword(input: $input) { token }
+        stopImpersonating { id }
+        createWorkspace(input: { name: "Rotated identity workspace", slug: "rotated-identity-workspace" }) { id }
+      }`,
+      {
+        cookies: impersonatedCookies,
+        variables: {
+          input: {
+            currentPassword: user.password,
+            newPassword: 'replacement-session-password',
+            revokeOtherSessions: true,
+          },
+        },
+      },
+    );
+    expectNoGraphQLErrors(response);
+    const sessions = await connection.execute<{ id: string; token: string }[]>(
+      'select id, token from session where user_id = ?',
+      [user.user.id],
+    );
+    expect(sessions).toHaveLength(1);
+    const [replacement] = sessions;
+    expect(oldSessions.map(({ id }) => id)).not.toContain(replacement.id);
+    expect(response.body.data.changeCurrentUserPassword.token).toBe(
+      replacement.token,
+    );
+    // The replacement is a normal session, not the revoked impersonation session.
+    expect(response.body.data.stopImpersonating).toBeNull();
+    expect(
+      await connection.execute(
+        'select user_id from workspace_member where workspace_id = ?',
+        [response.body.data.createWorkspace.id],
+      ),
+    ).toEqual([{ user_id: user.user.id }]);
+    const current = await gql('query { currentSession { id current } }', {
+      cookies: collectSetCookies(response),
+    });
+    expectNoGraphQLErrors(current);
+    expect(current.body.data.currentSession).toEqual({
+      id: replacement.id,
+      current: true,
+    });
+    for (const cookies of [user.cookies, impersonatedCookies]) {
+      expectGraphQLError(
+        await gql('query { currentSession { id } }', { cookies }),
+      );
+    }
+  });
+
+  it.each([
+    'delete',
+    'ban',
+    'revoke-one',
+    'revoke-all',
+    'admin-delete',
+    'admin-revoke-one',
+    'admin-revoke-all',
+  ] as const)(
+    'clears the original request identity after self %s',
+    async (action) => {
+      const user = await createAuthenticatedUser('Revoked administrator');
+      const connection = migrationOrm.em.getConnection();
+      await connection.execute(
+        `update "user" set roles = array['admin'] where id = ?`,
+        [user.user.id],
+      );
+      const [session] = await connection.execute<{ id: string }[]>(
+        'select id from session where user_id = ?',
+        [user.user.id],
+      );
+      const operation = {
+        delete: 'deleteCurrentUser { success }',
+        ban: `banUser(id: "${user.user.id}") { id }`,
+        'revoke-one': `revokeCurrentUserSession(id: "${session.id}")`,
+        'revoke-all': 'revokeCurrentUserSessions',
+        'admin-delete': `deleteUser(id: "${user.user.id}") { id }`,
+        'admin-revoke-one': `revokeSession(userId: "${user.user.id}", id: "${session.id}")`,
+        'admin-revoke-all': `revokeUserSessions(userId: "${user.user.id}")`,
+      }[action];
+      const email = uniqueEmail('Must not be created');
+      const response = await gql(
+        `mutation($email: String!) {
+        first: ${operation}
+        second: createUser(input: { name: "Denied", email: $email, password: "long-enough-password" }) { id }
+      }`,
+        { cookies: user.cookies, variables: { email } },
+      );
+      expectGraphQLError(response);
+      expect(
+        await connection.execute('select id from session where id = ?', [
+          session.id,
+        ]),
+      ).toEqual([]);
+      expect(response.body.errors).toEqual(
+        expect.arrayContaining([
+          expect.objectContaining({
+            path: ['second'],
+            extensions: expect.objectContaining({ code: 'UNAUTHORIZED' }),
+          }),
+        ]),
+      );
+      expect(
+        await connection.execute('select id from "user" where email = ?', [
+          email,
+        ]),
+      ).toEqual([]);
+    },
+  );
+
+  it.each(['user', 'workspace'] as const)(
+    'revokes stale authorization after changing the authenticating %s key',
+    async (scope) => {
+      for (const action of ['permissions', 'revoke', 'delete'] as const) {
+        const owner = await createAuthenticatedUser('Key authorization owner');
+        const workspace = await createWorkspace(
+          owner,
+          'Retained key workspace',
+        );
+        const input = {
+          name: 'Active key',
+          permissions: [
+            scope === 'user'
+              ? 'USER_API_KEY__WRITE'
+              : 'WORKSPACE_API_KEY__WRITE',
+            'WORKSPACE__DELETE',
+          ],
+        };
+        const key =
+          scope === 'user'
+            ? await createUserApiKey(owner, input)
+            : await createWorkspaceApiKey(owner, workspace.id, input);
+        const suffix = scope === 'user' ? 'UserApiKey' : 'WorkspaceApiKey';
+        const first =
+          action === 'delete'
+            ? `delete${suffix}(id: $keyId)`
+            : action === 'revoke'
+              ? `revoke${suffix}(id: $keyId)`
+              : `update${suffix}(id: $keyId, input: { permissions: [${input.permissions[0]}] })`;
+        const response = await gql(
+          `mutation ($keyId: ID!, $id: ID!) { first: ${first} { id } deleteWorkspace(id: $id) { id } }`,
+          {
+            bearerToken: key.apiKey,
+            workspaceId: workspace.id,
+            variables: { keyId: key.entity.id, id: workspace.id },
+          },
+        );
+        expectGraphQLError(response);
+        expect(response.body.errors[0].path).toEqual(['deleteWorkspace']);
+        expect(response.body.errors[0].extensions.code).toBe(
+          action === 'permissions' ? 'FORBIDDEN' : 'UNAUTHORIZED',
+        );
+        expect(
+          await migrationOrm.em.execute(
+            'select id from workspace where id = ?',
+            [workspace.id],
+          ),
+        ).toEqual([{ id: workspace.id }]);
+        const table = 'api_key';
+        const rows = await migrationOrm.em.execute(
+          `select revoked_at, permissions, last_used_at from ${table} where id = ?`,
+          [key.entity.id],
+        );
+        if (action === 'delete') {
+          expect(rows).toEqual([]);
+        } else if (action === 'revoke') {
+          expect(rows[0].revoked_at).not.toBeNull();
+          expect(rows[0].last_used_at).not.toBeNull();
+        } else {
+          expect(rows[0].permissions).toEqual([
+            scope === 'user' ? 'user-api-key:write' : 'workspace-api-key:write',
+          ]);
+        }
+      }
+    },
+  );
+
+  it.each(['impersonate', 'user-sign-in', 'workspace-sign-in'] as const)(
+    'records the original API key after %s replaces its identity',
+    async (operation) => {
+      const owner = await createAuthenticatedUser('Original key owner');
+      const target = await createAuthenticatedUser('Replacement identity');
+      const connection = migrationOrm.em.getConnection();
+      await connection.execute(
+        `update "user" set roles = array['admin'] where id = ?`,
+        [owner.user.id],
+      );
+      const workspace = await createWorkspace(owner, 'Usage scope');
+      const memberKey = operation === 'workspace-sign-in';
+      const key = memberKey
+        ? await createWorkspaceApiKey(owner, workspace.id, {
+            name: 'Switch key',
+            permissions: [],
+          })
+        : await createUserApiKey(owner, {
+            name: 'Switch key',
+            permissions: ['USER__IMPERSONATE'],
+          });
+      const table = 'api_key';
+      expect(
+        await connection.execute(
+          `select last_used_at from ${table} where id = ?`,
+          [key.entity.id],
+        ),
+      ).toEqual([{ last_used_at: null }]);
+      const response = await gql(
+        operation === 'impersonate'
+          ? 'mutation($id: ID!) { impersonateUser(id: $id) { id } }'
+          : 'mutation($input: AuthSignInInput!) { signIn(input: $input) { user { id } } }',
+        {
+          bearerToken: key.apiKey,
+          workspaceId: memberKey ? workspace.id : undefined,
+          variables:
+            operation === 'impersonate'
+              ? { id: target.user.id }
+              : { input: { email: target.email, password: target.password } },
+        },
+      );
+      expectNoGraphQLErrors(response);
+      expect(
+        operation === 'impersonate'
+          ? response.body.data.impersonateUser.id
+          : response.body.data.signIn.user.id,
+      ).toBe(target.user.id);
+      const [stored] = await connection.execute<
+        { last_used_at: Date | null }[]
+      >(`select last_used_at from ${table} where id = ?`, [key.entity.id]);
+      expect(stored.last_used_at).not.toBeNull();
+      const current = await gql(
+        'query { currentUser { id } selectedWorkspace { id } }',
+        { cookies: collectSetCookies(response) },
+      );
+      expectNoGraphQLErrors(current);
+      expect(current.body.data).toEqual({
+        currentUser: { id: target.user.id },
+        selectedWorkspace: null,
+      });
+    },
+  );
+
+  it('records the last API-key use when its owner bans itself', async () => {
+    const user = await createAuthenticatedUser('Self-banning key owner');
+    const connection = migrationOrm.em.getConnection();
+    await connection.execute(
+      `update "user" set roles = array['admin'] where id = ?`,
+      [user.user.id],
+    );
+    const key = await createUserApiKey(user, {
+      name: 'Ban key',
+      permissions: ['USER__BAN'],
+    });
+    expect(
+      await connection.execute(
+        'select last_used_at from api_key where id = ?',
+        [key.entity.id],
+      ),
+    ).toEqual([{ last_used_at: null }]);
+    const response = await gql(
+      'mutation($id: ID!) { banUser(id: $id) { id } }',
+      {
+        bearerToken: key.apiKey,
+        variables: { id: user.user.id },
+      },
+    );
+    expectNoGraphQLErrors(response);
+    const [stored] = await connection.execute<{ last_used_at: Date | null }[]>(
+      'select last_used_at from api_key where id = ?',
+      [key.entity.id],
+    );
+    expect(stored.last_used_at).not.toBeNull();
+    expect(
+      await connection.execute('select id from session where user_id = ?', [
+        user.user.id,
+      ]),
+    ).toEqual([]);
+    const rejected = await gql('query { currentUser { id } }', {
+      bearerToken: key.apiKey,
+    });
+    expect(rejected.status).toBe(401);
+    expect(rejected.body.message).toBe('Invalid API key');
+  });
+
+  it('clears authentication after signing out before the next mutation', async () => {
+    const owner = await createAuthenticatedUser('Signing out owner');
+    const response = await gql(
+      'mutation { signOut createWorkspace(input: { name: "Must not exist", slug: "must-not-exist" }) { id } }',
+      { cookies: owner.cookies },
+    );
+    expectGraphQLError(response);
+    expect(response.body.errors[0].path).toEqual(['createWorkspace']);
+    expect(response.body.errors[0].extensions.code).toBe('UNAUTHORIZED');
+    expect(
+      await migrationOrm.em.execute(
+        'select id from session where user_id = ?',
+        [owner.user.id],
+      ),
+    ).toEqual([]);
+    expect(
+      await migrationOrm.em.execute('select id from workspace where name = ?', [
+        'Must not exist',
+      ]),
+    ).toEqual([]);
+  });
+
+  it('uses the refreshed profile in a subsequent workspace creation', async () => {
+    const owner = await createAuthenticatedUser('Original profile');
+    const response = await gql(
+      'mutation { updateCurrentUser(input: { name: "Updated profile" }) createWorkspace(input: { name: "Updated member profile", slug: "updated-member-profile" }) { id } }',
+      { cookies: owner.cookies },
+    );
+    expectNoGraphQLErrors(response);
+    expect(
+      await migrationOrm.em.execute(
+        'select name from workspace_member where user_id = ? and workspace_id = ?',
+        [owner.user.id, response.body.data.createWorkspace.id],
+      ),
+    ).toEqual([{ name: 'Updated profile' }]);
+  });
+
+  it('rejects disabling the current member without changing their profile or workspace access', async () => {
+    const owner = await createAuthenticatedUser('Active member');
+    const workspace = await createWorkspace(owner, 'Retained workspace');
+    const [member] = await migrationOrm.em.execute<
+      { id: string; name: string }[]
+    >(
+      'select id, name from workspace_member where user_id = ? and workspace_id = ?',
+      [owner.user.id, workspace.id],
+    );
+    const options = {
+      cookies: owner.cookies,
+      workspaceId: workspace.id,
+    };
+    const response = await gql(
+      'mutation ($id: ID!) { updateWorkspaceMember(id: $id, input: { status: DISABLED, name: "Must not change" }) { id } }',
+      {
+        ...options,
+        variables: { id: member.id },
+      },
+    );
+    expectGraphQLError(response);
+    expect(response.body.errors[0].path).toEqual(['updateWorkspaceMember']);
+    expect(response.body.errors[0].extensions.code).toBe('FORBIDDEN');
+    expect(
+      await migrationOrm.em.execute(
+        'select name, status from workspace_member where id = ?',
+        [member.id],
+      ),
+    ).toEqual([{ name: member.name, status: 'ACTIVE' }]);
+
+    const current = await gql(
+      'query { selectedWorkspace { id } currentWorkspaceMember { id name status } }',
+      options,
+    );
+    expectNoGraphQLErrors(current);
+    expect(current.body.data).toEqual({
+      selectedWorkspace: { id: workspace.id },
+      currentWorkspaceMember: { ...member, status: 'ACTIVE' },
+    });
+  });
+
+  it.each(['roles', 'permissions'] as const)(
+    'refreshes workspace authorization after changing own %s between serial mutations',
+    async (field) => {
+      const owner = await createAuthenticatedUser('Demoting member');
+      const workspace = await createWorkspace(owner, 'Demotion workspace');
+      const [member] = await migrationOrm.em.execute<{ id: string }[]>(
+        'select id from workspace_member where user_id = ? and workspace_id = ?',
+        [owner.user.id, workspace.id],
+      );
+      if (field === 'permissions') {
+        await migrationOrm.em.execute(
+          `update workspace_member set roles = array['member'], permissions = array['workspace-member:set-permissions', 'workspace:delete'] where id = ?`,
+          [member.id],
+        );
+      }
+      const first =
+        field === 'roles'
+          ? 'setWorkspaceMemberRoles(id: $memberId, input: { roles: [MEMBER] })'
+          : 'setWorkspaceMemberPermissions(id: $memberId, input: { permissions: [] })';
+      const response = await gql(
+        `mutation ($memberId: ID!, $id: ID!) { first: ${first} { id } deleteWorkspace(id: $id) { id } }`,
+        {
+          cookies: owner.cookies,
+          workspaceId: workspace.id,
+          variables: { memberId: member.id, id: workspace.id },
+        },
+      );
+      expectGraphQLError(response);
+      expect(response.body.errors[0].path).toEqual(['deleteWorkspace']);
+      expect(response.body.errors[0].extensions.code).toBe('FORBIDDEN');
+      expect(
+        await migrationOrm.em.execute('select id from workspace where id = ?', [
+          workspace.id,
+        ]),
+      ).toEqual([{ id: workspace.id }]);
+      const [updated] = await migrationOrm.em.execute(
+        'select roles, permissions, status from workspace_member where id = ?',
+        [member.id],
+      );
+      expect(updated[field]).toEqual(field === 'roles' ? ['member'] : []);
+    },
+  );
+
+  it.each(['roles', 'permissions'] as const)(
+    'refreshes user authorization after changing own %s between serial mutations',
+    async (field) => {
+      const user = await createAuthenticatedUser('Demoting administrator');
+      await migrationOrm.em.execute(
+        field === 'roles'
+          ? `update "user" set roles = array['admin'] where id = ?`
+          : `update "user" set permissions = array['user:set-permissions'] where id = ?`,
+        [user.user.id],
+      );
+      const first =
+        field === 'roles'
+          ? 'setUserRoles(id: $id, input: { roles: [USER] })'
+          : 'setUserPermissions(id: $id, input: { permissions: [] })';
+      const response = await gql(
+        `mutation ($id: ID!) { first: ${first} { id } second: setUserPermissions(id: $id, input: { permissions: [] }) { id } }`,
+        { cookies: user.cookies, variables: { id: user.user.id } },
+      );
+      expectGraphQLError(response);
+      expect(response.body.errors[0].path).toEqual(['second']);
+      expect(response.body.errors[0].extensions.code).toBe('FORBIDDEN');
+      const [updated] = await migrationOrm.em.execute(
+        'select roles, permissions from "user" where id = ?',
+        [user.user.id],
+      );
+      expect(updated[field]).toEqual(field === 'roles' ? ['user'] : []);
+    },
+  );
+
+  it('checks whether normalized workspace slugs exist', async () => {
+    const owner = await createAuthenticatedUser('Slug owner');
+    const query = `query ($slug: String!) { workspaceExists(slug: $slug) }`;
+    const options = {
+      cookies: owner.cookies,
+      variables: { slug: ' example-slug ' },
+    };
+    const before = await gql(query, options);
+    expectNoGraphQLErrors(before);
+    expect(before.body.data.workspaceExists).toBe(false);
+    await createWorkspace(owner, 'Availability example', 'example-slug');
+    const after = await gql(query, options);
+    expectNoGraphQLErrors(after);
+    expect(after.body.data.workspaceExists).toBe(true);
+    const privateCheck = await gql('{ workspaceExists(slug: "example-slug") }');
+    expectGraphQLError(privateCheck);
+    expect(privateCheck.body.errors[0].extensions.code).toBe('UNAUTHORIZED');
+    for (const slug of ['ab', 'Example-Slug']) {
+      const result = await gql(query, { ...options, variables: { slug } });
+      expectGraphQLError(result);
+      expect(result.body.errors[0].extensions.code).toBe('BAD_REQUEST');
+    }
+  });
+
+  it('requires a unique workspace slug and keeps slug lookups scoped to members', async () => {
+    const owner = await createAuthenticatedUser('Slug owner');
+    const stranger = await createAuthenticatedUser('Slug outsider');
+    const slug = 'acme-2';
+    const workspace = await createWorkspace(
+      owner,
+      'Acme workspace',
+      ' acme-2 ',
+    );
+    const lookup = `query ($id: ID!, $slug: String!) {
+      byId: workspace(id: $id) { id slug }
+      bySlug: workspace(slug: $slug) { id slug }
+      currentWorkspace { id slug }
+    }`;
+    const variables = { id: workspace.id, slug };
+    const expectedWorkspace = { id: workspace.id, slug };
+    for (const workspaceId of [workspace.id, slug]) {
+      for (const source of ['header', 'cookie']) {
+        const result = await gql(lookup, {
+          variables,
+          ...(source === 'header'
+            ? { cookies: owner.cookies, workspaceId }
+            : { cookies: [...owner.cookies, `workspace=${workspaceId}`] }),
+        });
+        expectNoGraphQLErrors(result);
+        expect(result.body.data).toEqual({
+          byId: expectedWorkspace,
+          bySlug: expectedWorkspace,
+          currentWorkspace: expectedWorkspace,
+        });
+      }
+    }
+    const hidden = await gql(lookup, {
+      cookies: [...stranger.cookies, `workspace=${slug}`],
+      variables,
+    });
+    expectNoGraphQLErrors(hidden);
+    expect(hidden.body.data).toEqual({
+      byId: null,
+      bySlug: null,
+      currentWorkspace: null,
+    });
+
+    const invalidHeader = await gql('{ currentWorkspace { id } }', {
+      cookies: owner.cookies,
+      workspaceId: 'ACME-2',
+    });
+    expect(invalidHeader.status).toBe(400);
+    expect(invalidHeader.body.message).toBe('Invalid workspace slug');
+
+    for (const query of [
+      '{ workspace { id } }',
+      '{ workspace(id: "1", slug: "acme-2") { id } }',
+      '{ workspace(slug: "ACME-2") { id } }',
+    ]) {
+      const invalidLookup = await gql(query, { cookies: owner.cookies });
+      expectGraphQLError(invalidLookup);
+      expect(invalidLookup.body.errors[0].extensions.code).toBe('BAD_REQUEST');
+    }
+
+    const create =
+      'mutation ($input: CreateWorkspaceInput!) { createWorkspace(input: $input) { id } }';
+    for (const input of [{ name: 'Null slug', slug: null }]) {
+      const rejected = await gql(create, {
+        cookies: owner.cookies,
+        variables: { input },
+      });
+      expectGraphQLError(rejected);
+      expect(rejected.body.errors[0].extensions.code).toBe('BAD_USER_INPUT');
+    }
+    const duplicate = await gql(create, {
+      cookies: stranger.cookies,
+      variables: { input: { name: 'Duplicate', slug } },
+    });
+    expectGraphQLError(duplicate);
+    expect(duplicate.body.errors[0].extensions.code).toBe('CONFLICT');
+    for (const invalidSlug of ['42', 'ACME-2']) {
+      const invalid = await gql(create, {
+        cookies: owner.cookies,
+        variables: { input: { name: 'Invalid', slug: invalidSlug } },
+      });
+      expectGraphQLError(invalid);
+      expect(invalid.body.errors[0].extensions.code).toBe('BAD_USER_INPUT');
+    }
+  });
+
+  it('generates workspace slugs and allows authorized renames without changing workspace identity', async () => {
+    const owner = await createAuthenticatedUser('Generated slug owner');
+    const create =
+      'mutation { createWorkspace(input: { name: "Generated slug" }) { id } }';
+    const created = await gql(create, { cookies: owner.cookies });
+    expectNoGraphQLErrors(created);
+    const id = created.body.data.createWorkspace.id;
+    const read = () =>
+      gql('query($id: ID!) { workspace(id: $id) { id name slug } }', {
+        cookies: owner.cookies,
+        variables: { id },
+      });
+    const initial = (await read()).body.data.workspace;
+    expect(initial.slug).toMatch(/^[a-z][a-z0-9]{29}$/);
+    const other = await createWorkspace(
+      owner,
+      'Occupied slug',
+      'occupied-slug',
+    );
+    const rename = (slug: string | null, name?: string) =>
+      gql(
+        'mutation($id: ID!, $input: UpdateWorkspaceInput!) { updateWorkspace(id: $id, input: $input) { id } }',
+        {
+          cookies: owner.cookies,
+          workspaceId: id,
+          variables: { id, input: { slug, ...(name ? { name } : {}) } },
+        },
+      );
+    for (const slug of [null, 'UPPERCASE', 'ab']) {
+      const invalid = await rename(slug);
+      expectGraphQLError(invalid);
+      expect(invalid.body.errors[0].extensions.code).toBe('BAD_USER_INPUT');
+    }
+    const duplicate = await rename('occupied-slug', 'Must not be saved');
+    expectGraphQLError(duplicate);
+    expect(duplicate.body.errors[0].extensions.code).toBe('CONFLICT');
+    expect((await read()).body.data.workspace).toEqual(initial);
+    expectNoGraphQLErrors(await rename(' renamed-workspace '));
+    const selected = await gql(
+      '{ selectedWorkspace { id slug } currentWorkspace { id } }',
+      { cookies: owner.cookies, workspaceId: 'renamed-workspace' },
+    );
+    expectNoGraphQLErrors(selected);
+    expect(selected.body.data).toEqual({
+      selectedWorkspace: { id, slug: 'renamed-workspace' },
+      currentWorkspace: { id },
+    });
+    const old = await gql('{ selectedWorkspace { id } }', {
+      cookies: owner.cookies,
+      workspaceId: initial.slug,
+    });
+    expectNoGraphQLErrors(old);
+    expect(old.body.data.selectedWorkspace).toBeNull();
+    const stranger = await createAuthenticatedUser('Rename outsider');
+    const denied = await gql(
+      'mutation($id: ID!) { updateWorkspace(id: $id, input: { slug: "stolen-slug" }) { id } }',
+      { cookies: stranger.cookies, workspaceId: id, variables: { id } },
+    );
+    expectGraphQLError(denied);
+    expect(denied.body.errors[0].extensions.code).toBe('FORBIDDEN');
+    expect(other.id).not.toBe(id);
+  });
+
+  it.each([false, true])(
+    'retains workspace-key audit records and rejects reuse after workspace deletion (following mutation: %s)',
+    async (followingMutation) => {
+      const owner = await createAuthenticatedUser('Deleting key owner');
+      const workspace = await createWorkspace(owner, 'Key deletion audit');
+      const key = await createWorkspaceApiKey(owner, workspace.id, {
+        name: 'Deletion key',
+        permissions: ['WORKSPACE__DELETE'],
+      });
+      const connection = migrationOrm.em.getConnection();
+      const readKey = () =>
+        connection.execute<{ id: string }[]>(
+          'select id from api_key where id = ?',
+          [key.entity.id],
+        );
+      expect(await readKey()).toEqual([{ id: key.entity.id }]);
+      const response = await gql(
+        `mutation($id: ID!) { deleteWorkspace(id: $id) { id } ${followingMutation ? 'stopImpersonating { id }' : ''} }`,
+        {
+          bearerToken: key.apiKey,
+          workspaceId: workspace.id,
+          variables: { id: workspace.id },
+        },
+      );
+      if (followingMutation) {
+        expectGraphQLError(response);
+        expect(response.body.errors[0].path).toEqual(['stopImpersonating']);
+        expect(response.body.errors[0].extensions.code).toBe('UNAUTHORIZED');
+      } else {
+        expectNoGraphQLErrors(response);
+      }
+      expect(await readKey()).toEqual([{ id: key.entity.id }]);
+      const rejected = await gql('query { selectedWorkspace { id } }', {
+        bearerToken: key.apiKey,
+        workspaceId: workspace.id,
+      });
+      expect(rejected.status).toBe(401);
+      expect(rejected.body.message).toBe('Invalid API key');
+      expect(await readKey()).toEqual([{ id: key.entity.id }]);
+    },
+  );
+
+  it('clears the parent workspace scope after deletion before the next mutation', async () => {
+    const owner = await createAuthenticatedUser('Deleting owner');
+    const user = await createAuthenticatedUser('Retained member');
+    const workspace = await createWorkspace(owner, 'Deleted workspace');
+    const member = await addWorkspaceMember(owner, workspace.id, user.email);
+    const response = await gql(
+      'mutation ($id: ID!, $memberId: ID!) { deleteWorkspace(id: $id) { id } removeWorkspaceMember(id: $memberId) { id } }',
+      {
+        cookies: owner.cookies,
+        workspaceId: workspace.id,
+        variables: { id: workspace.id, memberId: member.id },
+      },
+    );
+    expectGraphQLError(response);
+    expect(response.body.errors[0].path).toEqual(['removeWorkspaceMember']);
+    expect(response.body.errors[0].extensions.code).toBe('FORBIDDEN');
+    expect(
+      await migrationOrm.em.execute(
+        'select id from workspace_member where id = ?',
+        [member.id],
+      ),
+    ).toEqual([]);
+    expect(
+      await migrationOrm.em.execute('select id from workspace where id = ?', [
+        workspace.id,
+      ]),
+    ).toEqual([]);
+  });
+
+  it('invalidates workspace authorization between serial mutation fields after leaving', async () => {
+    const owner = await createAuthenticatedUser('Departing owner');
+    const workspace = await createWorkspace(owner, 'Retained workspace');
+    const response = await gql(
+      'mutation ($id: ID!) { leaveWorkspace { memberId } deleteWorkspace(id: $id) { id } }',
+      {
+        cookies: owner.cookies,
+        workspaceId: workspace.id,
+        variables: { id: workspace.id },
+      },
+    );
+    expectGraphQLError(response);
+    expect(response.body.errors[0].path).toEqual(['deleteWorkspace']);
+    expect(
+      await migrationOrm.em.execute(
+        'select id from workspace_member where workspace_id = ? and user_id = ?',
+        [workspace.id, owner.user.id],
+      ),
+    ).toEqual([]);
+    expect(
+      await migrationOrm.em.execute('select id from workspace where id = ?', [
+        workspace.id,
+      ]),
+    ).toEqual([{ id: workspace.id }]);
+    const current = await gql(
+      'query { currentUser { id } currentWorkspaceMember { id } selectedWorkspace { id } }',
+      { cookies: owner.cookies },
+    );
+    expectNoGraphQLErrors(current);
+    expect(current.body.data).toEqual({
+      currentUser: { id: owner.user.id },
+      currentWorkspaceMember: null,
+      selectedWorkspace: null,
+    });
+  });
+
+  it('returns ID-only invitation results without requiring access to the inviter profile', async () => {
+    const owner = await createAuthenticatedUser(
+      'WorkspaceInvitation payload owner',
+    );
+    const recipient = await createAuthenticatedUser(
+      'WorkspaceInvitation recipient',
+    );
+    const administrator = await createAuthenticatedUser(
+      'WorkspaceInvitation administrator',
+    );
+    const workspace = await createWorkspace(
+      owner,
+      'WorkspaceInvitation payloads',
+    );
+    const member = await addWorkspaceMember(
+      owner,
+      workspace.id,
+      administrator.email,
+    );
+    await setWorkspaceMemberRoles(owner, workspace.id, member.id, ['ADMIN']);
+    for (const action of ['reject', 'cancel'] as const) {
+      const invitation = await createWorkspaceInvitation(owner, workspace.id, {
+        email: recipient.email,
+        roles: ['MEMBER'],
+      });
+      const response = await gql(
+        `mutation ($id: ID!) { ${action}WorkspaceInvitation(id: $id) { __typename id } }`,
+        {
+          cookies:
+            action === 'reject' ? recipient.cookies : administrator.cookies,
+          ...(action === 'cancel' ? { workspaceId: workspace.id } : {}),
+          variables: { id: invitation.id },
+        },
+      );
+      expectNoGraphQLErrors(response);
+      expect(response.body.data[`${action}WorkspaceInvitation`]).toEqual({
+        __typename:
+          action === 'reject'
+            ? 'RejectWorkspaceInvitationPayload'
+            : 'CancelWorkspaceInvitationPayload',
+        id: invitation.id,
+      });
+      expect(
+        await migrationOrm.em.execute(
+          'select status from workspace_invitation where id = ?',
+          [invitation.id],
+        ),
+      ).toEqual([{ status: action === 'reject' ? 'rejected' : 'canceled' }]);
+    }
+  });
+
+  it('allows multiple owners through role updates without an ownership-transfer endpoint', async () => {
+    const owner = await createAuthenticatedUser('Role Owner');
+    const secondOwner = await createAuthenticatedUser('Second Owner');
+    const workspace = await createWorkspace(owner, 'Multiple Owners');
+    const member = await addWorkspaceMember(
+      owner,
+      workspace.id,
+      secondOwner.email,
+    );
+    await setWorkspaceMemberRoles(owner, workspace.id, member.id, ['OWNER']);
+    const connection = migrationOrm.em.getConnection();
+    const owners = await connection.execute<{ id: string; user_id: string }[]>(
+      `select id, user_id from workspace_member where workspace_id = ? and 'owner' = any(roles)`,
+      [workspace.id],
+    );
+    expect(owners.map(({ user_id }) => user_id).sort()).toEqual(
+      [owner.user.id, secondOwner.user.id].sort(),
+    );
+    const original = owners.find(({ user_id }) => user_id === owner.user.id);
+    await setWorkspaceMemberRoles(secondOwner, workspace.id, original.id, [
+      'ADMIN',
+    ]);
+
+    const denied = await gql(
+      'mutation ($id: ID!, $input: SetWorkspaceMemberRolesInput!) { setWorkspaceMemberRoles(id: $id, input: $input) { id } }',
+      {
+        cookies: owner.cookies,
+        workspaceId: workspace.id,
+        variables: { id: original.id, input: { roles: ['OWNER'] } },
+      },
+    );
+    expectGraphQLError(denied);
+    expect(denied.body.errors[0].message).toContain(
+      'Workspace permissions exceed issuer permissions',
+    );
+    const remainingOwners = await connection.execute<{ user_id: string }[]>(
+      `select user_id from workspace_member where workspace_id = ? and 'owner' = any(roles)`,
+      [workspace.id],
+    );
+    expect(remainingOwners).toEqual([{ user_id: secondOwner.user.id }]);
+  });
+
+  it.each(['disable', 'remove', 'leave'] as const)(
+    'allows %s of an owner without deleting the workspace',
+    async (action) => {
+      const owner = await createAuthenticatedUser('Lifecycle Owner');
+      const admin = await createAuthenticatedUser('Lifecycle Admin');
+      const workspace = await createWorkspace(owner, 'Owner lifecycle');
+      const adminWorkspaceMember = await addWorkspaceMember(
+        owner,
+        workspace.id,
+        admin.email,
+      );
+      await setWorkspaceMemberRoles(
+        owner,
+        workspace.id,
+        adminWorkspaceMember.id,
+        ['ADMIN'],
+      );
+      const current = await gql('query { currentWorkspaceMember { id } }', {
+        cookies: owner.cookies,
+        workspaceId: workspace.id,
+      });
+      expectNoGraphQLErrors(current);
+      const id = current.body.data.currentWorkspaceMember.id as string;
+      const query =
+        action === 'disable'
+          ? 'mutation($id: ID!) { updateWorkspaceMember(id: $id, input: { status: DISABLED }) { id } }'
+          : action === 'remove'
+            ? 'mutation($id: ID!) { removeWorkspaceMember(id: $id) { id } }'
+            : 'mutation { leaveWorkspace { memberId } }';
+      if (action !== 'leave') {
+        const ordinary = await createAuthenticatedUser(
+          'Unprivileged WorkspaceMember',
+        );
+        await addWorkspaceMember(owner, workspace.id, ordinary.email);
+        expectGraphQLError(
+          await gql(query, {
+            cookies: ordinary.cookies,
+            workspaceId: workspace.id,
+            variables: { id },
+          }),
+        );
+      }
+      const result = await gql(query, {
+        cookies: action === 'leave' ? owner.cookies : admin.cookies,
+        workspaceId: workspace.id,
+        variables: { id },
+      });
+      expectNoGraphQLErrors(result);
+      const rows = await migrationOrm.em
+        .getConnection()
+        .execute<
+          { status: string }[]
+        >('select status from workspace_member where id = ?', [id]);
+      expect(rows).toEqual(
+        action === 'disable' ? [{ status: 'DISABLED' }] : [],
+      );
+      const [retained] = await migrationOrm.em
+        .getConnection()
+        .execute<
+          { id: string }[]
+        >('select id from workspace where id = ?', [workspace.id]);
+      expect(retained.id).toBe(workspace.id);
+    },
+  );
+
+  it.each(['member', 'invitation', 'acceptance'] as const)(
+    'blocks %s after a concurrent workspace deletion',
+    async (kind) => {
+      const owner = await createAuthenticatedUser('Deletion Race Owner');
+      const invitee = await createAuthenticatedUser('Deletion Race Invitee');
+      const workspace = await createWorkspace(owner, 'Deletion Race');
+      const invitation =
+        kind === 'acceptance'
+          ? await createWorkspaceInvitation(owner, workspace.id, {
+              email: invitee.email,
+              roles: ['MEMBER'],
+            })
+          : null;
+      const createOperations = {
+        member: () =>
+          gql(
+            `mutation ($input: AddWorkspaceMemberInput!) { addWorkspaceMember(input: $input) { id } }`,
+            {
+              cookies: owner.cookies,
+              workspaceId: workspace.id,
+              variables: { input: { email: invitee.email } },
+            },
+          ),
+        invitation: () =>
+          gql(
+            `mutation ($input: CreateWorkspaceInvitationInput!) { createWorkspaceInvitation(input: $input) { id } }`,
+            {
+              cookies: owner.cookies,
+              workspaceId: workspace.id,
+              variables: {
+                input: { email: invitee.email, roles: ['MEMBER'] },
+              },
+            },
+          ),
+        acceptance: () =>
+          gql(
+            `mutation ($invitationId: ID!) { acceptWorkspaceInvitation(id: $invitationId) { id } }`,
+            {
+              cookies: invitee.cookies,
+              variables: { invitationId: invitation?.id },
+            },
+          ),
+      };
+      const responses = await raceWithWorkspaceLock(workspace.id, [
+        () =>
+          gql(
+            'mutation ($workspaceId: ID!) { deleteWorkspace(id: $workspaceId) { id } }',
+            {
+              cookies: owner.cookies,
+              workspaceId: workspace.id,
+            },
+          ),
+        createOperations[kind],
+      ]);
+      expectNoGraphQLErrors(responses[0]);
+      expect(responses[1].body.errors).toEqual([
+        expect.objectContaining({
+          message: 'Workspace not found',
+        }),
+      ]);
+      const connection = migrationOrm.em.getConnection();
+      expect(
+        await connection.execute(
+          'select user_id from workspace_member where workspace_id = ?',
+          [workspace.id],
+        ),
+      ).toEqual([]);
+      expect(
+        await connection.execute(
+          'select status from workspace_invitation where workspace_id = ?',
+          [workspace.id],
+        ),
+      ).toEqual([]);
+    },
+    20_000,
+  );
+
+  it('rechecks invitee identity after waiting for the workspace lock', async () => {
+    const owner = await createAuthenticatedUser('Invite Race Owner');
+    const workspace = await createWorkspace(owner, 'Invite Identity Race');
+    const email = uniqueEmail('late-registration');
+    const connection = migrationOrm.em.getConnection();
+    let pending: Promise<request.Response> | undefined;
+    try {
+      await connection.transactional(async (transaction) => {
+        await connection.execute(
+          'select id from workspace where id = ? for update',
+          [workspace.id],
+          'all',
+          transaction,
+        );
+        pending = Promise.resolve(
+          gql(
+            'mutation ($input: CreateWorkspaceInvitationInput!) { createWorkspaceInvitation(input: $input) { id } }',
+            {
+              cookies: owner.cookies,
+              workspaceId: workspace.id,
+              variables: { input: { email, roles: ['MEMBER'] } },
+            },
+          ),
+        );
+        await vi.waitFor(
+          async () => {
+            const [waiting] = await connection.execute<{ count: number }[]>(
+              `select count(*)::int as count from pg_stat_activity where datname = current_database() and wait_event_type = 'Lock' and query like '%"workspace"%'`,
+            );
+            expect(waiting.count).toBe(1);
+          },
+          { timeout: 5000, interval: 20 },
+        );
+        const user = await createAuthenticatedUser(
+          'Late Registered WorkspaceMember',
+          email,
+        );
+        await connection.execute(
+          'insert into workspace_member (user_id, workspace_id, name) values (?, ?, ?)',
+          [user.user.id, workspace.id, 'Late WorkspaceMember'],
+          'run',
+          transaction,
+        );
+      });
+      const response = await pending;
+      expect(response.body.errors).toEqual([
+        expect.objectContaining({ message: 'User is already a member' }),
+      ]);
+      expect(
+        await connection.execute(
+          'select id from workspace_invitation where workspace_id = ?',
+          [workspace.id],
+        ),
+      ).toEqual([]);
+    } finally {
+      await pending;
+    }
+  }, 20_000);
+
+  it.each(['add', 'accept'] as const)(
+    'keeps invitations terminal when %s wins a concurrent membership creation',
+    async (first) => {
+      const owner = await createAuthenticatedUser(
+        'WorkspaceMembership Race Owner',
+      );
+      const invitee = await createAuthenticatedUser(
+        'WorkspaceMembership Race Invitee',
+      );
+      const workspace = await createWorkspace(
+        owner,
+        'WorkspaceMembership Race',
+      );
+      const invitation = await createWorkspaceInvitation(owner, workspace.id, {
+        email: invitee.email,
+        roles: ['MEMBER'],
+      });
+      const operations = {
+        add: () =>
+          gql(
+            `mutation ($input: AddWorkspaceMemberInput!) { addWorkspaceMember(input: $input) { id } }`,
+            {
+              cookies: owner.cookies,
+              workspaceId: workspace.id,
+              variables: { input: { email: invitee.email } },
+            },
+          ),
+        accept: () =>
+          gql(
+            `mutation ($invitationId: ID!) { acceptWorkspaceInvitation(id: $invitationId) { id } }`,
+            {
+              cookies: invitee.cookies,
+              variables: { invitationId: invitation.id },
+            },
+          ),
+      };
+      const responses = await raceWithWorkspaceLock(workspace.id, [
+        operations[first],
+        operations[first === 'add' ? 'accept' : 'add'],
+      ]);
+      expectNoGraphQLErrors(responses[0]);
+      expect(responses[1].body.errors).toEqual([
+        expect.objectContaining({
+          message:
+            first === 'add'
+              ? 'Workspace invitation is not pending'
+              : 'User is already a member',
+        }),
+      ]);
+      const connection = migrationOrm.em.getConnection();
+      expect(
+        await connection.execute(
+          'select user_id from workspace_member where workspace_id = ? and user_id = ?',
+          [workspace.id, invitee.user.id],
+        ),
+      ).toEqual([{ user_id: invitee.user.id }]);
+      expect(
+        await connection.execute(
+          'select status from workspace_invitation where id = ?',
+          [invitation.id],
+        ),
+      ).toEqual([{ status: first === 'add' ? 'canceled' : 'accepted' }]);
+      const pending = await gql(
+        'query { currentUser { invitations(first: 20) { edges { node { id } } } } }',
+        { cookies: invitee.cookies },
+      );
+      expectNoGraphQLErrors(pending);
+      expect(pending.body.data.currentUser.invitations.edges).toEqual([]);
+    },
+    20_000,
+  );
+
+  it('returns forbidden when leaving without a current member', async () => {
+    const user = await createAuthenticatedUser('Non WorkspaceMember');
+    const owner = await createAuthenticatedUser('Other Owner');
+    const workspace = await createWorkspace(owner, 'Other Workspace');
+    for (const workspaceId of [undefined, workspace.id]) {
+      const response = await gql('mutation { leaveWorkspace { memberId } }', {
+        cookies: user.cookies,
+        workspaceId,
+      });
+      expect(response.body.errors).toEqual([
+        expect.objectContaining({
+          extensions: expect.objectContaining({ code: 'FORBIDDEN' }),
+        }),
+      ]);
+    }
+  });
+
+  it('resolves workspace context from header and cookie while returning null for missing member context', async () => {
+    const alice = await createAuthenticatedUser('Alice');
+    const bob = await createAuthenticatedUser('Bob');
+    const aliceWorkspace = await createWorkspace(alice, 'Alice Workspace');
+    const bobWorkspace = await createWorkspace(bob, 'Bob Workspace');
+
+    const fromHeader = await gql(
+      /* GraphQL */ `
+        query {
+          selectedWorkspace {
+            id
+            name
+          }
+          currentWorkspaceMember {
+            id
+            roles
+            user {
+              email
+            }
+          }
+        }
+      `,
+      { cookies: alice.cookies, workspaceId: aliceWorkspace.id },
+    );
+
+    expectNoGraphQLErrors(fromHeader);
+    expect(fromHeader.body.data.selectedWorkspace).toEqual(aliceWorkspace);
+    expect(fromHeader.body.data.currentWorkspaceMember).toMatchObject({
+      roles: ['OWNER'],
+      user: {
+        email: alice.email,
+      },
+    });
+
+    const fromCookie = await gql(
+      /* GraphQL */ `
+        query {
+          selectedWorkspace {
+            id
+            name
+          }
+          currentWorkspaceMember {
+            roles
+          }
+        }
+      `,
+      {
+        cookies: [...alice.cookies, `workspace=${aliceWorkspace.id}`],
+      },
+    );
+
+    expectNoGraphQLErrors(fromCookie);
+    expect(fromCookie.body.data.selectedWorkspace).toEqual(aliceWorkspace);
+    expect(fromCookie.body.data.currentWorkspaceMember.roles).toEqual([
+      'OWNER',
+    ]);
+
+    const crossWorkspace = await gql(
+      /* GraphQL */ `
+        query {
+          selectedWorkspace {
+            id
+            name
+          }
+          currentWorkspaceMember {
+            id
+          }
+          currentSession {
+            id
+          }
+        }
+      `,
+      { cookies: alice.cookies, workspaceId: bobWorkspace.id },
+    );
+
+    expectNoGraphQLErrors(crossWorkspace);
+    expect(crossWorkspace.body.data.selectedWorkspace).toEqual(bobWorkspace);
+    expect(crossWorkspace.body.data.currentWorkspaceMember).toBeNull();
+    expect(crossWorkspace.body.data.currentSession.id).toEqual(
+      expect.any(String),
+    );
+
+    const withoutWorkspace = await gql(
+      /* GraphQL */ `
+        query {
+          selectedWorkspace {
+            id
+          }
+          currentWorkspaceMember {
+            id
+          }
+        }
+      `,
+      { cookies: alice.cookies },
+    );
+
+    expectNoGraphQLErrors(withoutWorkspace);
+    expect(withoutWorkspace.body.data.selectedWorkspace).toBeNull();
+    expect(withoutWorkspace.body.data.currentWorkspaceMember).toBeNull();
+
+    const aliceWorkspaces = await gql(
+      /* GraphQL */ `
+        query {
+          currentUser {
+            workspaces(first: 10) {
+              edges {
+                node {
+                  id
+                  name
+                }
+              }
+            }
+          }
+        }
+      `,
+      { cookies: alice.cookies, workspaceId: aliceWorkspace.id },
+    );
+
+    expectNoGraphQLErrors(aliceWorkspaces);
+    expect(aliceWorkspaces.body.data.currentUser.workspaces).toMatchObject({
+      edges: [
+        {
+          node: aliceWorkspace,
+        },
+      ],
+    });
+  });
+
+  it('lists all workspaces for the current user even when a workspace is active', async () => {
+    const user = await createAuthenticatedUser('Workspace Switcher User');
+    const firstWorkspace = await createWorkspace(
+      user,
+      'First Switcher Workspace',
+    );
+    const secondWorkspace = await createWorkspace(
+      user,
+      'Second Switcher Workspace',
+    );
+
+    const response = await gql(
+      /* GraphQL */ `
+        query {
+          currentUser {
+            workspaces(first: 10) {
+              edges {
+                node {
+                  id
+                  name
+                }
+              }
+            }
+          }
+        }
+      `,
+      { cookies: user.cookies, workspaceId: firstWorkspace.id },
+    );
+
+    expectNoGraphQLErrors(response);
+    expect(response.body.data.currentUser.workspaces.edges).toHaveLength(2);
+    expect(response.body.data.currentUser.workspaces.edges).toEqual(
+      expect.arrayContaining([
+        {
+          node: firstWorkspace,
+        },
+        {
+          node: secondWorkspace,
+        },
+      ]),
+    );
+  });
+
+  it('updates and permanently deletes workspaces while enforcing member role rules', async () => {
+    const owner = await createAuthenticatedUser('Workspace Owner');
+    const memberUser = await createAuthenticatedUser(
+      'Workspace WorkspaceMember',
+    );
+    const workspace = await createWorkspace(owner, 'Lifecycle Workspace');
+    const member = await addWorkspaceMember(
+      owner,
+      workspace.id,
+      memberUser.email,
+    );
+
+    const rejectedWorkspaceMemberUpdate = await gql(
+      /* GraphQL */ `
+        mutation UpdateWorkspace(
+          $workspaceId: ID!
+          $input: UpdateWorkspaceInput!
+        ) {
+          updateWorkspace(id: $workspaceId, input: $input) {
+            id
+          }
+        }
+      `,
+      {
+        cookies: memberUser.cookies,
+        workspaceId: workspace.id,
+        variables: {
+          input: {
+            name: 'Rejected Workspace Name',
+          },
+        },
+      },
+    );
+
+    expectGraphQLError(rejectedWorkspaceMemberUpdate);
+
+    await setWorkspaceMemberRoles(owner, workspace.id, member.id, ['ADMIN']);
+
+    const updatedByAdmin = await gql(
+      /* GraphQL */ `
+        mutation UpdateWorkspace(
+          $workspaceId: ID!
+          $input: UpdateWorkspaceInput!
+        ) {
+          updateWorkspace(id: $workspaceId, input: $input) {
+            id
+          }
+        }
+      `,
+      {
+        cookies: memberUser.cookies,
+        workspaceId: workspace.id,
+        variables: {
+          input: {
+            name: 'Renamed Lifecycle Workspace',
+          },
+        },
+      },
+    );
+
+    expectNoGraphQLErrors(updatedByAdmin);
+    expect(updatedByAdmin.body.data.updateWorkspace).toEqual({
+      id: workspace.id,
+    });
+    expect(
+      await migrationOrm.em.execute('select name from workspace where id = ?', [
+        workspace.id,
+      ]),
+    ).toEqual([{ name: 'Renamed Lifecycle Workspace' }]);
+
+    const rejectedAdminDelete = await gql(
+      /* GraphQL */ `
+        mutation ($workspaceId: ID!) {
+          deleteWorkspace(id: $workspaceId) {
+            id
+          }
+        }
+      `,
+      {
+        cookies: memberUser.cookies,
+        workspaceId: workspace.id,
+      },
+    );
+
+    expectGraphQLError(rejectedAdminDelete);
+
+    const deleted = await gql(
+      /* GraphQL */ `
+        mutation ($workspaceId: ID!) {
+          deleteWorkspace(id: $workspaceId) {
+            id
+            __typename
+          }
+        }
+      `,
+      {
+        cookies: owner.cookies,
+        workspaceId: workspace.id,
+      },
+    );
+
+    expectNoGraphQLErrors(deleted);
+    expect(deleted.body.data.deleteWorkspace).toMatchObject({
+      id: workspace.id,
+      __typename: 'DeleteWorkspacePayload',
+    });
+
+    const deletedLookup = await gql(
+      /* GraphQL */ `
+        query Workspace($id: ID!) {
+          workspace(id: $id) {
+            id
+          }
+        }
+      `,
+      {
+        cookies: owner.cookies,
+        workspaceId: workspace.id,
+        variables: {
+          id: workspace.id,
+        },
+      },
+    );
+
+    expectNoGraphQLErrors(deletedLookup);
+    expect(deletedLookup.body.data.workspace).toBeNull();
+  });
+
+  it('paginates invitation fields without escaping their parent authorization scope', async () => {
+    const owner = await createAuthenticatedUser(
+      'WorkspaceInvitation Page Owner',
+    );
+    const recipient = await createAuthenticatedUser(
+      'WorkspaceInvitation Page Recipient',
+    );
+    const workspaces = await Promise.all([
+      createWorkspace(owner, 'WorkspaceInvitation Page A'),
+      createWorkspace(owner, 'WorkspaceInvitation Page B'),
+    ]);
+    const invitations = [];
+    for (const workspace of workspaces) {
+      invitations.push(
+        await createWorkspaceInvitation(owner, workspace.id, {
+          email: recipient.email,
+          roles: ['MEMBER'],
+        }),
+      );
+    }
+    const unrelated = await createWorkspaceInvitation(owner, workspaces[0].id, {
+      email: 'other-invitation-recipient@example.com',
+      roles: ['MEMBER'],
+    });
+    const userQuery = `query($after: String, $before: String, $first: Int, $last: Int, $filter: WorkspaceInvitationFilter) {
+      currentUser { invitations(first: $first, last: $last, after: $after, before: $before, filter: $filter) {
+        edges { node { id } }
+        pageInfo { startCursor endCursor hasNextPage hasPreviousPage }
+      } }
+    }`;
+    const first = await gql(userQuery, {
+      cookies: recipient.cookies,
+      variables: { first: 1 },
+    });
+    expectNoGraphQLErrors(first);
+    const firstPage = first.body.data.currentUser.invitations;
+    expect(firstPage.edges).toHaveLength(1);
+    expect(firstPage.pageInfo.hasNextPage).toBe(true);
+    const second = await gql(userQuery, {
+      cookies: recipient.cookies,
+      variables: { first: 1, after: firstPage.pageInfo.endCursor },
+    });
+    expectNoGraphQLErrors(second);
+    const secondPage = second.body.data.currentUser.invitations;
+    expect(secondPage.pageInfo.hasNextPage).toBe(false);
+    expect(
+      [...firstPage.edges, ...secondPage.edges]
+        .map(({ node }: { node: { id: string } }) => node.id)
+        .sort(),
+    ).toEqual(invitations.map(({ id }) => id).sort());
+    const previous = await gql(userQuery, {
+      cookies: recipient.cookies,
+      variables: { last: 1, before: secondPage.pageInfo.startCursor },
+    });
+    expectNoGraphQLErrors(previous);
+    expect(previous.body.data.currentUser.invitations.edges).toEqual(
+      firstPage.edges,
+    );
+    const override = await gql(userQuery, {
+      cookies: recipient.cookies,
+      variables: { first: 20, filter: { email: { $eq: unrelated.email } } },
+    });
+    expectNoGraphQLErrors(override);
+    expect(override.body.data.currentUser.invitations.edges).toHaveLength(0);
+
+    const scoped = await gql(
+      `query($filter: WorkspaceInvitationFilter) {
+      selectedWorkspace { invitations(first: 1, filter: $filter) { edges { node { id } } pageInfo { hasNextPage } } }
+    }`,
+      {
+        cookies: owner.cookies,
+        workspaceId: workspaces[0].id,
+        variables: { filter: { status: { $eq: 'pending' } } },
+      },
+    );
+    expectNoGraphQLErrors(scoped);
+    expect(scoped.body.data.selectedWorkspace.invitations.edges).toHaveLength(
+      1,
+    );
+    expect(
+      scoped.body.data.selectedWorkspace.invitations.pageInfo.hasNextPage,
+    ).toBe(true);
+
+    for (const field of ['invitations', 'members']) {
+      const wrongWorkspace = await gql(
+        `query($id: ID!) { workspace(id: $id) { ${field}(first: 1) { edges { node { id } } } } }`,
+        {
+          cookies: owner.cookies,
+          workspaceId: workspaces[0].id,
+          variables: { id: workspaces[1].id },
+        },
+      );
+      expect(wrongWorkspace.body.errors?.[0].extensions.code).toBe('FORBIDDEN');
+    }
+    await migrationOrm.em
+      .getConnection()
+      .execute(`update "user" set roles = array['admin'] where id = ?`, [
+        owner.user.id,
+      ]);
+    for (const field of ['invitations', 'workspaces', 'apiKeys']) {
+      const wrongUser = await gql(
+        `query($id: ID!) { user(id: $id) { ${field}(first: 1) { edges { node { id } } } } }`,
+        {
+          cookies: owner.cookies,
+          variables: { id: recipient.user.id },
+        },
+      );
+      expect(wrongUser.body.errors?.[0].extensions.code).toBe('FORBIDDEN');
+    }
+    await migrationOrm.em
+      .getConnection()
+      .execute(
+        "update workspace_invitation set expires_at = now() - interval '1 day' where id = ?",
+        [invitations[0].id],
+      );
+    const unexpired = await gql(userQuery, {
+      cookies: recipient.cookies,
+      variables: { first: 20 },
+    });
+    expectNoGraphQLErrors(unexpired);
+    expect(unexpired.body.data.currentUser.invitations.edges).toEqual([
+      { node: { id: invitations[1].id } },
+    ]);
+  });
+
+  it('manages members, invite acceptance, and member removal through real auth', async () => {
+    const owner = await createAuthenticatedUser('WorkspaceMember Owner');
+    const memberUser = await createAuthenticatedUser('WorkspaceMember Target');
+    const invitee = await createAuthenticatedUser('Invite Target');
+    const wrongInvitee = await createAuthenticatedUser('Wrong Invite Target');
+    const workspace = await createWorkspace(owner, 'WorkspaceMember Workspace');
+    const member = await addWorkspaceMember(
+      owner,
+      workspace.id,
+      memberUser.email,
+    );
+
+    const roleCatalog = await gql(
+      /* GraphQL */ `
+        query WorkspaceRoleCatalog {
+          workspaceRoles {
+            role
+            grantable
+          }
+          workspacePermissions {
+            permission
+            grantable
+          }
+        }
+      `,
+      { cookies: owner.cookies, workspaceId: workspace.id },
+    );
+
+    expectNoGraphQLErrors(roleCatalog);
+    expect(roleCatalog.body.data.workspaceRoles).toEqual(
+      expect.arrayContaining(
+        ['OWNER', 'ADMIN', 'MEMBER'].map((role) => ({
+          role,
+          grantable: true,
+        })),
+      ),
+    );
+    expect(roleCatalog.body.data.workspacePermissions).toContainEqual({
+      permission: 'WORKSPACE_MEMBER__SET_PERMISSIONS',
+      grantable: true,
+    });
+
+    const currentWorkspaceMember = await gql(
+      /* GraphQL */ `
+        query {
+          currentWorkspaceMember {
+            id
+            name
+            email
+            roles
+            status
+          }
+        }
+      `,
+      {
+        cookies: memberUser.cookies,
+        workspaceId: workspace.id,
+      },
+    );
+
+    expectNoGraphQLErrors(currentWorkspaceMember);
+    expect(
+      currentWorkspaceMember.body.data.currentWorkspaceMember,
+    ).toMatchObject({
+      id: member.id,
+      roles: ['MEMBER'],
+      status: 'ACTIVE',
+      name: memberUser.user.name,
+      email: memberUser.email,
+    });
+
+    const deniedWithoutAbility = await gql(
+      'mutation ($id: ID!, $input: SetWorkspaceMemberPermissionsInput!) { setWorkspaceMemberPermissions(id: $id, input: $input) { id } }',
+      {
+        cookies: memberUser.cookies,
+        workspaceId: workspace.id,
+        variables: { id: member.id, input: { permissions: [] } },
+      },
+    );
+    expectGraphQLError(deniedWithoutAbility);
+
+    const updatedWorkspaceMember = await setWorkspaceMemberPermissions(
+      owner,
+      workspace.id,
+      member.id,
+      ['WORKSPACE__UPDATE', 'WORKSPACE_MEMBER__SET_PERMISSIONS'],
+    );
+
+    expect(updatedWorkspaceMember.permissions).toEqual([
+      'WORKSPACE__UPDATE',
+      'WORKSPACE_MEMBER__SET_PERMISSIONS',
+    ]);
+
+    const memberPermissions = await gql(
+      /* GraphQL */ `
+        query {
+          currentWorkspaceMember {
+            permissions
+          }
+        }
+      `,
+      {
+        cookies: memberUser.cookies,
+        workspaceId: workspace.id,
+      },
+    );
+
+    expectNoGraphQLErrors(memberPermissions);
+    expect(memberPermissions.body.data.currentWorkspaceMember).toEqual({
+      permissions: ['WORKSPACE__UPDATE', 'WORKSPACE_MEMBER__SET_PERMISSIONS'],
+    });
+
+    // A member's explicit permission-setting ability, not the owner role, permits grants.
+    expect(
+      await setWorkspaceMemberPermissions(memberUser, workspace.id, member.id, [
+        'WORKSPACE__UPDATE',
+        'WORKSPACE_MEMBER__SET_PERMISSIONS',
+      ]),
+    ).toMatchObject({
+      permissions: ['WORKSPACE__UPDATE', 'WORKSPACE_MEMBER__SET_PERMISSIONS'],
+    });
+
+    const rejectedPermissionEscalation = await gql(
+      /* GraphQL */ `
+        mutation SetWorkspaceMemberPermissions(
+          $id: ID!
+          $input: SetWorkspaceMemberPermissionsInput!
+        ) {
+          setWorkspaceMemberPermissions(id: $id, input: $input) {
+            id
+          }
+        }
+      `,
+      {
+        cookies: memberUser.cookies,
+        variables: {
+          id: member.id,
+          input: { permissions: ['WORKSPACE__DELETE'] },
+        },
+        workspaceId: workspace.id,
+      },
+    );
+
+    expectGraphQLError(rejectedPermissionEscalation);
+    expect(rejectedPermissionEscalation.body.errors[0].message).toContain(
+      'Workspace permissions exceed issuer permissions',
+    );
+
+    const rejectedWorkspaceMemberAdd = await gql(
+      /* GraphQL */ `
+        mutation AddWorkspaceMember($input: AddWorkspaceMemberInput!) {
+          addWorkspaceMember(input: $input) {
+            id
+          }
+        }
+      `,
+      {
+        cookies: memberUser.cookies,
+        workspaceId: workspace.id,
+        variables: {
+          input: {
+            email: invitee.email,
+          },
+        },
+      },
+    );
+
+    expectGraphQLError(rejectedWorkspaceMemberAdd);
+
+    const invite = await createWorkspaceInvitation(owner, workspace.id, {
+      email: invitee.email,
+      roles: ['MEMBER'],
+    });
+
+    const invitationById = await gql(
+      /* GraphQL */ `
+        query WorkspaceInvitation($id: ID!) {
+          workspaceInvitation(id: $id) {
+            id
+            email
+            roles
+            status
+            expiresAt
+            workspace {
+              id
+              name
+            }
+          }
+        }
+      `,
+      {
+        cookies: invitee.cookies,
+        variables: {
+          id: invite.id,
+        },
+      },
+    );
+
+    expectNoGraphQLErrors(invitationById);
+    const privateInviter = await gql(
+      'query($id: ID!) { workspaceInvitation(id: $id) { inviter { name email } } }',
+      { cookies: invitee.cookies, variables: { id: invite.id } },
+    );
+    expectGraphQLError(privateInviter);
+    expect(privateInviter.body.data?.workspaceInvitation ?? null).toBeNull();
+    const hiddenWorkspaceInvitation = await gql(
+      'query($id: ID!) { workspaceInvitation(id: $id) { id } }',
+      {
+        cookies: wrongInvitee.cookies,
+        workspaceId: workspace.id,
+        variables: { id: invite.id },
+      },
+    );
+    expectNoGraphQLErrors(hiddenWorkspaceInvitation);
+    expect(hiddenWorkspaceInvitation.body.data.workspaceInvitation).toBeNull();
+    expect(invitationById.body.data.workspaceInvitation).toMatchObject({
+      id: invite.id,
+      email: invitee.email,
+      roles: ['MEMBER'],
+      status: 'PENDING',
+      workspace,
+    });
+
+    const rejectedWrongEmail = await gql(
+      /* GraphQL */ `
+        mutation AcceptWorkspaceInvitation($invitationId: ID!) {
+          acceptWorkspaceInvitation(id: $invitationId) {
+            id
+          }
+        }
+      `,
+      {
+        cookies: wrongInvitee.cookies,
+        variables: {
+          invitationId: invite.id,
+        },
+      },
+    );
+
+    expectGraphQLError(rejectedWrongEmail);
+
+    const invalidAcceptance = await gql(
+      'mutation($id: ID!) { acceptWorkspaceInvitation(id: $id) { invitation { inviter { id } } } }',
+      { cookies: invitee.cookies, variables: { id: invite.id } },
+    );
+    expect(invalidAcceptance.body.errors).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          message: expect.stringContaining(
+            'Cannot query field "invitation" on type "AcceptWorkspaceInvitationPayload"',
+          ),
+        }),
+      ]),
+    );
+    expect(
+      await migrationOrm.em
+        .getConnection()
+        .execute('select status from workspace_invitation where id = ?', [
+          invite.id,
+        ]),
+    ).toEqual([{ status: 'pending' }]);
+    expect(
+      await migrationOrm.em
+        .getConnection()
+        .execute(
+          'select id from workspace_member where workspace_id = ? and user_id = ?',
+          [workspace.id, invitee.user.id],
+        ),
+    ).toEqual([]);
+
+    const accepted = await gql(
+      /* GraphQL */ `
+        mutation AcceptWorkspaceInvitation($invitationId: ID!) {
+          acceptWorkspaceInvitation(id: $invitationId) {
+            id
+            memberId
+            workspaceId
+          }
+        }
+      `,
+      {
+        cookies: invitee.cookies,
+        variables: {
+          invitationId: invite.id,
+        },
+      },
+    );
+
+    expectNoGraphQLErrors(accepted);
+    expect(accepted.body.data.acceptWorkspaceInvitation).toEqual({
+      id: invite.id,
+      memberId: expect.any(String),
+      workspaceId: workspace.id,
+    });
+    const acceptedWorkspaceMemberId =
+      accepted.body.data.acceptWorkspaceInvitation.memberId;
+    expect(
+      await migrationOrm.em
+        .getConnection()
+        .execute('select status from workspace_invitation where id = ?', [
+          invite.id,
+        ]),
+    ).toEqual([{ status: 'accepted' }]);
+    expect(
+      await migrationOrm.em
+        .getConnection()
+        .execute(
+          'select roles, status, user_id from workspace_member where id = ?',
+          [acceptedWorkspaceMemberId],
+        ),
+    ).toEqual([
+      { roles: ['member'], status: 'ACTIVE', user_id: invitee.user.id },
+    ]);
+
+    const removed = await gql(
+      /* GraphQL */ `
+        mutation RemoveWorkspaceMember($id: ID!) {
+          removeWorkspaceMember(id: $id) {
+            __typename
+            id
+          }
+        }
+      `,
+      {
+        cookies: owner.cookies,
+        workspaceId: workspace.id,
+        variables: {
+          id: acceptedWorkspaceMemberId,
+        },
+      },
+    );
+
+    expectNoGraphQLErrors(removed);
+    expect(removed.body.data.removeWorkspaceMember).toEqual({
+      __typename: 'RemoveWorkspaceMemberPayload',
+      id: acceptedWorkspaceMemberId,
+    });
+
+    const rejectedRemovedWorkspaceMember = await gql(
+      /* GraphQL */ `
+        query {
+          currentWorkspaceMember {
+            id
+          }
+        }
+      `,
+      {
+        cookies: invitee.cookies,
+        workspaceId: workspace.id,
+      },
+    );
+
+    expectNoGraphQLErrors(rejectedRemovedWorkspaceMember);
+    expect(
+      rejectedRemovedWorkspaceMember.body.data.currentWorkspaceMember,
+    ).toBeNull();
+
+    const left = await gql(
+      'mutation { leaveWorkspace { __typename memberId } }',
+      {
+        cookies: memberUser.cookies,
+        workspaceId: workspace.id,
+      },
+    );
+    expectNoGraphQLErrors(left);
+    expect(left.body.data.leaveWorkspace).toEqual({
+      __typename: 'LeaveWorkspacePayload',
+      memberId: member.id,
+    });
+    const afterLeaving = await gql('query { currentWorkspaceMember { id } }', {
+      cookies: memberUser.cookies,
+      workspaceId: workspace.id,
+    });
+    expectNoGraphQLErrors(afterLeaving);
+    expect(afterLeaving.body.data.currentWorkspaceMember).toBeNull();
+  });
+
+  it('keeps member writes, invitation management, and grant setters independent', async () => {
+    const owner = await createAuthenticatedUser('Explicit permission owner');
+    const target = await createAuthenticatedUser('Explicit permission target');
+    const workspace = await createWorkspace(
+      owner,
+      'Explicit permission workspace',
+    );
+    const member = await addWorkspaceMember(owner, workspace.id, target.email);
+    const key = await createWorkspaceApiKey(owner, workspace.id, {
+      name: 'WorkspaceMember writer',
+      permissions: ['WORKSPACE_MEMBER__WRITE'],
+    });
+    const auth = {
+      bearerToken: key.apiKey,
+      workspaceId: workspace.id,
+      variables: { id: member.id },
+    };
+    expectNoGraphQLErrors(
+      await gql(
+        'mutation($id: ID!) { updateWorkspaceMember(id: $id, input: { name: "Updated" }) { id } }',
+        auth,
+      ),
+    );
+    for (const operation of [
+      'setWorkspaceMemberRoles(id: $id, input: { roles: [MEMBER] })',
+      'setWorkspaceMemberPermissions(id: $id, input: { permissions: [] })',
+    ]) {
+      const response = await gql(
+        `mutation($id: ID!) { ${operation} { id } }`,
+        auth,
+      );
+      expect(response.body.errors[0].extensions.code).toBe('FORBIDDEN');
+    }
+    for (const query of [
+      'query { workspaceMember(id: "missing") { id } }',
+      'query { workspaceInvitation(id: "missing") { id } }',
+    ]) {
+      const response = await gql(query, {
+        bearerToken: key.apiKey,
+        workspaceId: workspace.id,
+      });
+      expect(response.body.errors[0].extensions.code).toBe('FORBIDDEN');
+    }
+    expect(
+      await migrationOrm.em.execute(
+        'select roles, permissions from workspace_member where id = ?',
+        [member.id],
+      ),
+    ).toEqual([{ roles: ['member'], permissions: [] }]);
+  });
+
+  it('reads invitations with a member API key while preserving workspace RLS', async () => {
+    const owner = await createAuthenticatedUser(
+      'WorkspaceInvitation API Owner',
+    );
+    const workspace = await createWorkspace(
+      owner,
+      'WorkspaceInvitation API Workspace',
+    );
+    const otherWorkspace = await createWorkspace(
+      owner,
+      'Other WorkspaceInvitation Workspace',
+    );
+    const invitation = await createWorkspaceInvitation(owner, workspace.id, {
+      email: uniqueEmail('API invitee'),
+      roles: ['MEMBER'],
+    });
+    const otherWorkspaceInvitation = await createWorkspaceInvitation(
+      owner,
+      otherWorkspace.id,
+      {
+        email: uniqueEmail('Other API invitee'),
+        roles: ['MEMBER'],
+      },
+    );
+    const key = await createWorkspaceApiKey(owner, workspace.id, {
+      name: 'WorkspaceInvitation reader',
+      permissions: ['WORKSPACE_MEMBER__INVITE'],
+    });
+    const response = await gql(
+      /* GraphQL */ `
+        query WorkspaceInvitations($id: ID!, $otherId: ID!) {
+          own: workspaceInvitation(id: $id) {
+            id
+            email
+            workspace {
+              id
+            }
+          }
+          other: workspaceInvitation(id: $otherId) {
+            id
+          }
+        }
+      `,
+      {
+        bearerToken: key.apiKey,
+        workspaceId: workspace.id,
+        variables: { id: invitation.id, otherId: otherWorkspaceInvitation.id },
+      },
+    );
+    expectNoGraphQLErrors(response);
+    expect(response.body.data).toEqual({
+      own: {
+        id: invitation.id,
+        email: invitation.email,
+        workspace: { id: workspace.id },
+      },
+      other: null,
+    });
+  });
+
+  it('authenticates member API keys with their owning member identity', async () => {
+    const owner = await createAuthenticatedUser('API Owner');
+    const workspace = await createWorkspace(owner, 'Workspace API Key');
+    const createdKey = await createWorkspaceApiKey(owner, workspace.id, {
+      name: 'Runtime key',
+      permissions: [
+        'WORKSPACE__READ',
+        'WORKSPACE_MEMBER__READ',
+        'WORKSPACE__UPDATE',
+      ],
+    });
+
+    const byBearer = await gql(
+      /* GraphQL */ `
+        query {
+          selectedWorkspace {
+            id
+            name
+          }
+          currentWorkspaceMember {
+            id
+          }
+        }
+      `,
+      { bearerToken: createdKey.apiKey, workspaceId: workspace.id },
+    );
+
+    expectNoGraphQLErrors(byBearer);
+    expect(byBearer.body.data.selectedWorkspace).toEqual(workspace);
+    expect(byBearer.body.data.currentWorkspaceMember).toEqual({
+      id: createdKey.memberId,
+    });
+
+    const membersByBearer = await gql(
+      /* GraphQL */ `
+        query {
+          selectedWorkspace {
+            members(first: 10) {
+              edges {
+                node {
+                  id
+                }
+              }
+            }
+          }
+        }
+      `,
+      { bearerToken: createdKey.apiKey, workspaceId: workspace.id },
+    );
+
+    expectNoGraphQLErrors(membersByBearer);
+    expect(
+      membersByBearer.body.data.selectedWorkspace.members.edges,
+    ).not.toHaveLength(0);
+
+    const apiKeyWithWorkspaceHeader = await gql(
+      /* GraphQL */ `
+        query {
+          selectedWorkspace {
+            id
+          }
+        }
+      `,
+      { bearerToken: createdKey.apiKey, workspaceId: workspace.id },
+    );
+
+    expectNoGraphQLErrors(apiKeyWithWorkspaceHeader);
+    expect(apiKeyWithWorkspaceHeader.body.data.selectedWorkspace).toEqual({
+      id: workspace.id,
+    });
+
+    const apiKeyCurrentUser = await gql(
+      /* GraphQL */ `
+        query {
+          currentUser {
+            id
+          }
+        }
+      `,
+      { bearerToken: createdKey.apiKey, workspaceId: workspace.id },
+    );
+
+    expectNoGraphQLErrors(apiKeyCurrentUser);
+    expect(apiKeyCurrentUser.body.data.currentUser).toEqual({
+      id: owner.user.id,
+    });
+
+    const serviceAccountKey = await createWorkspaceApiKey(owner, workspace.id, {
+      memberId: null,
+      name: 'Service runtime key',
+      permissions: ['WORKSPACE__READ', 'WORKSPACE_SERVICE_ACCOUNT__READ'],
+    });
+    const serviceIdentity = await gql(
+      'query { currentWorkspaceMember { id type } }',
+      {
+        bearerToken: serviceAccountKey.apiKey,
+        workspaceId: workspace.id,
+      },
+    );
+    expectNoGraphQLErrors(serviceIdentity);
+    expect(serviceIdentity.body.data.currentWorkspaceMember).toEqual({
+      id: serviceAccountKey.memberId,
+      type: 'SERVICE_ACCOUNT',
+    });
+    const serviceCurrentUser = await gql('query { currentUser { id } }', {
+      bearerToken: serviceAccountKey.apiKey,
+      workspaceId: workspace.id,
+    });
+    expectNoGraphQLErrors(serviceCurrentUser);
+    expect(serviceCurrentUser.body.data.currentUser).toBeNull();
+
+    const sessionTakesPrecedence = await gql(
+      /* GraphQL */ `
+        query {
+          currentUser {
+            id
+          }
+        }
+      `,
+      {
+        bearerToken: createdKey.apiKey,
+        cookies: owner.cookies,
+        workspaceId: workspace.id,
+      },
+    );
+
+    expectNoGraphQLErrors(sessionTakesPrecedence);
+    expect(sessionTakesPrecedence.body.data.currentUser.id).toBe(owner.user.id);
+
+    const touchedKey = await gql(
+      /* GraphQL */ `
+        query ApiKey($id: ID!) {
+          selectedWorkspace {
+            apiKey(id: $id) {
+              id
+              name
+              lastUsedAt
+              permissions
+            }
+          }
+        }
+      `,
+      {
+        cookies: owner.cookies,
+        workspaceId: workspace.id,
+        variables: {
+          id: createdKey.entity.id,
+        },
+      },
+    );
+
+    expectNoGraphQLErrors(touchedKey);
+    expect(touchedKey.body.data.selectedWorkspace.apiKey).toMatchObject({
+      id: createdKey.entity.id,
+      name: 'Runtime key',
+      permissions: [
+        'WORKSPACE__READ',
+        'WORKSPACE_MEMBER__READ',
+        'WORKSPACE__UPDATE',
+      ],
+    });
+    expect(touchedKey.body.data.selectedWorkspace.apiKey.lastUsedAt).toEqual(
+      expect.any(String),
+    );
+
+    const renamed = await gql(
+      /* GraphQL */ `
+        mutation UpdateApiKey($id: ID!, $input: UpdateWorkspaceApiKeyInput!) {
+          updateWorkspaceApiKey(id: $id, input: $input) {
+            id
+            name
+          }
+        }
+      `,
+      {
+        cookies: owner.cookies,
+        workspaceId: workspace.id,
+        variables: {
+          id: createdKey.entity.id,
+          input: {
+            name: 'Renamed runtime key',
+            permissions: [
+              'WORKSPACE__READ',
+              'WORKSPACE_MEMBER__READ',
+              'WORKSPACE__UPDATE',
+            ],
+          },
+        },
+      },
+    );
+
+    expectNoGraphQLErrors(renamed);
+    expect(renamed.body.data.updateWorkspaceApiKey).toEqual({
+      id: createdKey.entity.id,
+      name: 'Renamed runtime key',
+    });
+  });
+
+  it('authenticates user API keys and intersects them with live membership', async () => {
+    const user = await createAuthenticatedUser('User API Owner');
+    const outsider = await createAuthenticatedUser('User API Outsider');
+    const workspace = await createWorkspace(user, 'User API Workspace');
+    const outsiderWorkspace = await createWorkspace(
+      outsider,
+      'Outsider Workspace',
+    );
+    const rejectedEscalatedKey = await gql(
+      /* GraphQL */ `
+        mutation CreateUserApiKey($input: CreateUserApiKeyInput!) {
+          createUserApiKey(input: $input) {
+            apiKey
+          }
+        }
+      `,
+      {
+        cookies: user.cookies,
+        variables: {
+          input: {
+            name: 'Escalated personal key',
+            permissions: ['USER__READ'],
+          },
+        },
+      },
+    );
+
+    expectGraphQLError(rejectedEscalatedKey);
+
+    const createdKey = await createUserApiKey(user, {
+      name: 'Personal automation',
+      permissions: [
+        'WORKSPACE__READ',
+        'WORKSPACE_MEMBER__READ',
+        'WORKSPACE__UPDATE',
+        'WORKSPACE_MEMBER__WRITE',
+      ],
+    });
+
+    const authenticated = await gql(
+      /* GraphQL */ `
+        query {
+          currentUser {
+            id
+          }
+          selectedWorkspace {
+            id
+          }
+          currentWorkspaceMember {
+            id
+          }
+          currentSession {
+            id
+          }
+        }
+      `,
+      { bearerToken: createdKey.apiKey, workspaceId: workspace.id },
+    );
+
+    expectNoGraphQLErrors(authenticated);
+    expect(authenticated.body.data.currentUser.id).toBe(user.user.id);
+    expect(authenticated.body.data.selectedWorkspace.id).toBe(workspace.id);
+    expect(authenticated.body.data.currentWorkspaceMember.id).toEqual(
+      expect.any(String),
+    );
+    expect(authenticated.body.data.currentSession).toBeNull();
+
+    const rejectedCrossWorkspace = await gql(
+      /* GraphQL */ `
+        query {
+          selectedWorkspace {
+            id
+          }
+        }
+      `,
+      {
+        bearerToken: createdKey.apiKey,
+        workspaceId: outsiderWorkspace.id,
+      },
+    );
+
+    expectNoGraphQLErrors(rejectedCrossWorkspace);
+    expect(rejectedCrossWorkspace.body.data.selectedWorkspace).toEqual({
+      id: outsiderWorkspace.id,
+    });
+
+    const listed = await gql(
+      /* GraphQL */ `
+        query {
+          currentUser {
+            apiKeys(first: 10) {
+              edges {
+                node {
+                  id
+                  name
+                }
+              }
+            }
+          }
+        }
+      `,
+      { cookies: user.cookies },
+    );
+
+    expectNoGraphQLErrors(listed);
+    expect(listed.body.data.currentUser.apiKeys).toMatchObject({
+      edges: [
+        {
+          node: {
+            id: createdKey.entity.id,
+            name: 'Personal automation',
+          },
+        },
+      ],
+    });
+  });
+
+  it('prevents user API keys from delegating permissions they do not have', async () => {
+    const user = await createAuthenticatedUser('Delegated Key Owner');
+    const authenticatingKey = await createUserApiKey(user, {
+      name: 'Restricted delegator',
+      permissions: ['USER_API_KEY__WRITE', 'WORKSPACE__UPDATE'],
+    });
+    const targetKey = await createUserApiKey(user, {
+      name: 'Delegation target',
+      permissions: ['WORKSPACE__UPDATE'],
+    });
+
+    const rejectedCreate = await gql(
+      /* GraphQL */ `
+        mutation CreateUserApiKey($input: CreateUserApiKeyInput!) {
+          createUserApiKey(input: $input) {
+            apiKey
+          }
+        }
+      `,
+      {
+        bearerToken: authenticatingKey.apiKey,
+        variables: {
+          input: {
+            name: 'Escalated delegated key',
+            permissions: ['WORKSPACE__DELETE'],
+          },
+        },
+      },
+    );
+    expectGraphQLError(rejectedCreate);
+
+    const rejectedUpdate = await gql(
+      /* GraphQL */ `
+        mutation UpdateUserApiKey($id: ID!, $input: UpdateUserApiKeyInput!) {
+          updateUserApiKey(id: $id, input: $input) {
+            id
+          }
+        }
+      `,
+      {
+        bearerToken: authenticatingKey.apiKey,
+        variables: {
+          id: targetKey.entity.id,
+          input: { permissions: ['WORKSPACE__DELETE'] },
+        },
+      },
+    );
+    expectGraphQLError(rejectedUpdate);
+
+    const allowedCreate = await gql(
+      /* GraphQL */ `
+        mutation CreateUserApiKey($input: CreateUserApiKeyInput!) {
+          createUserApiKey(input: $input) {
+            entity {
+              permissions
+            }
+          }
+        }
+      `,
+      {
+        bearerToken: authenticatingKey.apiKey,
+        variables: {
+          input: {
+            name: 'Bounded delegated key',
+            permissions: ['WORKSPACE__UPDATE'],
+          },
+        },
+      },
+    );
+
+    expectNoGraphQLErrors(allowedCreate);
+    expect(allowedCreate.body.data.createUserApiKey.entity.permissions).toEqual(
+      ['WORKSPACE__UPDATE'],
+    );
+  });
+
+  it.each(['user', 'workspace'] as const)(
+    'limits %s API-key management to explicitly granted actions and bounded credentials',
+    async (scope) => {
+      const user = await createAuthenticatedUser(`${scope} key manager`);
+      const workspace = await createWorkspace(
+        user,
+        `${scope} managed workspace`,
+      );
+      const createKey = (permissions: string[]) =>
+        scope === 'user'
+          ? createUserApiKey(user, { name: 'Managed key', permissions })
+          : createWorkspaceApiKey(user, workspace.id, {
+              name: 'Managed key',
+              permissions,
+            });
+      const management = [
+        ...(scope === 'workspace' ? ['WORKSPACE__READ'] : []),
+        scope === 'user' ? 'USER_API_KEY__READ' : 'WORKSPACE_API_KEY__READ',
+        scope === 'user' ? 'USER_API_KEY__WRITE' : 'WORKSPACE_API_KEY__WRITE',
+      ];
+      const manager = await createKey([...management, 'WORKSPACE__UPDATE']);
+      const broader = await createKey([...management, 'WORKSPACE__DELETE']);
+      const empty = await createKey([]);
+      const narrow = await createKey(['WORKSPACE__UPDATE']);
+      const names =
+        scope === 'user'
+          ? {
+              parent: 'currentUser',
+              create: 'createUserApiKey',
+              update: 'updateUserApiKey',
+              delete: 'deleteUserApiKey',
+            }
+          : {
+              parent: 'selectedWorkspace',
+              create: 'createWorkspaceApiKey',
+              update: 'updateWorkspaceApiKey',
+              delete: 'deleteWorkspaceApiKey',
+            };
+      const queries = {
+        read: `query($id: ID!) { owner: ${names.parent} { result: apiKey(id: $id) { id permissions } } }`,
+        list:
+          scope === 'user'
+            ? `query { owner: currentUser { result: apiKeys(first: 100) { edges { node { id } } } } }`
+            : `query { result: workspaceApiKeys(first: 100) { edges { node { id } } } }`,
+        create: `mutation($input: Create${scope === 'user' ? 'User' : 'Workspace'}ApiKeyInput!) { result: ${names.create}(input: $input) { entity { id permissions } } }`,
+        update: `mutation($id: ID!, $input: Update${scope === 'user' ? 'User' : 'Workspace'}ApiKeyInput!) { result: ${names.update}(id: $id, input: $input) { id permissions name } }`,
+        delete: `mutation($id: ID!) { result: ${names.delete}(id: $id) { id } }`,
+      };
+      const memberId = (
+        await migrationOrm.em.execute<{ id: string }[]>(
+          'select id from workspace_member where workspace_id = ? and user_id = ?',
+          [workspace.id, user.user.id],
+        )
+      )[0].id;
+      const call = (
+        operation: keyof typeof queries,
+        bearerToken: string,
+        variables: Record<string, unknown> = {},
+      ) =>
+        gql(queries[operation], {
+          bearerToken,
+          workspaceId: workspace.id,
+          variables:
+            scope === 'workspace' && operation === 'create'
+              ? {
+                  ...variables,
+                  input: { ...(variables.input as object), memberId },
+                }
+              : variables,
+        });
+      const expectForbidden = (result: Awaited<ReturnType<typeof gql>>) => {
+        expectGraphQLError(result);
+        expect(result.body.errors[0].extensions.code).toBe('FORBIDDEN');
+      };
+
+      for (const key of [narrow]) {
+        expectForbidden(await call('list', key.apiKey));
+        expectForbidden(
+          await call('read', key.apiKey, { id: broader.entity.id }),
+        );
+        expectForbidden(
+          await call('create', key.apiKey, {
+            input: { name: 'Denied', permissions: [] },
+          }),
+        );
+        expectForbidden(
+          await call('update', key.apiKey, {
+            id: empty.entity.id,
+            input: { name: 'Denied' },
+          }),
+        );
+        expectForbidden(
+          await call('delete', key.apiKey, { id: broader.entity.id }),
+        );
+      }
+      const inheritedList = await call('list', empty.apiKey);
+      expectNoGraphQLErrors(inheritedList);
+      expect(
+        (scope === 'user'
+          ? inheritedList.body.data.owner.result
+          : inheritedList.body.data.result
+        ).edges,
+      ).toHaveLength(4);
+      for (const operation of ['read', 'update', 'delete'] as const) {
+        const result = await call(operation, manager.apiKey, {
+          id: empty.entity.id,
+          input: { name: 'Denied' },
+        });
+        if (operation === 'read') {
+          expectNoGraphQLErrors(result);
+          expect(result.body.data.owner.result).toBeNull();
+        } else {
+          expectForbidden(result);
+        }
+      }
+      const listed = await call('list', manager.apiKey);
+      expectNoGraphQLErrors(listed);
+      expect(
+        (scope === 'user'
+          ? listed.body.data.owner.result
+          : listed.body.data.result
+        ).edges,
+      ).toHaveLength(2);
+      expect(
+        (scope === 'user'
+          ? listed.body.data.owner.result
+          : listed.body.data.result
+        ).edges
+          .map((edge: { node: { id: string } }) => edge.node.id)
+          .sort(),
+      ).toEqual([manager.entity.id, narrow.entity.id].sort());
+
+      const hiddenKey = await call('read', manager.apiKey, {
+        id: broader.entity.id,
+      });
+      expectNoGraphQLErrors(hiddenKey);
+      expect(hiddenKey.body.data.owner.result).toBeNull();
+      expectForbidden(
+        await call('update', manager.apiKey, {
+          id: broader.entity.id,
+          input: { permissions: [] },
+        }),
+      );
+      expectForbidden(
+        await call('delete', manager.apiKey, { id: broader.entity.id }),
+      );
+      expectForbidden(
+        await call('create', manager.apiKey, {
+          input: { name: 'Escalated', permissions: ['WORKSPACE__DELETE'] },
+        }),
+      );
+      expectForbidden(
+        await call('update', manager.apiKey, {
+          id: narrow.entity.id,
+          input: { permissions: ['WORKSPACE__DELETE'] },
+        }),
+      );
+
+      const delegated = await call('create', manager.apiKey, {
+        input: { name: 'Delegated', permissions: ['WORKSPACE__UPDATE'] },
+      });
+      expectNoGraphQLErrors(delegated);
+      const id = delegated.body.data.result.entity.id as string;
+      const visibleKey = await call('read', manager.apiKey, { id });
+      expectNoGraphQLErrors(visibleKey);
+      expect(visibleKey.body.data.owner.result).toMatchObject({
+        id,
+        permissions: ['WORKSPACE__UPDATE'],
+      });
+      const renamed = await call('update', manager.apiKey, {
+        id,
+        input: { name: 'Renamed' },
+      });
+      expectNoGraphQLErrors(renamed);
+      expect(renamed.body.data.result.name).toBe('Renamed');
+      expectNoGraphQLErrors(await call('delete', manager.apiKey, { id }));
+
+      const otherUser = await createAuthenticatedUser(`${scope} other owner`);
+      const otherWorkspace = await createWorkspace(
+        otherUser,
+        `${scope} other workspace`,
+      );
+      const otherKey =
+        scope === 'user'
+          ? await createUserApiKey(otherUser, {
+              name: 'Other key',
+              permissions: [],
+            })
+          : await createWorkspaceApiKey(otherUser, otherWorkspace.id, {
+              name: 'Other key',
+              permissions: [],
+            });
+      const foreignKey = await call('read', manager.apiKey, {
+        id: otherKey.entity.id,
+      });
+      expectNoGraphQLErrors(foreignKey);
+      expect(foreignKey.body.data.owner.result).toBeNull();
+      const hiddenDeletion = await call('delete', manager.apiKey, {
+        id: otherKey.entity.id,
+      });
+      expectGraphQLError(hiddenDeletion);
+      expect(hiddenDeletion.body.errors[0].extensions.code).toBe('NOT_FOUND');
+
+      // A browser session still manages every key owned by this user/workspace.
+      const sessionList = await gql(queries.list, {
+        cookies: user.cookies,
+        workspaceId: workspace.id,
+      });
+      expectNoGraphQLErrors(sessionList);
+      expect(
+        (scope === 'user'
+          ? sessionList.body.data.owner.result
+          : sessionList.body.data.result
+        ).edges,
+      ).toHaveLength(4);
+    },
+  );
+
+  it('enforces workspace API-key permissions and permanent revocation', async () => {
+    const owner = await createAuthenticatedUser('Restricted Key Owner');
+    const workspace = await createWorkspace(owner, 'Restricted API Workspace');
+    const restrictedKey = await createWorkspaceApiKey(owner, workspace.id, {
+      name: 'Read workspace key',
+      permissions: [
+        'WORKSPACE__READ',
+        'WORKSPACE_MEMBER__READ',
+        'WORKSPACE__UPDATE',
+      ],
+    });
+
+    const allowed = await gql(
+      /* GraphQL */ `
+        query {
+          selectedWorkspace {
+            id
+            name
+          }
+        }
+      `,
+      { bearerToken: restrictedKey.apiKey, workspaceId: workspace.id },
+    );
+
+    expectNoGraphQLErrors(allowed);
+    expect(allowed.body.data.selectedWorkspace).toEqual(workspace);
+
+    const updated = await gql(
+      /* GraphQL */ `
+        mutation ($workspaceId: ID!) {
+          updateWorkspace(
+            id: $workspaceId
+            input: { name: "Updated by API Key" }
+          ) {
+            id
+          }
+        }
+      `,
+      {
+        bearerToken: restrictedKey.apiKey,
+        workspaceId: workspace.id,
+        variables: { workspaceId: workspace.id },
+      },
+    );
+
+    expectNoGraphQLErrors(updated);
+    expect(updated.body.data.updateWorkspace).toEqual({
+      id: workspace.id,
+    });
+    expect(
+      await migrationOrm.em.execute('select name from workspace where id = ?', [
+        workspace.id,
+      ]),
+    ).toEqual([{ name: 'Updated by API Key' }]);
+
+    const denied = await gql(
+      /* GraphQL */ `
+        mutation ($workspaceId: ID!) {
+          deleteWorkspace(id: $workspaceId) {
+            id
+          }
+        }
+      `,
+      {
+        bearerToken: restrictedKey.apiKey,
+        workspaceId: workspace.id,
+        variables: { workspaceId: workspace.id },
+      },
+    );
+
+    expectGraphQLError(denied);
+
+    const disabled = await gql(
+      /* GraphQL */ `
+        mutation RevokeApiKey($id: ID!) {
+          revokeWorkspaceApiKey(id: $id) {
+            id
+            revokedAt
+          }
+        }
+      `,
+      {
+        cookies: owner.cookies,
+        workspaceId: workspace.id,
+        variables: {
+          id: restrictedKey.entity.id,
+        },
+      },
+    );
+
+    expectNoGraphQLErrors(disabled);
+    expect(disabled.body.data.revokeWorkspaceApiKey.revokedAt).toEqual(
+      expect.any(String),
+    );
+
+    const rejectedDisabledKey = await gql(
+      /* GraphQL */ `
+        query {
+          selectedWorkspace {
+            id
+          }
+        }
+      `,
+      { bearerToken: restrictedKey.apiKey, workspaceId: workspace.id },
+    );
+
+    expect(rejectedDisabledKey.status).toBe(401);
+    expect(rejectedDisabledKey.body).toMatchObject({
+      message: 'API key is revoked',
+      statusCode: 401,
+    });
+  });
+
+  it('prevents duplicate credentials across owner kinds with a global database constraint', async () => {
+    const user = await createAuthenticatedUser('Ambiguous Key Owner');
+    const workspace = await createWorkspace(user, 'Ambiguous Keys');
+    const personal = await createUserApiKey(user, {
+      name: 'Personal',
+      permissions: [],
+    });
+    const shared = await createWorkspaceApiKey(user, workspace.id, {
+      name: 'Workspace',
+      permissions: [],
+    });
+    await expect(
+      migrationOrm.em
+        .getConnection()
+        .execute(
+          'update api_key set key = (select key from api_key where id = ?) where id = ?',
+          [personal.entity.id, shared.entity.id],
+        ),
+    ).rejects.toThrow(/unique/i);
+    const response = await gql('query { currentUser { id } }', {
+      bearerToken: personal.apiKey,
+    });
+    expectNoGraphQLErrors(response);
+    expect(response.body.data.currentUser.id).toBe(user.user.id);
+  });
+
+  it('prevents workspace administrators from issuing keys above their permissions', async () => {
+    const owner = await createAuthenticatedUser('Key Ceiling Owner');
+    const administrator = await createAuthenticatedUser(
+      'Key Ceiling Administrator',
+    );
+    const workspace = await createWorkspace(owner, 'Key Ceiling Workspace');
+    const member = await addWorkspaceMember(
+      owner,
+      workspace.id,
+      administrator.email,
+    );
+    await setWorkspaceMemberRoles(owner, workspace.id, member.id, ['ADMIN']);
+    await setWorkspaceMemberPermissions(owner, workspace.id, member.id, [
+      'WORKSPACE_API_KEY__WRITE',
+    ]);
+
+    const rejectedCreate = await gql(
+      /* GraphQL */ `
+        mutation CreateApiKey($input: CreateWorkspaceApiKeyInput!) {
+          createWorkspaceApiKey(input: $input) {
+            apiKey
+          }
+        }
+      `,
+      {
+        cookies: administrator.cookies,
+        workspaceId: workspace.id,
+        variables: {
+          input: {
+            name: 'Escalated workspace key',
+            permissions: ['WORKSPACE__DELETE'],
+          },
+        },
+      },
+    );
+
+    expectGraphQLError(rejectedCreate);
+
+    const key = await createWorkspaceApiKey(administrator, workspace.id, {
+      name: 'Administrator workspace key',
+      permissions: ['WORKSPACE__UPDATE'],
+    });
+    const rejectedUpdate = await gql(
+      /* GraphQL */ `
+        mutation UpdateApiKey($id: ID!, $input: UpdateWorkspaceApiKeyInput!) {
+          updateWorkspaceApiKey(id: $id, input: $input) {
+            id
+          }
+        }
+      `,
+      {
+        cookies: administrator.cookies,
+        workspaceId: workspace.id,
+        variables: {
+          id: key.entity.id,
+          input: { permissions: ['WORKSPACE__DELETE'] },
+        },
+      },
+    );
+
+    expectGraphQLError(rejectedUpdate);
+  });
+
+  it('validates user and workspace key prefixes through GraphQL and authenticates valid custom prefixes', async () => {
+    const owner = await createAuthenticatedUser('Prefix Owner');
+    const workspace = await createWorkspace(owner, 'Prefix Workspace');
+    for (const prefix of [
+      '1a',
+      'ABC',
+      'aB',
+      '-sk',
+      '_sk',
+      'a\n',
+      'a\u0000',
+      'é',
+      'a😀',
+      'a'.repeat(33),
+    ]) {
+      for (const mutation of ['createWorkspaceApiKey', 'createUserApiKey']) {
+        const response = await gql(
+          `mutation ($input: Create${mutation === 'createUserApiKey' ? 'User' : 'Workspace'}ApiKeyInput!) { ${mutation}(input: $input) { apiKey } }`,
+          {
+            cookies: owner.cookies,
+            workspaceId: workspace.id,
+            variables: { input: { name: 'Invalid prefix', prefix } },
+          },
+        );
+        expectGraphQLError(response);
+        expect(response.body.errors[0].extensions.code).not.toBe(
+          'GRAPHQL_VALIDATION_FAILED',
+        );
+      }
+    }
+    const connection = migrationOrm.em.getConnection();
+    expect(
+      await connection.execute(
+        "select id from api_key where name = 'Invalid prefix'",
+      ),
+    ).toEqual([]);
+    const memberKey = await createWorkspaceApiKey(owner, workspace.id, {
+      name: 'Custom workspace prefix',
+      prefix: 'abc123-',
+      permissions: ['WORKSPACE__READ'],
+    });
+    const personalKey = await createUserApiKey(owner, {
+      name: 'Custom user prefix',
+      prefix: 'a',
+      permissions: [],
+    });
+    expectNoGraphQLErrors(
+      await gql('query { selectedWorkspace { id } }', {
+        bearerToken: memberKey.apiKey,
+      }),
+    );
+    const personal = await gql('query { currentUser { id } }', {
+      bearerToken: personalKey.apiKey,
+    });
+    expectNoGraphQLErrors(personal);
+    expect(personal.body.data.currentUser.id).toBe(owner.user.id);
+  });
+
+  it('isolates concurrent cookie, user-key, and member-key requests', async () => {
+    const fixtures = await Promise.all(
+      ['First Isolated', 'Second Isolated'].map(async (name) => {
+        const owner = await createAuthenticatedUser(name);
+        const workspace = await createWorkspace(owner, name);
+        const userKey = await createUserApiKey(owner, {
+          name: `${name} personal key`,
+          permissions: [
+            'WORKSPACE__READ',
+            'WORKSPACE_MEMBER__READ',
+            'WORKSPACE__UPDATE',
+          ],
+        });
+        const memberKey = await createWorkspaceApiKey(owner, workspace.id, {
+          name: `${name} workspace key`,
+          permissions: [
+            'WORKSPACE__READ',
+            'WORKSPACE_MEMBER__READ',
+            'WORKSPACE__UPDATE',
+          ],
+        });
+        return { owner, workspace, userKey, memberKey };
+      }),
+    );
+    const query = /* GraphQL */ `
+      query {
+        selectedWorkspace {
+          id
+          name
+        }
+        currentWorkspaceMember {
+          id
+        }
+        selectedWorkspace {
+          members(first: 10) {
+            edges {
+              node {
+                roles
+              }
+            }
+          }
+        }
+      }
+    `;
+
+    for (let round = 0; round < 3; round++) {
+      await Promise.all(
+        fixtures.flatMap((fixture, index) => {
+          const other = fixtures[1 - index];
+          const identities: {
+            options: GraphQLRequestOptions;
+          }[] = [
+            {
+              options: {
+                cookies: fixture.owner.cookies,
+                workspaceId: fixture.workspace.id,
+              },
+            },
+            {
+              options: {
+                bearerToken: fixture.userKey.apiKey,
+                workspaceId: fixture.workspace.id,
+              },
+            },
+            {
+              options: {
+                bearerToken: fixture.memberKey.apiKey,
+                workspaceId: fixture.workspace.id,
+              },
+            },
+            {
+              // A cookie session takes precedence over a key belonging to another workspace;
+              // the explicit workspace header also takes precedence over a stale workspace cookie.
+              options: {
+                cookies: [
+                  ...fixture.owner.cookies,
+                  `workspace=${other.workspace.id}`,
+                ],
+                bearerToken: other.memberKey.apiKey,
+                workspaceId: fixture.workspace.id,
+              },
+            },
+          ];
+          return identities.map(async ({ options }) => {
+            const result = await gql(query, options);
+            expectNoGraphQLErrors(result);
+            expect(result.body.data.selectedWorkspace).toMatchObject(
+              fixture.workspace,
+            );
+            expect(result.body.data.currentWorkspaceMember).toEqual({
+              id: expect.any(String),
+            });
+            expect(result.body.data.selectedWorkspace.members).toEqual({
+              edges: [{ node: { roles: ['OWNER'] } }],
+            });
+          });
+        }),
+      );
+
+      const anonymous = await gql(
+        'query { selectedWorkspace { members(first: 10) { edges { node { id } } } } }',
+      );
+      expectNoGraphQLErrors(anonymous);
+      expect(anonymous.body.data).toEqual({ selectedWorkspace: null });
+    }
+  }, 20_000);
+
+  it.each(['session', 'user-api-key'] as const)(
+    'rechecks revoked permissions and disabled membership for an existing %s',
+    async (authentication) => {
+      const owner = await createAuthenticatedUser('Revocation Owner');
+      const user = await createAuthenticatedUser('Revocation WorkspaceMember');
+      const workspace = await createWorkspace(owner, 'Revocation Workspace');
+      const member = await addWorkspaceMember(owner, workspace.id, user.email);
+      await setWorkspaceMemberPermissions(owner, workspace.id, member.id, [
+        'WORKSPACE__UPDATE',
+      ]);
+      const identity: GraphQLRequestOptions =
+        authentication === 'session'
+          ? { cookies: user.cookies }
+          : {
+              bearerToken: (
+                await createUserApiKey(user, {
+                  name: 'Revocable personal key',
+                  permissions: ['WORKSPACE__UPDATE'],
+                })
+              ).apiKey,
+            };
+      const rename = (name: string) =>
+        gql(
+          'mutation ($workspaceId: ID!, $input: UpdateWorkspaceInput!) { updateWorkspace(id: $workspaceId, input: $input) { id } }',
+          {
+            ...identity,
+            workspaceId: workspace.id,
+            variables: { input: { name } },
+          },
+        );
+      const allowed = await rename('Allowed before revocation');
+      expectNoGraphQLErrors(allowed);
+      expect(allowed.body.data.updateWorkspace).toEqual({ id: workspace.id });
+      expect(
+        await migrationOrm.em.execute(
+          'select name from workspace where id = ?',
+          [workspace.id],
+        ),
+      ).toEqual([{ name: 'Allowed before revocation' }]);
+
+      await setWorkspaceMemberPermissions(owner, workspace.id, member.id, []);
+      const revoked = await rename('Denied after revocation');
+      expectGraphQLError(revoked);
+      expect(revoked.body.data).toBeNull();
+      expect(revoked.body.errors).toEqual([
+        expect.objectContaining({
+          extensions: expect.objectContaining({ code: 'FORBIDDEN' }),
+        }),
+      ]);
+
+      await setWorkspaceMemberPermissions(owner, workspace.id, member.id, [
+        'WORKSPACE__UPDATE',
+      ]);
+      expectNoGraphQLErrors(await rename('Allowed after regrant'));
+      const disabled = await gql(
+        'mutation ($id: ID!, $input: UpdateWorkspaceMemberInput!) { updateWorkspaceMember(id: $id, input: $input) { id } }',
+        {
+          cookies: owner.cookies,
+          workspaceId: workspace.id,
+          variables: { id: member.id, input: { status: 'DISABLED' } },
+        },
+      );
+      expectNoGraphQLErrors(disabled);
+      const rejected = await rename('Denied after membership disabled');
+      expectGraphQLError(rejected);
+      expect(rejected.body.data).toBeNull();
+      expect(rejected.body.errors).toEqual([
+        expect.objectContaining({
+          extensions: expect.objectContaining({ code: 'FORBIDDEN' }),
+        }),
+      ]);
+      const profile = await gql('query { currentUser { id } }', identity);
+      expectNoGraphQLErrors(profile);
+      expect(profile.body.data.currentUser.id).toBe(user.user.id);
+      expect(
+        await migrationOrm.em
+          .getConnection()
+          .execute('select name from workspace where id = ?', [workspace.id]),
+      ).toEqual([{ name: 'Allowed after regrant' }]);
+    },
+    20_000,
+  );
+
+  it.each(['header', 'cookie'] as const)(
+    'selects another workspace through a %s without carrying private member scope',
+    async (selection) => {
+      const owner = await createAuthenticatedUser('Scoped Key Owner');
+      const workspace = await createWorkspace(owner, 'Key Workspace');
+      const otherWorkspace = await createWorkspace(
+        owner,
+        'Other Key Workspace',
+      );
+      const key = await createWorkspaceApiKey(owner, workspace.id, {
+        name: 'Workspace-bound key',
+        permissions: ['WORKSPACE__READ'],
+      });
+      const query =
+        'query { selectedWorkspace { id name } currentWorkspace { id } currentWorkspaceMember { id } }';
+      const selected = await gql(query, {
+        bearerToken: key.apiKey,
+        ...(selection === 'header'
+          ? { workspaceId: otherWorkspace.id }
+          : { cookies: [`workspace=${otherWorkspace.id}`] }),
+      });
+      expectNoGraphQLErrors(selected);
+      expect(selected.body.data).toEqual({
+        selectedWorkspace: otherWorkspace,
+        currentWorkspace: null,
+        currentWorkspaceMember: null,
+      });
+      const denied = await gql(
+        'mutation($id: ID!) { updateWorkspace(id: $id, input: {name: "Denied"}) {id} }',
+        {
+          bearerToken: key.apiKey,
+          workspaceId: otherWorkspace.id,
+          variables: { id: otherWorkspace.id },
+        },
+      );
+      expectGraphQLError(denied);
+      expect(denied.body.errors[0].extensions.code).toBe('FORBIDDEN');
+      const unselected = await gql(query, { bearerToken: key.apiKey });
+      expectNoGraphQLErrors(unselected);
+      expect(unselected.body.data).toEqual({
+        selectedWorkspace: null,
+        currentWorkspace: null,
+        currentWorkspaceMember: null,
+      });
+      const allowed = await gql(query, {
+        bearerToken: key.apiKey,
+        workspaceId: workspace.id,
+      });
+      expectNoGraphQLErrors(allowed);
+      expect(allowed.body.data.selectedWorkspace).toEqual(workspace);
+      expect(allowed.body.data.currentWorkspace).toEqual({ id: workspace.id });
+      expect(allowed.body.data.currentWorkspaceMember).toEqual({
+        id: key.memberId,
+      });
+    },
+  );
+
+  /**
+   * Returns responses from the concurrent operations after releasing the workspace lock.
+   * @param workspaceId - Identifier of the workspace that scopes the operation.
+   * @param operations - Concurrent operations to execute.
+   * @returns Responses from the concurrent operations after releasing the workspace lock.
+   */
+  async function raceWithWorkspaceLock(
+    workspaceId: string,
+    operations: (() => PromiseLike<request.Response>)[],
+  ) {
+    const connection = migrationOrm.em.getConnection();
+    const requests: Promise<request.Response>[] = [];
+    try {
+      await connection.transactional(async (transaction) => {
+        await connection.execute(
+          'select id from workspace where id = ? for update',
+          [workspaceId],
+          'all',
+          transaction,
+        );
+        for (const operation of operations) {
+          requests.push(Promise.resolve(operation()));
+          await vi.waitFor(
+            async () => {
+              const [waiting] = await connection.execute<{ count: number }[]>(
+                `select count(*)::int as count from pg_stat_activity where datname = current_database() and wait_event_type = 'Lock' and query like '%"workspace"%'`,
+              );
+              expect(waiting.count).toBe(requests.length);
+            },
+            { timeout: 5000, interval: 20 },
+          );
+        }
+      });
+      return await Promise.all(requests);
+    } finally {
+      await Promise.allSettled(requests);
+    }
+  }
+
+  /**
+   * Returns registered user with credentials and authenticated cookies.
+   * @param name - Name used to identify the resource.
+   * @param email - Email address used to identify the user.
+   * @returns Registered user with credentials and authenticated cookies.
+   */
+  async function createAuthenticatedUser(
+    name: string,
+    email = uniqueEmail(name),
+  ): Promise<AuthenticatedUser> {
+    const password = 'correct-horse-battery-staple';
+
+    const registered = await signUpWithEmail({ name, email, password });
+
+    expect(registered.status).toBe(200);
+    await verifyEmail(email);
+
+    const loggedIn = await signInWithEmail({ email, password });
+    const cookies = collectSetCookies(loggedIn);
+
+    expect(loggedIn.status).toBe(200);
+    expect(cookies.length).toBeGreaterThan(0);
+
+    return {
+      cookies,
+      email,
+      password,
+      user: loggedIn.body.user,
+    };
+  }
+
+  it.each([false, true])(
+    'creates an ID-only workspace payload with an existing selection: %s',
+    async (selected) => {
+      const owner = await createAuthenticatedUser('Workspace payload owner');
+      const original = selected
+        ? await createWorkspace(owner, 'Original workspace')
+        : null;
+      const response = await gql(
+        `mutation {
+          createWorkspace(input: { name: "Payload workspace", slug: "payload-${selected ? 'selected' : 'unselected'}" }) { __typename id }
+          ${original ? `updateWorkspace(id: "${original.id}", input: { name: "Original after create" }) { id }` : ''}
+        }`,
+        {
+          cookies: owner.cookies,
+          ...(original ? { workspaceId: original.id } : {}),
+        },
+      );
+      expectNoGraphQLErrors(response);
+      expect(response.body.data.createWorkspace).toEqual({
+        __typename: 'CreateWorkspacePayload',
+        id: expect.any(String),
+      });
+      if (original) {
+        expect(response.body.data.updateWorkspace).toEqual({
+          id: original.id,
+        });
+        expect(
+          await migrationOrm.em.execute(
+            'select name from workspace where id = ?',
+            [original.id],
+          ),
+        ).toEqual([{ name: 'Original after create' }]);
+      }
+      const id = response.body.data.createWorkspace.id as string;
+      const lookup = await gql(
+        'query { selectedWorkspace { id name members(first: 1) { edges { node { id } } } } }',
+        { cookies: owner.cookies, workspaceId: id },
+      );
+      expectNoGraphQLErrors(lookup);
+      expect(lookup.body.data.selectedWorkspace).toMatchObject({
+        id,
+        name: 'Payload workspace',
+      });
+      expect(lookup.body.data.selectedWorkspace.members.edges).toHaveLength(1);
+    },
+  );
+
+  /**
+   * Returns the created workspace fixture.
+   * @param user - The user whose account is being accessed.
+   * @param name - Name used to identify the resource.
+   * @param slug - Unique URL identifier for the workspace.
+   * @returns Workspace ID and name.
+   */
+  async function createWorkspace(
+    user: AuthenticatedUser,
+    name: string,
+    slug = `workspace-${randomUUID().slice(0, 18)}`,
+  ): Promise<WorkspaceFixture> {
+    const response = await gql(
+      /* GraphQL */ `
+        mutation CreateWorkspace($input: CreateWorkspaceInput!) {
+          createWorkspace(input: $input) {
+            id
+          }
+        }
+      `,
+      {
+        cookies: user.cookies,
+        variables: {
+          input: { name, slug },
+        },
+      },
+    );
+
+    expectNoGraphQLErrors(response);
+
+    expect(response.body.data.createWorkspace).toEqual({
+      id: expect.any(String),
+    });
+    return { id: response.body.data.createWorkspace.id, name };
+  }
+
+  it('rejects invitations to an existing login identity despite private or stale member profiles', async () => {
+    const owner = await createAuthenticatedUser('WorkspaceInvitation owner');
+    const target = await createAuthenticatedUser('Existing invitee');
+    const workspace = await createWorkspace(
+      owner,
+      'WorkspaceInvitation identity',
+    );
+    const member = await addWorkspaceMember(owner, workspace.id, target.email);
+    const loginEmail = uniqueEmail('Changed login');
+    const connection = migrationOrm.em.getConnection();
+    await connection.execute('update "user" set email = ? where id = ?', [
+      loginEmail,
+      target.user.id,
+    ]);
+
+    // Workspace ownership does not grant access to the user's private profile.
+    const hidden = await gql(
+      'query ($id: ID!) { workspaceMember(id: $id) { user { id email } } }',
+      {
+        cookies: owner.cookies,
+        workspaceId: workspace.id,
+        variables: { id: member.id },
+      },
+    );
+    expectGraphQLError(hidden);
+    expect(hidden.body.data.workspaceMember.user).toBeNull();
+
+    for (const [email, status] of [
+      [target.email, 'ACTIVE'],
+      [null, 'DISABLED'],
+    ] as const) {
+      expectNoGraphQLErrors(
+        await gql(
+          'mutation ($id: ID!, $input: UpdateWorkspaceMemberInput!) { updateWorkspaceMember(id: $id, input: $input) { id } }',
+          {
+            cookies: owner.cookies,
+            workspaceId: workspace.id,
+            variables: { id: member.id, input: { email, status } },
+          },
+        ),
+      );
+      const rejected = await gql(
+        'mutation ($input: CreateWorkspaceInvitationInput!) { createWorkspaceInvitation(input: $input) { id } }',
+        {
+          cookies: owner.cookies,
+          workspaceId: workspace.id,
+          variables: {
+            input: {
+              email: loginEmail.toUpperCase(),
+              roles: ['MEMBER'],
+            },
+          },
+        },
+      );
+      expect(rejected.body.errors).toEqual([
+        expect.objectContaining({ message: 'User is already a member' }),
+      ]);
+    }
+    expect(
+      await connection.execute(
+        'select id from workspace_invitation where workspace_id = ?',
+        [workspace.id],
+      ),
+    ).toEqual([]);
+  });
+
+  it.each([false, true])(
+    'accepts an invitation when its email is only another member contact address (registered: %s)',
+    async (registered) => {
+      const owner = await createAuthenticatedUser('Contact collision owner');
+      const workspace = await createWorkspace(owner, 'Contact collision');
+      const email = uniqueEmail('Contact collision invitee');
+      let invitee = registered
+        ? await createAuthenticatedUser('Registered invitee', email)
+        : null;
+      if (invitee) {
+        await createWorkspace(invitee, 'Different membership');
+      }
+      const connection = migrationOrm.em.getConnection();
+      await connection.execute(
+        'update workspace_member set email = ? where workspace_id = ? and user_id = ?',
+        [email, workspace.id, owner.user.id],
+      );
+      const invitation = await createWorkspaceInvitation(owner, workspace.id, {
+        email,
+        roles: ['MEMBER'],
+      });
+      if (!invitee) {
+        expect(
+          await connection.execute('select id from "user" where email = ?', [
+            email,
+          ]),
+        ).toEqual([]);
+        invitee = await createAuthenticatedUser('New invitee', email);
+      }
+      const accepted = await gql(
+        'mutation ($invitationId: ID!) { acceptWorkspaceInvitation(id: $invitationId) { id memberId workspaceId } }',
+        {
+          cookies: invitee.cookies,
+          variables: { invitationId: invitation.id },
+        },
+      );
+      expectNoGraphQLErrors(accepted);
+      expect(accepted.body.data.acceptWorkspaceInvitation).toEqual({
+        id: invitation.id,
+        memberId: expect.any(String),
+        workspaceId: workspace.id,
+      });
+      expect(
+        await connection.execute(
+          'select email from workspace_member where id = ?',
+          [accepted.body.data.acceptWorkspaceInvitation.memberId],
+        ),
+      ).toEqual([{ email }]);
+      expect(
+        await connection.execute(
+          'select status from workspace_invitation where id = ?',
+          [invitation.id],
+        ),
+      ).toEqual([{ status: 'accepted' }]);
+      // Editing a contact address must allow sharing another member's email too.
+      for (const contactEmail of [null, email.toUpperCase()]) {
+        const updated = await gql(
+          'mutation ($id: ID!, $input: UpdateWorkspaceMemberInput!) { updateWorkspaceMember(id: $id, input: $input) { id } }',
+          {
+            cookies: owner.cookies,
+            workspaceId: workspace.id,
+            variables: {
+              id: accepted.body.data.acceptWorkspaceInvitation.memberId,
+              input: { email: contactEmail },
+            },
+          },
+        );
+        expectNoGraphQLErrors(updated);
+        expect(
+          await connection.execute(
+            'select email from workspace_member where id = ?',
+            [updated.body.data.updateWorkspaceMember.id],
+          ),
+        ).toEqual([{ email: contactEmail === null ? null : email }]);
+      }
+      const members = await connection.execute<{ user_id: string }[]>(
+        'select user_id from workspace_member where workspace_id = ?',
+        [workspace.id],
+      );
+      expect(members.map((member) => member.user_id).sort()).toEqual(
+        [owner.user.id, invitee.user.id].sort(),
+      );
+    },
+  );
+
+  it('shares member profiles without exposing or synchronizing private user profiles', async () => {
+    const owner = await createAuthenticatedUser('Profile owner');
+    const user = await createAuthenticatedUser('Original member profile');
+    const peer = await createAuthenticatedUser('Workspace peer');
+    const workspace = await createWorkspace(owner, 'Profile workspace');
+    const member = await addWorkspaceMember(owner, workspace.id, user.email);
+    await addWorkspaceMember(owner, workspace.id, peer.email);
+    expectNoGraphQLErrors(
+      await gql(
+        'mutation { updateCurrentUser(input: { name: "Private renamed profile" }) }',
+        { cookies: user.cookies },
+      ),
+    );
+    const update = await gql(
+      'mutation ($id: ID!, $input: UpdateWorkspaceMemberInput!) { updateWorkspaceMember(id: $id, input: $input) { id } }',
+      {
+        cookies: owner.cookies,
+        workspaceId: workspace.id,
+        variables: {
+          id: member.id,
+          input: {
+            name: 'Shared member profile',
+            email: 'team-contact@example.test',
+          },
+        },
+      },
+    );
+    expectNoGraphQLErrors(update);
+    const query = `query ($query: String) {
+      selectedWorkspace {
+        members(first: 10, query: $query) { edges { node { id name email } } }
+        membersCount(query: $query) { count precision }
+      }
+    }`;
+    for (const viewer of [owner, peer]) {
+      const options = { cookies: viewer.cookies, workspaceId: workspace.id };
+      const visible = await gql(query, {
+        ...options,
+        variables: { query: 'Shared*' },
+      });
+      expectNoGraphQLErrors(visible);
+      expect(visible.body.data.selectedWorkspace.membersCount).toEqual({
+        count: 1,
+        precision: 'EXACT',
+      });
+      expect(visible.body.data.selectedWorkspace.members).toEqual({
+        edges: [
+          {
+            node: {
+              id: member.id,
+              name: 'Shared member profile',
+              email: 'team-contact@example.test',
+            },
+          },
+        ],
+      });
+      for (const search of ['Private*', user.email]) {
+        const hidden = await gql(query, {
+          ...options,
+          variables: { query: search },
+        });
+        expectNoGraphQLErrors(hidden);
+        expect(hidden.body.data.selectedWorkspace.members.edges).toHaveLength(
+          0,
+        );
+        expect(hidden.body.data.selectedWorkspace.membersCount).toEqual({
+          count: 0,
+          precision: 'EXACT',
+        });
+      }
+      const hiddenUser = await gql(
+        'query ($id: ID!) { workspaceMember(id: $id) { name email user { name email } } }',
+        { ...options, variables: { id: member.id } },
+      );
+      expectGraphQLError(hiddenUser);
+      expect(hiddenUser.body.data.workspaceMember.user).toBeNull();
+      expect(hiddenUser.body.data.workspaceMember.name).toBe(
+        'Shared member profile',
+      );
+    }
+    const ownProfile = await gql('query { currentUser { name email } }', {
+      cookies: user.cookies,
+    });
+    expectNoGraphQLErrors(ownProfile);
+    expect(ownProfile.body.data.currentUser).toEqual({
+      name: 'Private renamed profile',
+      email: user.email,
+    });
+
+    const foreign = await createWorkspace(owner, 'Other workspace');
+    const invisibleWorkspaceMember = await gql(
+      'query ($id: ID!) { workspaceMember(id: $id) { name email } }',
+      {
+        cookies: owner.cookies,
+        workspaceId: foreign.id,
+        variables: { id: member.id },
+      },
+    );
+    expectNoGraphQLErrors(invisibleWorkspaceMember);
+    expect(invisibleWorkspaceMember.body.data.workspaceMember).toBeNull();
+
+    await migrationOrm.em
+      .getConnection()
+      .execute(
+        'update "user" set permissions = array[\'user:read\']::text[] where id = ?',
+        [owner.user.id],
+      );
+    const administrator = await gql(
+      'query ($id: ID!) { workspaceMember(id: $id) { user { name email } } }',
+      {
+        cookies: owner.cookies,
+        workspaceId: workspace.id,
+        variables: { id: member.id },
+      },
+    );
+    expectNoGraphQLErrors(administrator);
+    expect(administrator.body.data.workspaceMember.user).toEqual({
+      name: 'Private renamed profile',
+      email: user.email,
+    });
+  });
+
+  it('rejects invalid update fields before persistence while allowing omission', async () => {
+    const owner = await createAuthenticatedUser('Nullable Input Owner');
+    const user = await createAuthenticatedUser(
+      'Nullable Input WorkspaceMember',
+    );
+    const workspace = await createWorkspace(owner, 'Nullable Inputs');
+    const member = await addWorkspaceMember(owner, workspace.id, user.email);
+    const connection = migrationOrm.em.getConnection();
+    await connection.execute(
+      `update "user" set roles = array['admin'] where id = ?`,
+      [owner.user.id],
+    );
+
+    for (const [operation, inputType, id, field, sql] of [
+      [
+        'updateUser',
+        'UpdateUserInput',
+        user.user.id,
+        'email',
+        'select email from "user" where id = ?',
+      ],
+      [
+        'updateWorkspace',
+        'UpdateWorkspaceInput',
+        workspace.id,
+        'name',
+        'select name from workspace where id = ?',
+      ],
+      [
+        'updateWorkspaceMember',
+        'UpdateWorkspaceMemberInput',
+        member.id,
+        'status',
+        'select status from workspace_member where id = ?',
+      ],
+      [
+        'updateUser',
+        'UpdateUserInput',
+        user.user.id,
+        'name',
+        'select name from "user" where id = ?',
+      ],
+      [
+        'updateWorkspaceMember',
+        'UpdateWorkspaceMemberInput',
+        member.id,
+        'name',
+        'select name from workspace_member where id = ?',
+      ],
+    ] as const) {
+      const mutate = (input: Record<string, unknown>) =>
+        gql(
+          `mutation($id: ID!, $input: ${inputType}!) { ${operation}(id: $id, input: $input) { id } }`,
+          {
+            cookies: owner.cookies,
+            workspaceId: workspace.id,
+            variables: { id, input },
+          },
+        );
+      const before = await connection.execute(sql, [id]);
+      const invalidValues =
+        field === 'name' ? [null, '', ' \n\t ', 'x'.repeat(256)] : [null];
+      for (const invalid of invalidValues) {
+        const rejected = await mutate({ [field]: invalid });
+        expect(rejected.body.errors).toEqual([
+          expect.objectContaining({
+            extensions: expect.objectContaining({
+              code: 'BAD_USER_INPUT',
+              validationErrors: expect.arrayContaining([
+                expect.objectContaining({ field: [field] }),
+              ]),
+            }),
+          }),
+        ]);
+        expect(await connection.execute(sql, [id])).toEqual(before);
+      }
+
+      expectNoGraphQLErrors(await mutate({}));
+      expect(await connection.execute(sql, [id])).toEqual(before);
+      if (field === 'name') {
+        expectNoGraphQLErrors(await mutate({ name: '  Trimmed name  ' }));
+        expect(await connection.execute(sql, [id])).toEqual([
+          { name: 'Trimmed name' },
+        ]);
+      }
+    }
+
+    for (const query of [
+      'mutation($id: ID!) { banUser(id: $id, input: null) { id } }',
+      'mutation { deleteCurrentUser(input: null) { success } }',
+    ]) {
+      const rejected = await gql(query, {
+        cookies: owner.cookies,
+        variables: { id: user.user.id },
+      });
+      expect(rejected.body.errors).toEqual([
+        expect.objectContaining({
+          extensions: expect.objectContaining({ code: 'BAD_USER_INPUT' }),
+        }),
+      ]);
+    }
+    expect(
+      await connection.execute('select banned from "user" where id = ?', [
+        user.user.id,
+      ]),
+    ).toEqual([{ banned: false }]);
+    expect(
+      await connection.execute('select id from "user" where id = ?', [
+        owner.user.id,
+      ]),
+    ).toEqual([{ id: owner.user.id }]);
+    const banned = await gql('mutation($id: ID!) { banUser(id: $id) { id } }', {
+      cookies: owner.cookies,
+      variables: { id: user.user.id },
+    });
+    expectNoGraphQLErrors(banned);
+    expect(banned.body.data.banUser).toEqual({ id: user.user.id });
+    expect(
+      await connection.execute('select banned from "user" where id = ?', [
+        user.user.id,
+      ]),
+    ).toEqual([{ banned: true }]);
+  });
+
+  /**
+   * Returns created workspace membership.
+   * @param user - The user whose account is being accessed.
+   * @param workspaceId - Identifier of the workspace that scopes the operation.
+   * @param email - Email address used to identify the user.
+   * @returns Created workspace membership.
+   */
+  async function addWorkspaceMember(
+    user: AuthenticatedUser,
+    workspaceId: string,
+    email: string,
+  ) {
+    const response = await gql(
+      /* GraphQL */ `
+        mutation AddWorkspaceMember($input: AddWorkspaceMemberInput!) {
+          addWorkspaceMember(input: $input) {
+            id
+          }
+        }
+      `,
+      {
+        cookies: user.cookies,
+        workspaceId,
+        variables: {
+          input: {
+            email,
+          },
+        },
+      },
+    );
+
+    expectNoGraphQLErrors(response);
+
+    return await readWorkspaceMember(
+      user,
+      workspaceId,
+      response.body.data.addWorkspaceMember.id,
+    );
+  }
+
+  /**
+   * Returns member data returned by the GraphQL query.
+   * @param user - The user whose account is being accessed.
+   * @param workspaceId - Identifier of the workspace that scopes the operation.
+   * @param id - Identifier of the record to access.
+   * @returns WorkspaceMember data returned by the GraphQL query.
+   */
+  async function readWorkspaceMember(
+    user: AuthenticatedUser,
+    workspaceId: string,
+    id: string,
+  ) {
+    const response = await gql(
+      'query ($id: ID!) { workspaceMember(id: $id) { id roles permissions status name email } }',
+      { cookies: user.cookies, workspaceId, variables: { id } },
+    );
+    expectNoGraphQLErrors(response);
+    return response.body.data.workspaceMember as {
+      id: string;
+      roles: string[];
+      permissions: string[];
+      status: string;
+      name: string;
+      email: string | null;
+    };
+  }
+
+  /**
+   * Returns member data after the role update.
+   * @param user - The user whose account is being accessed.
+   * @param workspaceId - Identifier of the workspace that scopes the operation.
+   * @param id - Identifier of the record to access.
+   * @param roles - Role names to assign.
+   * @returns WorkspaceMember data after the role update.
+   */
+  async function setWorkspaceMemberRoles(
+    user: AuthenticatedUser,
+    workspaceId: string,
+    id: string,
+    roles: string[],
+  ) {
+    const response = await gql(
+      /* GraphQL */ `
+        mutation SetWorkspaceMemberRoles(
+          $id: ID!
+          $input: SetWorkspaceMemberRolesInput!
+        ) {
+          setWorkspaceMemberRoles(id: $id, input: $input) {
+            id
+          }
+        }
+      `,
+      {
+        cookies: user.cookies,
+        workspaceId,
+        variables: { id, input: { roles } },
+      },
+    );
+
+    expectNoGraphQLErrors(response);
+    return await readWorkspaceMember(user, workspaceId, id);
+  }
+
+  /**
+   * Returns member data after the permission update.
+   * @param user - The user whose account is being accessed.
+   * @param workspaceId - Identifier of the workspace that scopes the operation.
+   * @param id - Identifier of the record to access.
+   * @param permissions - Permission names to apply.
+   * @returns WorkspaceMember data after the permission update.
+   */
+  async function setWorkspaceMemberPermissions(
+    user: AuthenticatedUser,
+    workspaceId: string,
+    id: string,
+    permissions: string[],
+  ) {
+    const response = await gql(
+      /* GraphQL */ `
+        mutation SetWorkspaceMemberPermissions(
+          $id: ID!
+          $input: SetWorkspaceMemberPermissionsInput!
+        ) {
+          setWorkspaceMemberPermissions(id: $id, input: $input) {
+            id
+          }
+        }
+      `,
+      {
+        cookies: user.cookies,
+        workspaceId,
+        variables: { id, input: { permissions } },
+      },
+    );
+
+    expectNoGraphQLErrors(response);
+    return await readWorkspaceMember(user, workspaceId, id);
+  }
+
+  /**
+   * Returns created invitation as returned by the follow-up query.
+   * @param user - The user whose account is being accessed.
+   * @param workspaceId - Identifier of the workspace that scopes the operation.
+   * @param input - Requested field values for the operation.
+   * @param input.email - Email address that receives the invitation.
+   * @param input.roles - Roles to grant when the invitation is accepted.
+   * @returns Created invitation as returned by the follow-up query.
+   */
+  async function createWorkspaceInvitation(
+    user: AuthenticatedUser,
+    workspaceId: string,
+    input: { email: string; roles: string[] },
+  ) {
+    const response = await gql(
+      /* GraphQL */ `
+        mutation CreateWorkspaceInvitation(
+          $input: CreateWorkspaceInvitationInput!
+        ) {
+          createWorkspaceInvitation(input: $input) {
+            id
+          }
+        }
+      `,
+      {
+        cookies: user.cookies,
+        workspaceId,
+        variables: {
+          input,
+        },
+      },
+    );
+
+    expectNoGraphQLErrors(response);
+
+    const lookup = await gql(
+      'query ($id: ID!) { workspaceInvitation(id: $id) { id email expiresAt roles status } }',
+      {
+        cookies: user.cookies,
+        workspaceId,
+        variables: { id: response.body.data.createWorkspaceInvitation.id },
+      },
+    );
+    expectNoGraphQLErrors(lookup);
+    return lookup.body.data.workspaceInvitation as {
+      id: string;
+      email: string;
+      expiresAt: string;
+      roles: string[];
+      status: string;
+    };
+  }
+
+  /**
+   * Returns created key metadata and its one-time plaintext credential.
+   * @param user - The user whose account is being accessed.
+   * @param workspaceId - Identifier of the workspace that scopes the operation.
+   * @param input - Requested field values for the operation.
+   * @param input.expiresAt - Expiration time for the new API key.
+   * @param input.memberId - WorkspaceMember that will own the API key.
+   * @param input.name - Display name for the new API key.
+   * @param input.permissions - Permissions requested for the API key.
+   * @param input.prefix - Prefix for the generated API key.
+   * @returns Created key metadata and its one-time plaintext credential.
+   */
+  async function createWorkspaceApiKey(
+    user: AuthenticatedUser,
+    workspaceId: string,
+    input: {
+      expiresAt?: string;
+      memberId?: string | null;
+      name: string;
+      permissions?: string[];
+      prefix?: string;
+    },
+  ) {
+    let memberId = (
+      await migrationOrm.em.execute<{ id: string }[]>(
+        'select id from workspace_member where workspace_id = ? and user_id = ?',
+        [workspaceId, user.user.id],
+      )
+    )[0].id;
+    if (input.memberId === null) {
+      const account = await gql(
+        'mutation ($input: AddWorkspaceMemberInput!) { addWorkspaceMember(input: $input) { id } }',
+        {
+          cookies: user.cookies,
+          workspaceId,
+          variables: {
+            input: {
+              type: 'SERVICE_ACCOUNT',
+              name: input.name,
+              ...(input.permissions?.length
+                ? { roles: [], permissions: input.permissions }
+                : {}),
+            },
+          },
+        },
+      );
+      expectNoGraphQLErrors(account);
+      memberId = account.body.data.addWorkspaceMember.id;
+    }
+    const response = await gql(
+      /* GraphQL */ `
+        mutation CreateApiKey($input: CreateWorkspaceApiKeyInput!) {
+          createWorkspaceApiKey(input: $input) {
+            apiKey
+            entity {
+              id
+              name
+              revokedAt
+              permissions
+              prefix
+              start
+            }
+          }
+        }
+      `,
+      {
+        cookies: user.cookies,
+        workspaceId,
+        variables: {
+          input: {
+            ...input,
+            memberId: input.memberId ?? memberId,
+          },
+        },
+      },
+    );
+
+    expectNoGraphQLErrors(response);
+    expect(response.body.data.createWorkspaceApiKey.apiKey).toMatch(
+      new RegExp(`^${input.prefix ?? 'ws_'}[A-Za-z0-9_-]{64}$`),
+    );
+    expect(response.body.data.createWorkspaceApiKey.entity).toMatchObject({
+      revokedAt: null,
+      permissions: input.permissions ?? [],
+      prefix: input.prefix ?? 'ws_',
+      start: response.body.data.createWorkspaceApiKey.apiKey.slice(0, 8),
+    });
+
+    return {
+      ...response.body.data.createWorkspaceApiKey,
+      memberId: input.memberId ?? memberId,
+    } as {
+      apiKey: string;
+      memberId: string;
+      entity: {
+        id: string;
+        name: string;
+        revokedAt: string | null;
+        permissions: string[];
+        prefix: string;
+        start: string;
+      };
+    };
+  }
+
+  /**
+   * Returns created key metadata and its one-time plaintext credential.
+   * @param user - The user whose account is being accessed.
+   * @param input - Requested field values for the operation.
+   * @param input.expiresAt - Expiration time for the new API key.
+   * @param input.name - Display name for the new API key.
+   * @param input.permissions - Permissions requested for the API key.
+   * @param input.prefix - Prefix for the generated API key.
+   * @returns Created key metadata and its one-time plaintext credential.
+   */
+  async function createUserApiKey(
+    user: AuthenticatedUser,
+    input: {
+      expiresAt?: string;
+      name: string;
+      permissions?: string[];
+      prefix?: string;
+    },
+  ) {
+    const response = await gql(
+      /* GraphQL */ `
+        mutation CreateUserApiKey($input: CreateUserApiKeyInput!) {
+          createUserApiKey(input: $input) {
+            apiKey
+            entity {
+              id
+              name
+              revokedAt
+              permissions
+              prefix
+              start
+            }
+          }
+        }
+      `,
+      {
+        cookies: user.cookies,
+        variables: { input },
+      },
+    );
+
+    expectNoGraphQLErrors(response);
+    expect(response.body.data.createUserApiKey.apiKey).toMatch(
+      new RegExp(`^${input.prefix ?? 'user_'}[A-Za-z0-9_-]{64}$`),
+    );
+    return response.body.data.createUserApiKey as {
+      apiKey: string;
+      entity: {
+        id: string;
+        name: string;
+      };
+    };
+  }
+
+  /**
+   * Returns graphQL HTTP request with authentication and workspace headers applied.
+   * @param query - GraphQL operation to execute.
+   * @param options - Configuration for this operation.
+   * @returns GraphQL HTTP request with authentication and workspace headers applied.
+   */
+  function gql(query: string, options: GraphQLRequestOptions = {}) {
+    const req = request(baseUrl)
+      .post('/api/graphql')
+      .send({
+        query,
+        variables: { workspaceId: options.workspaceId, ...options.variables },
+      });
+
+    if (options.cookies) {
+      req.set('Cookie', toCookieHeader(options.cookies));
+    }
+
+    if (options.workspaceId) {
+      req.set('x-workspace', options.workspaceId);
+    }
+
+    if (options.bearerToken) {
+      req.set('Authorization', `Bearer ${options.bearerToken}`);
+    }
+
+    return req;
+  }
+
+  /**
+   * Returns hTTP request that registers the supplied credentials.
+   * @param input - Requested field values for the operation.
+   * @returns HTTP request that registers the supplied credentials.
+   */
+  function signUpWithEmail(input: EmailSignUpInput) {
+    return request(baseUrl).post('/api/auth/sign-up/email').send(input);
+  }
+
+  /**
+   * Returns hTTP request that authenticates the supplied credentials.
+   * @param input - Requested field values for the operation.
+   * @returns HTTP request that authenticates the supplied credentials.
+   */
+  function signInWithEmail(input: EmailSignInInput) {
+    return request(baseUrl).post('/api/auth/sign-in/email').send(input);
+  }
+
+  /**
+   * Follows the verification URL sent to the test user.
+   * @param email - Address whose verification email is awaited.
+   */
+  async function verifyEmail(email: string): Promise<void> {
+    const verificationUrl = await waitForEmailUrl(
+      email,
+      'Verify your email address',
+    );
+    const url = new URL(verificationUrl);
+    const response = await request(baseUrl).get(`${url.pathname}${url.search}`);
+
+    expect(response.status).toBe(302);
+  }
+});
+
+interface EmailSignInInput {
+  email: string;
+  password: string;
+}
+
+interface EmailSignUpInput extends EmailSignInInput {
+  name: string;
+}
+
+interface GraphQLRequestOptions {
+  bearerToken?: string;
+  cookies?: string[];
+  workspaceId?: string;
+  variables?: Record<string, unknown>;
+}
+
+interface MailpitMessageSummary {
+  ID: string;
+  Subject: string;
+  To: {
+    Address: string;
+  }[];
+}
+
+interface MailpitMessagesResponse {
+  messages: MailpitMessageSummary[];
+}
+
+interface MailpitMessage {
+  Text: string;
+}
+
+/**
+ * Returns email address unique to this test process and invocation.
+ * @param seed - Label used to generate a unique test email address.
+ * @returns Email address unique to this test process and invocation.
+ */
+function uniqueEmail(seed: string) {
+  const normalizedSeed = seed.toLowerCase().replace(/[^a-z0-9]+/g, '-');
+
+  uniqueCounter += 1;
+
+  return `${normalizedSeed}-${process.pid}-${Date.now()}-${uniqueCounter}@example.com`;
+}
+
+/**
+ * Returns uRL extracted from the matching delivered email.
+ * @param email - Email address used to identify the user.
+ * @param subject - Resource instance or type to authorize.
+ * @returns URL extracted from the matching delivered email.
+ */
+async function waitForEmailUrl(
+  email: string,
+  subject: string,
+): Promise<string> {
+  const timeoutAt = Date.now() + 5_000;
+
+  while (Date.now() < timeoutAt) {
+    const messagesResponse = await fetch(`${mailpitUrl}/api/v1/messages`);
+    if (!messagesResponse.ok) {
+      throw new Error(`Mailpit returned ${messagesResponse.status}`);
+    }
+
+    const { messages } =
+      (await messagesResponse.json()) as MailpitMessagesResponse;
+    const message = messages.find(
+      (candidate) =>
+        candidate.Subject === subject &&
+        candidate.To.some((recipient) => recipient.Address === email),
+    );
+
+    if (message) {
+      const messageResponse = await fetch(
+        `${mailpitUrl}/api/v1/message/${message.ID}`,
+      );
+      if (!messageResponse.ok) {
+        throw new Error(`Mailpit returned ${messageResponse.status}`);
+      }
+
+      const { Text: text } = (await messageResponse.json()) as MailpitMessage;
+      const match = /https?:\/\/\S+/u.exec(text);
+      if (match?.[0]) {
+        return match[0];
+      }
+    }
+
+    await new Promise((resolve) => setTimeout(resolve, 50));
+  }
+
+  throw new Error(`${subject} email was not received for ${email}`);
+}
+
+/**
+ * Returns cookie name-value pairs returned by the response.
+ * @param response - HTTP response to inspect or update.
+ * @returns Cookie name-value pairs returned by the response.
+ */
+function collectSetCookies(response: request.Response) {
+  return collectRawSetCookies(response).map((cookie) => cookie.split(';')[0]);
+}
+
+/**
+ * Returns unmodified Set-Cookie header values.
+ * @param response - HTTP response to inspect or update.
+ * @returns Unmodified Set-Cookie header values.
+ */
+function collectRawSetCookies(response: request.Response): string[] {
+  const header = response.headers['set-cookie'];
+  return header ? (Array.isArray(header) ? header : [header]) : [];
+}
+
+/**
+ * Asserts that the GraphQL response completed without errors.
+ * @param response - HTTP response to inspect or update.
+ */
+function expectNoGraphQLErrors(response: request.Response) {
+  expect(response.body.errors).toBeUndefined();
+}
+
+/**
+ * Asserts that the GraphQL response contains an error.
+ * @param response - HTTP response to inspect or update.
+ */
+function expectGraphQLError(response: request.Response) {
+  expect(response.body.errors).toEqual(expect.any(Array));
+  expect(response.body.errors.length).toBeGreaterThan(0);
+}
+
+/**
+ * Returns cookie request header assembled from the collected values.
+ * @param cookies - Cookie values collected from HTTP responses.
+ * @returns Cookie request header assembled from the collected values.
+ */
+function toCookieHeader(cookies: string[]) {
+  return cookies.map((cookie) => cookie.split(';')[0]).join('; ');
+}
+
+/**
+ * Applies the integration test database migrations.
+ * @param orm - MikroORM instance used for persistence.
+ */
+async function applyMigrations(orm: AdminOrm) {
+  const migrationFiles = (
+    await readdir(`${process.cwd()}/src/database/migrations`)
+  )
+    .filter((file) => /^Migration.*\.ts$/.test(file))
+    .sort();
+
+  for (const file of migrationFiles) {
+    const migrationModule = await import(
+      pathToFileURL(`${process.cwd()}/src/database/migrations/${file}`).href
+    );
+    const Migration = Object.values(migrationModule).find(
+      (value) =>
+        typeof value === 'function' && value.name.startsWith('Migration'),
+    ) as MigrationConstructor | undefined;
+
+    if (!Migration) {
+      throw new Error(`Migration class not found in ${file}`);
+    }
+
+    const migration = new Migration();
+
+    await migration.up();
+
+    await orm.em.transactional(async (em) => {
+      for (const statement of migration.getQueries()) {
+        await em.execute(statement);
+      }
+    });
+  }
+}
+
+/**
+ * Creates the isolated integration test database.
+ */
+async function createDatabase() {
+  const orm = await adminOrm(adminDatabaseUrl);
+
+  try {
+    await orm.em
+      .getConnection()
+      .execute(`CREATE DATABASE "${databaseName}" WITH ENCODING 'UTF8'`);
+  } finally {
+    await orm.close(true);
+  }
+}
+
+/**
+ * Drops the isolated integration test database.
+ */
+async function dropDatabase() {
+  const orm = await adminOrm(adminDatabaseUrl);
+
+  try {
+    await orm.em.getConnection().execute(
+      /* SQL */ `
+        SELECT pg_terminate_backend(pid)
+        FROM pg_stat_activity
+        WHERE datname = ?;
+      `,
+      [databaseName],
+    );
+    await orm.em
+      .getConnection()
+      .execute(`DROP DATABASE IF EXISTS "${databaseName}"`);
+  } finally {
+    await orm.close(true);
+  }
+}
+
+/**
+ * Returns database connection used to manage the integration test database.
+ * @param clientUrl - Database connection URL.
+ * @returns Database connection used to manage the integration test database.
+ */
+function adminOrm(clientUrl: string) {
+  return MikroORM.init({
+    driver: PostgreSqlDriver,
+    clientUrl,
+    entities: [DbProbeSchema],
+    allowGlobalContext: true,
+  });
+}
+
+/**
+ * Returns connection URL targeting the named database.
+ * @param name - Name used to identify the resource.
+ * @returns Connection URL targeting the named database.
+ */
+function databaseUrlFor(name: string) {
+  const url = new URL(adminDatabaseUrl);
+  url.pathname = `/${name}`;
+
+  return url.toString();
+}
+
+/**
+ * Configures environment variables for the integration test server.
+ */
+function setTestEnv() {
+  for (const key of envKeys) {
+    oldEnv.set(key, process.env[key]);
+  }
+
+  process.env.NODE_ENV = 'testing';
+  delete process.env.DB_URL;
+  process.env.DATABASE_URL = databaseUrl;
+  process.env.REDIS_URL =
+    process.env.SERVER_E2E_REDIS_URL ??
+    process.env.REDIS_URL ??
+    'redis://127.0.0.1:36379/0';
+  process.env.APP_URL = 'http://127.0.0.1';
+  process.env.AUTH_URL = 'http://127.0.0.1';
+  process.env.APP_SECRET = '1oAdy3zpD3S0t1AdAqPTlj4Hhkyx83pT2UlNGfS4P2c';
+  process.env.AUTH_SECRET = 'R4vWrEDXeeor7VzGzQsdbQobOFtv2nRrlhOVTGpOteA';
+  process.env.AUTH_GITHUB_ENABLED = 'true';
+  process.env.AUTH_GITHUB_CLIENT_ID = 'github-client-id';
+  process.env.AUTH_GITHUB_CLIENT_SECRET = 'github-client-secret';
+  process.env.AUTH_OIDC_ENABLED = 'false';
+  process.env.SMTP_URL =
+    process.env.SERVER_E2E_SMTP_URL ?? 'smtp://127.0.0.1:31025';
+}
+
+/**
+ * Restores environment variables changed by the test.
+ */
+function restoreEnv() {
+  for (const [key, value] of oldEnv.entries()) {
+    if (value === undefined) {
+      delete process.env[key];
+    } else {
+      process.env[key] = value;
+    }
+  }
+
+  oldEnv.clear();
+}
+
+/**
+ * Returns environment variables used to start the test server.
+ * @returns Environment variables used to start the test server.
+ */
+function createServerEnv() {
+  const env = { ...process.env };
+
+  delete env.NODE_OPTIONS;
+  delete env.JEST_WORKER_ID;
+  delete env.TS_NODE_COMPILER_OPTIONS;
+  delete env.TS_NODE_PROJECT;
+  delete env.TS_JEST;
+  delete env.VITEST;
+  delete env.VITEST_POOL_ID;
+  delete env.VITEST_WORKER_ID;
+
+  return env;
+}
+
+/**
+ * Returns unused local TCP port.
+ * @returns Unused local TCP port.
+ */
+async function getFreePort() {
+  return await new Promise<number>((resolve, reject) => {
+    const server = createServer();
+
+    server.on('error', reject);
+    server.listen(0, '127.0.0.1', () => {
+      const address = server.address();
+
+      if (!address || typeof address === 'string') {
+        server.close(() => {
+          reject(new Error('Unable to allocate a port'));
+        });
+        return;
+      }
+
+      const { port } = address;
+      server.close(() => {
+        resolve(port);
+      });
+    });
+  });
+}
+
+/**
+ * Waits for the test server to accept requests or fail startup.
+ * @param baseUrl - Base URL of the test server.
+ * @param serverProcess - Child process running the test server.
+ * @param getServerOutput - Callback that retrieves captured server output.
+ * @returns Result of the authorized operation.
+ */
+async function waitForServer(
+  baseUrl: string,
+  serverProcess: ChildProcessWithoutNullStreams,
+  getServerOutput: () => string,
+) {
+  const timeoutAt = Date.now() + 20_000;
+  let lastError: unknown;
+
+  while (Date.now() < timeoutAt) {
+    try {
+      const response = await fetch(`${baseUrl}/api/auth/ok`);
+
+      if (response.ok) {
+        return;
+      }
+    } catch (error) {
+      lastError = error;
+    }
+
+    if (serverProcess.exitCode !== null || serverProcess.signalCode !== null) {
+      throw new Error(
+        `Server exited before becoming ready:\n${getServerOutput()}`,
+      );
+    }
+
+    await new Promise((resolve) => setTimeout(resolve, 250));
+  }
+
+  throw new Error(
+    `Server did not become ready: ${formatUnknownError(lastError)}\n${getServerOutput()}`,
+  );
+}
+
+/**
+ * Returns readable representation of the failure.
+ * @param error - Failure value to inspect.
+ * @returns Readable representation of the failure.
+ */
+function formatUnknownError(error: unknown) {
+  if (error instanceof Error) {
+    return error.stack ?? error.message;
+  }
+
+  if (typeof error === 'string') {
+    return error;
+  }
+
+  return JSON.stringify(error) ?? 'unknown error';
+}
+
+/**
+ * Stops the child process running the integration test server.
+ * @param serverProcess - Child process running the test server.
+ * @returns Result of the authorized operation.
+ */
+async function stopServer(serverProcess: ChildProcessWithoutNullStreams) {
+  if (serverProcess.exitCode !== null || serverProcess.signalCode !== null) {
+    return;
+  }
+
+  await new Promise<void>((resolve) => {
+    serverProcess.once('exit', () => {
+      resolve();
+    });
+    serverProcess.kill('SIGTERM');
+    setTimeout(() => {
+      if (
+        serverProcess.exitCode === null &&
+        serverProcess.signalCode === null
+      ) {
+        serverProcess.kill('SIGKILL');
+      }
+    }, 5_000).unref();
+  });
+}

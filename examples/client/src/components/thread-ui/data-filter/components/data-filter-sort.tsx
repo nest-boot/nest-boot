@@ -2,16 +2,6 @@ import { ArrowDown, ArrowUp, ArrowUpDown } from "lucide-react";
 import { useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 
-import {
-  getDataFilterSortFieldChoices,
-  getDataFilterSortOptionByKey,
-} from "../utils";
-import type {
-  DataFilterSortDirection,
-  DataFilterSortOptions,
-  DataFilterSortValue,
-} from "../types";
-import type { FC } from "react";
 import { RadioGroup } from "@/components/thread-ui/radio-group";
 import { Button } from "@/components/ui/button";
 import {
@@ -21,6 +11,16 @@ import {
 } from "@/components/ui/popover";
 import { Separator } from "@/components/ui/separator";
 import { cn } from "@/lib/utils";
+import {
+  getDataFilterSortFieldChoices,
+  getDataFilterSortOptionByKey,
+} from "../utils";
+import type { FC } from "react";
+import type {
+  DataFilterSortDirection,
+  DataFilterSortOptions,
+  DataFilterSortValue,
+} from "../types";
 
 export interface DataFilterSortProps {
   options: Array<DataFilterSortOptions>;

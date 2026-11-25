@@ -3,7 +3,6 @@
 import { Building2Icon, ChevronsUpDownIcon } from "lucide-react";
 import { Children } from "react";
 import { useTranslation } from "react-i18next";
-import type { ComponentProps, ReactNode } from "react";
 import { buttonVariants } from "@/components/ui/button";
 import { Spinner } from "@/components/ui/spinner";
 import {
@@ -23,6 +22,7 @@ import {
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { cn } from "@/lib/utils";
 import { useIsMobile } from "@/hooks/use-mobile";
+import type { ComponentProps, ReactNode } from "react";
 
 export type Workspace = Pick<
   ComponentProps<typeof DropdownMenuRadioItem>,

@@ -1,12 +1,12 @@
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
+import { NumberInput } from "@/components/thread-ui/number-input";
 import type { FC } from "react";
 import type {
   DataFilterItemNumberInputProps,
   DataFilterNumberInputBetweenValue,
   DataFilterOperator,
 } from "../types";
-import { NumberInput } from "@/components/thread-ui/number-input";
 
 type DataFilterDefaultNumberInputFieldValue =
   | DataFilterNumberInputBetweenValue

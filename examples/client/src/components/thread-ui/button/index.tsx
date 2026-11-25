@@ -1,10 +1,9 @@
 "use client";
 
-import type { ComponentProps, FC } from "react";
-
 import { Button as ButtonComponent } from "@/components/ui/button";
 import { Spinner } from "@/components/ui/spinner";
 import { cn } from "@/lib/utils";
+import type { ComponentProps, FC } from "react";
 
 export type ButtonProps = ComponentProps<typeof ButtonComponent> & {
   loading?: boolean;

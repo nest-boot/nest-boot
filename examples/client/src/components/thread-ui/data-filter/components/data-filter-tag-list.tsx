@@ -1,9 +1,6 @@
 import { Plus } from "lucide-react";
 
 import { useTranslation } from "react-i18next";
-import { useDataFilterContext } from "./data-filter-context";
-import { DataFilterTagItem } from "./data-filter-tag-item";
-import type { FC } from "react";
 import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
@@ -11,6 +8,9 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import { useDataFilterContext } from "./data-filter-context";
+import { DataFilterTagItem } from "./data-filter-tag-item";
+import type { FC } from "react";
 
 export const DataFilterTagList: FC = () => {
   const { t } = useTranslation("thread-ui");

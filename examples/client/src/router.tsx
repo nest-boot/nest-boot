@@ -13,9 +13,9 @@ import {
 import { createRouter } from "@tanstack/react-router";
 import { ErrorLink } from "@apollo/client/link/error";
 
+import i18next from "@/lib/i18n";
 import { routeTree } from "./routeTree.gen";
 import { NotFoundPage } from "./components/route-page-template/not-found-page";
-import i18next from "@/lib/i18n";
 
 export const getRouter = () => {
   const apolloClient = new ApolloClient({

@@ -3,7 +3,6 @@ import { createFileRoute, redirect, useRouter } from "@tanstack/react-router";
 import { t } from "i18next";
 import { useCallback } from "react";
 
-import type { ResourceNavigationQueryOptions } from "@/hooks/use-resource-navigation";
 import { REVOKE_USER_API_KEY } from "@/graphql/mutations/revoke-user-api-key";
 import { graphql } from "@/gql";
 import { UPDATE_USER_API_KEY } from "@/graphql/mutations/update-user-api-key";
@@ -19,6 +18,7 @@ import { apiKeySearchSchema } from "@/schemas/api-key-search-schema";
 import { userApiKeysResourceKey } from "@/lib/resource-keys";
 import { authPermissionValues, getPermissionOptions } from "@/lib/permissions";
 import { isAccessDenied } from "@/lib/auth-errors";
+import type { ResourceNavigationQueryOptions } from "@/hooks/use-resource-navigation";
 
 const DELETE_USER_API_KEY = graphql(`
   mutation deleteUserApiKey($id: ID!) {

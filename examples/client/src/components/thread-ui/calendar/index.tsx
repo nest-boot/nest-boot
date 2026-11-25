@@ -2,11 +2,10 @@
 
 import { useMemo } from "react";
 import { useTranslation } from "react-i18next";
+import { Calendar as ShadcnCalendar } from "@/components/ui/calendar";
 import type { ComponentProps } from "react";
 import type { Locale as DayPickerLocale } from "react-day-picker";
 import type { TFunction } from "i18next";
-
-import { Calendar as ShadcnCalendar } from "@/components/ui/calendar";
 
 type ShadcnCalendarProps = ComponentProps<typeof ShadcnCalendar>;
 type WithoutCalendarLocale<T> = T extends unknown ? Omit<T, "locale"> : never;
@@ -32,7 +31,7 @@ const getWidthResource = (value: unknown): WidthValues => {
       width,
       Array.isArray(value) ? value.map(String) : [],
     ]),
-  ) as WidthValues;
+  );
 };
 
 const getDayPeriodResource = (value: unknown): DayPeriodValues => {
@@ -50,7 +49,7 @@ const getDayPeriodResource = (value: unknown): DayPeriodValues => {
           )
         : {},
     ]),
-  ) as DayPeriodValues;
+  );
 };
 
 const getWidth = (width?: LocalizeWidth) => {

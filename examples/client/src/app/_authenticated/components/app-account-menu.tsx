@@ -3,10 +3,6 @@ import md5 from "md5";
 import { Boxes } from "lucide-react";
 import { useTranslation } from "react-i18next";
 
-import { useAuthUserContext } from "../contexts/auth-user-context";
-import { UserMenu } from "./user-menu";
-import { WorkspaceMenu } from "./workspace-menu";
-import type { Workspace } from "@/components/thread-ui/sidebar-account-menu";
 import {
   SidebarAccountMenu,
   SidebarAccountMenuItem,
@@ -14,6 +10,10 @@ import {
 import { Link } from "@/components/link";
 import { AvatarImage } from "@/components/ui/avatar";
 import { useSidebar } from "@/components/ui/sidebar";
+import { useAuthUserContext } from "../contexts/auth-user-context";
+import { UserMenu } from "./user-menu";
+import { WorkspaceMenu } from "./workspace-menu";
+import type { Workspace } from "@/components/thread-ui/sidebar-account-menu";
 
 export function AppAccountMenu({ workspace }: { workspace?: Workspace }) {
   const { t } = useTranslation();

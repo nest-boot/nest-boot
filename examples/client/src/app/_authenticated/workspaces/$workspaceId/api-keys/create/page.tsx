@@ -1,7 +1,6 @@
 import { useMutation } from "@apollo/client/react";
 import { createFileRoute, redirect } from "@tanstack/react-router";
 import { t } from "i18next";
-import { useAuthWorkspaceMemberContext } from "../../contexts/auth-workspace-member-context";
 import { WorkspaceMemberType } from "@/gql/graphql";
 import { createAbilitySubject } from "@/lib/ability";
 import { graphql } from "@/gql";
@@ -18,6 +17,7 @@ import {
   workspaceApiKeyPermissionValues,
 } from "@/lib/permissions";
 import { isAccessDenied } from "@/lib/auth-errors";
+import { useAuthWorkspaceMemberContext } from "../../contexts/auth-workspace-member-context";
 
 const CREATE_WORKSPACE_API_KEY = graphql(`
   mutation createWorkspaceApiKey($input: CreateWorkspaceApiKeyInput!) {

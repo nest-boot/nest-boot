@@ -14,7 +14,6 @@ import {
   MoreHorizontalIcon,
 } from "lucide-react";
 import { useTranslation } from "react-i18next";
-import type { ComponentProps, DOMAttributes, ReactNode, Ref } from "react";
 import { Button } from "@/components/thread-ui/button";
 import {
   DropdownMenu,
@@ -23,6 +22,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { cn } from "@/lib/utils";
+import type { ComponentProps, DOMAttributes, ReactNode, Ref } from "react";
 
 const BreadcrumbContext = createContext<boolean | null>(null);
 

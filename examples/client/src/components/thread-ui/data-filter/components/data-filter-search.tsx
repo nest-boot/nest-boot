@@ -2,13 +2,13 @@ import { Search } from "lucide-react";
 
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
-import type { FC } from "react";
 import {
   InputGroup,
   InputGroupAddon,
   InputGroupInput,
 } from "@/components/ui/input-group";
 import { Spinner } from "@/components/ui/spinner";
+import type { FC } from "react";
 
 export interface DataFilterSearchProps {
   "aria-label"?: string;

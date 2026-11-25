@@ -2,10 +2,9 @@
 
 import { NumericFormat } from "react-number-format";
 import { forwardRef } from "react";
+import { Input } from "@/components/ui/input";
 import type { ComponentProps } from "react";
 import type { NumericFormatProps } from "react-number-format";
-
-import { Input } from "@/components/ui/input";
 
 export type NumberInputProps = Omit<
   NumericFormatProps,

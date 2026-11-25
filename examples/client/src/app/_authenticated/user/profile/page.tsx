@@ -7,7 +7,6 @@ import { CircleX, MailCheck } from "lucide-react";
 import { z } from "zod";
 
 import { useForm } from "@tanstack/react-form";
-import { useAuthUserContext } from "../../contexts/auth-user-context";
 import {
   defaultFormOptions,
   handleFieldBlur,
@@ -38,6 +37,7 @@ import { FormLayout, FormLayoutItem } from "@/components/thread-ui/form-layout";
 import { graphql } from "@/gql";
 import { SubmitButton } from "@/components/form/submit-button";
 import { getFormErrorMessage } from "@/lib/form-errors";
+import { useAuthUserContext } from "../../contexts/auth-user-context";
 
 const UPDATE_USER_FROM_USER_ROUTE = graphql(`
   mutation updateUserFromUserRoute($input: AuthUpdateUserInput!) {

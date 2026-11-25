@@ -1,8 +1,6 @@
 import { linkOptions } from "@tanstack/react-router";
 import { useTranslation } from "react-i18next";
 import { Bot, KeyRound, LayoutDashboard, UsersRound } from "lucide-react";
-import { AppSidebar } from "../../components/app-sidebar";
-import type { ComponentProps, FC } from "react";
 import { useAbility } from "@/contexts/ability-context";
 import { Link } from "@/components/link";
 
@@ -16,6 +14,8 @@ import {
   SidebarMenuItem,
   useSidebar,
 } from "@/components/ui/sidebar";
+import { AppSidebar } from "../../components/app-sidebar";
+import type { ComponentProps, FC } from "react";
 
 export const AdminSidebar: FC<ComponentProps<typeof AppSidebar>> = (props) => {
   const { t } = useTranslation();

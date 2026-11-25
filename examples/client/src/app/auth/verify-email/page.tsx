@@ -6,7 +6,6 @@ import { CircleCheck, CircleX, MailCheck, RotateCw } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { z } from "zod";
 
-import { AuthPageShell } from "../components/auth-page-shell";
 import { FieldDescription, FieldError } from "@/components/ui/field";
 import { Button } from "@/components/thread-ui/button";
 import {
@@ -19,6 +18,7 @@ import {
 } from "@/components/ui/card";
 import { graphql } from "@/gql";
 import { createEmailVerificationCallbackUrl } from "@/lib/auth-redirect";
+import { AuthPageShell } from "../components/auth-page-shell";
 
 const SEND_VERIFICATION_EMAIL_FROM_VERIFY_EMAIL = graphql(`
   mutation sendVerificationEmailFromVerifyEmail(

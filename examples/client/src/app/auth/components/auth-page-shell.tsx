@@ -1,7 +1,7 @@
 import { Link } from "@tanstack/react-router";
 import { useTranslation } from "react-i18next";
-import type { ReactNode } from "react";
 import { Logo } from "@/components/logo";
+import type { ReactNode } from "react";
 
 export function AuthPageShell({ children }: { children: ReactNode }) {
   const { t } = useTranslation();
