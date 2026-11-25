@@ -1399,6 +1399,9 @@ importers:
       '@isaacs/ttlcache':
         specifier: ^2.1.5
         version: 2.1.5
+      graphql-query-complexity:
+        specifier: ^2.0.0
+        version: 2.0.0
     devDependencies:
       '@apollo/server':
         specifier: ^5.5.1
@@ -1460,9 +1463,6 @@ importers:
       graphql:
         specifier: ^16.11.0
         version: 16.12.0
-      graphql-query-complexity:
-        specifier: ^2.0.0
-        version: 2.0.0
       ioredis:
         specifier: ^5.8.0
         version: 5.8.2

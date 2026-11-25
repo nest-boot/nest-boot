@@ -2,4 +2,4 @@
 "@nest-boot/graphql-rate-limit": minor
 ---
 
-Use `graphql-query-complexity` v2 through its package root. Update the consumer's `graphql-query-complexity` peer dependency to v2 and use GraphQL.js 16.6 or later within the v16 line.
+Install `graphql-query-complexity` v2 as a runtime dependency of the rate limiter. Applications that installed it solely for rate limiting can remove their direct dependency. The rate limiter requires GraphQL.js 16.6 or later within the v16 line.
