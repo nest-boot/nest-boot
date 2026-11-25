@@ -20,7 +20,8 @@
     "lib": "dist"
   },
   "files": [
-    "dist"
+    "dist",
+    "!dist/**/*.tsbuildinfo"
   ],
   "scripts": {
     "build": "tsc -p tsconfig.build.json",

@@ -20,7 +20,8 @@
     "lib": "dist"
   },
   "files": [
-    "dist"
+    "dist",
+    "!dist/**/*.tsbuildinfo"
   ],
   "scripts": {
     "build": "rimraf dist tsconfig.build.tsbuildinfo && tsc -p tsconfig.build.json",

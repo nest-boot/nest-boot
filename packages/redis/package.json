@@ -20,7 +20,8 @@
     "lib": "dist"
   },
   "files": [
-    "dist"
+    "dist",
+    "!dist/**/*.tsbuildinfo"
   ],
   "dependencies": {
     "@nest-boot/health-check": "workspace:^"
