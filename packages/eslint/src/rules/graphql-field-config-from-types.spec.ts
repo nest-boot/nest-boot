@@ -768,19 +768,19 @@ class User {
 }`,
       errors: [{ messageId: "alignFieldDecoratorWithTsType" }],
     },
-    // Union types without nullish members use the first concrete type
+    // Heterogeneous unions without a compatible built-in GraphQL scalar report without broken autofix
     {
       code: /* typescript */ `@ObjectType()
 class User {
   value!: string | number;
+
+  mixedLiteral!: true | "pending";
 }`,
-      output: /* typescript */ `import { Field } from "@nestjs/graphql";
-@ObjectType()
-class User {
-  @Field(() => String)
-  value!: string | number;
-}`,
-      errors: [{ messageId: "alignFieldDecoratorWithTsType" }],
+      output: null,
+      errors: [
+        { messageId: "alignFieldDecoratorWithTsType" },
+        { messageId: "alignFieldDecoratorWithTsType" },
+      ],
     },
     // Undefined unions should be nullable
     {
@@ -1621,10 +1621,10 @@ class DeepTypeMismatches {
   @Field(() => OptionalPriorityObjScalar)
   badOptionalPropObj!: { priority?: number };
 
-  @Field(() => String)
+  @Field(() => UnionPriorityScalar)
   badUnion!: string | number;
 
-  @Field(() => String)
+  @Field(() => UnionObjPriorityScalar)
   badUnionObj!: string | { priority: number };
 
   @Field(() => NumIndexPriorityScalar)
@@ -1746,6 +1746,80 @@ class GraphqlEdgeCases {
 }`,
       errors: [
         { messageId: "alignFieldDecoratorWithTsType" },
+        { messageId: "alignFieldDecoratorWithTsType" },
+        { messageId: "alignFieldDecoratorWithTsType" },
+        { messageId: "alignFieldDecoratorWithTsType" },
+      ],
+    },
+    // Supports createUnionType / custom union scalars for heterogeneous unions while rejecting mismatched unions
+    {
+      code: /* typescript */ `import { createUnionType, Field, ObjectType } from "@nestjs/graphql";
+class GraphQLScalarType<TInternal = unknown, TExternal = TInternal> {
+  readonly _internal?: TInternal;
+  readonly _external?: TExternal;
+}
+class Book {
+  title!: string;
+}
+class Author {
+  name!: string;
+}
+class Other {
+  id!: string;
+}
+const SearchResultUnion = createUnionType({
+  name: "SearchResult",
+  types: () => [Book, Author] as const,
+});
+declare const MixedLiteralScalar: GraphQLScalarType<true | "pending">;
+@ObjectType()
+class SearchResponse {
+  @Field(() => SearchResultUnion)
+  exactUnion!: Book | Author;
+
+  @Field(() => SearchResultUnion)
+  nullableUnion?: Book | Author;
+
+  @Field(() => MixedLiteralScalar)
+  nullableMixed?: true | "pending";
+
+  @Field(() => SearchResultUnion)
+  wrongUnion!: Book | Other;
+}`,
+      output: /* typescript */ `import { createUnionType, Field, ObjectType } from "@nestjs/graphql";
+class GraphQLScalarType<TInternal = unknown, TExternal = TInternal> {
+  readonly _internal?: TInternal;
+  readonly _external?: TExternal;
+}
+class Book {
+  title!: string;
+}
+class Author {
+  name!: string;
+}
+class Other {
+  id!: string;
+}
+const SearchResultUnion = createUnionType({
+  name: "SearchResult",
+  types: () => [Book, Author] as const,
+});
+declare const MixedLiteralScalar: GraphQLScalarType<true | "pending">;
+@ObjectType()
+class SearchResponse {
+  @Field(() => SearchResultUnion)
+  exactUnion!: Book | Author;
+
+  @Field(() => SearchResultUnion, { nullable: true })
+  nullableUnion?: Book | Author;
+
+  @Field(() => MixedLiteralScalar, { nullable: true })
+  nullableMixed?: true | "pending";
+
+  @Field(() => SearchResultUnion)
+  wrongUnion!: Book | Other;
+}`,
+      errors: [
         { messageId: "alignFieldDecoratorWithTsType" },
         { messageId: "alignFieldDecoratorWithTsType" },
         { messageId: "alignFieldDecoratorWithTsType" },

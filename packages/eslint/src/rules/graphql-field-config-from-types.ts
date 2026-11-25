@@ -406,23 +406,23 @@ export default createRule<
         isNullable = true;
       }
 
-      // Unwrap outer null/undefined and nested Ref<T>/Opt<T> wrappers, preserving
-      // the full union node prior to collapsing multi-member unions.
+      // Unwrap outer null/undefined and nested Ref<T>/Opt<T> wrappers without
+      // discarding non-nullish members of multi-branch unions.
       let semanticOuterNode: TSESTree.TypeNode | null = baseTypeNode;
       while (baseTypeNode) {
         if (baseTypeNode.type === AST_NODE_TYPES.TSUnionType) {
           if (baseTypeNode.types.some(isNullishTypeNode)) {
             isNullable = true;
           }
-          semanticOuterNode = baseTypeNode;
-          baseTypeNode =
-            baseTypeNode.types.find((t) => !isNullishTypeNode(t)) ?? null;
-          if (
-            baseTypeNode?.type === AST_NODE_TYPES.TSTypeReference &&
-            (ormTypeName(baseTypeNode.typeName) === "Ref" ||
-              ormTypeName(baseTypeNode.typeName) === "Opt")
-          ) {
-            semanticOuterNode = baseTypeNode;
+          const nonNullish = baseTypeNode.types.filter(
+            (member) => !isNullishTypeNode(member),
+          );
+          if (nonNullish.length === 0) {
+            baseTypeNode = null;
+            break;
+          }
+          if (nonNullish.length === 1) {
+            baseTypeNode = nonNullish[0];
             continue;
           }
           break;
@@ -440,7 +440,6 @@ export default createRule<
           semanticOuterNode = inner;
           continue;
         }
-        semanticOuterNode = baseTypeNode;
         break;
       }
 
@@ -470,8 +469,14 @@ export default createRule<
           if (unwrappedElem.types.some(isNullishTypeNode)) {
             isItemsNullable = true;
           }
-          unwrappedElem =
-            unwrappedElem.types.find((t) => !isNullishTypeNode(t)) ?? null;
+          const nonNullishElem = unwrappedElem.types.filter(
+            (member) => !isNullishTypeNode(member),
+          );
+          if (nonNullishElem.length === 0) {
+            unwrappedElem = null;
+          } else if (nonNullishElem.length === 1) {
+            unwrappedElem = nonNullishElem[0];
+          }
         }
         if (!isItemsNullable && hasResolvedNullishType(nextElem)) {
           isItemsNullable = true;
@@ -575,15 +580,38 @@ export default createRule<
       }
 
       if (isIdProperty) {
-        return {
-          typeName: "ID",
-          isArray,
-          arrayDepth,
-          isNullable,
-          isItemsNullable,
-          targetTypeNode: semanticTargetNode,
-          fullTypeNode,
-        };
+        let canUseIdScalar =
+          targetTypeNode.type !== AST_NODE_TYPES.TSUnionType &&
+          targetTypeNode.type !== AST_NODE_TYPES.TSTypeLiteral &&
+          targetTypeNode.type !== AST_NODE_TYPES.TSTupleType;
+        if (!canUseIdScalar && checker && esTreeNodeToTSNodeMap) {
+          const tsIdTarget = esTreeNodeToTSNodeMap.get(targetTypeNode);
+          if (ts.isTypeNode(tsIdTarget)) {
+            const idTargetType = stripExplicitNullish(
+              checker,
+              checker.getTypeFromTypeNode(tsIdTarget),
+            );
+            canUseIdScalar =
+              !isUnusableType(idTargetType) &&
+              unionConstituents(idTargetType).every((part) =>
+                isTypeFlagSet(
+                  part,
+                  ts.TypeFlags.StringLike | ts.TypeFlags.NumberLike,
+                ),
+              );
+          }
+        }
+        if (canUseIdScalar) {
+          return {
+            typeName: "ID",
+            isArray,
+            arrayDepth,
+            isNullable,
+            isItemsNullable,
+            targetTypeNode: semanticTargetNode,
+            fullTypeNode,
+          };
+        }
       }
 
       // Record<*, *> → GraphQLJSONObject (no restriction on key/value types)
@@ -614,6 +642,83 @@ export default createRule<
           arrayDepth,
           isNullable,
           isItemsNullable,
+          targetTypeNode: semanticTargetNode,
+          fullTypeNode,
+        };
+      }
+
+      // Multi-branch inline unions: infer built-in scalar only when all non-nullish members
+      // share one scalar domain; otherwise require an explicit matching GraphQL union/scalar.
+      if (targetTypeNode.type === AST_NODE_TYPES.TSUnionType) {
+        if (checker && esTreeNodeToTSNodeMap) {
+          const tsTarget = esTreeNodeToTSNodeMap.get(targetTypeNode);
+          if (ts.isTypeNode(tsTarget)) {
+            const nonNullTarget = stripExplicitNullish(
+              checker,
+              checker.getTypeFromTypeNode(tsTarget),
+            );
+            if (isUnusableType(nonNullTarget)) {
+              return null;
+            }
+            const homogeneousScalar =
+              classifyHomogeneousScalarFromTsType(nonNullTarget);
+            if (homogeneousScalar) {
+              return {
+                typeName: homogeneousScalar,
+                isArray,
+                arrayDepth,
+                isNullable,
+                isItemsNullable,
+                compatibleScalar: homogeneousScalar,
+                targetTypeNode: semanticTargetNode,
+                fullTypeNode,
+                resolvedTargetTsType: nonNullTarget,
+              };
+            }
+            return {
+              typeName: "__inline_union__",
+              isArray,
+              arrayDepth,
+              isNullable,
+              isItemsNullable,
+              isCustomType: true,
+              unautofixableCustomType: true,
+              targetTypeNode: semanticTargetNode,
+              fullTypeNode,
+              resolvedTargetTsType: nonNullTarget,
+            };
+          }
+        }
+        const nonNullishMembers = targetTypeNode.types.filter(
+          (member) => !isNullishTypeNode(member),
+        );
+        const memberScalars = nonNullishMembers.map(
+          (member) =>
+            scalarFromTsKeyword(member.type) ?? scalarFromTsLiteral(member),
+        );
+        if (
+          memberScalars.length > 0 &&
+          memberScalars[0] !== null &&
+          memberScalars.every((item) => item === memberScalars[0])
+        ) {
+          return {
+            typeName: memberScalars[0],
+            isArray,
+            arrayDepth,
+            isNullable,
+            isItemsNullable,
+            targetTypeNode: semanticTargetNode,
+            fullTypeNode,
+          };
+        }
+        return {
+          typeName: "__inline_union__",
+          isArray,
+          arrayDepth,
+          isNullable,
+          isItemsNullable,
+          isCustomType: true,
+          unautofixableCustomType: true,
           targetTypeNode: semanticTargetNode,
           fullTypeNode,
         };
@@ -901,6 +1006,9 @@ export default createRule<
         isTypeFlagSet(a, ts.TypeFlags.Object | ts.TypeFlags.Intersection) &&
         isTypeFlagSet(b, ts.TypeFlags.Object | ts.TypeFlags.Intersection)
       ) {
+        if (hasClassSymbol(a) && hasClassSymbol(b) && a.symbol !== b.symbol) {
+          return false;
+        }
         if (
           isTypeReference(a) &&
           isTypeReference(b) &&
@@ -1511,7 +1619,18 @@ export default createRule<
         return areTypesEquivalent(typeChecker, propType, instanceType);
       }
 
-      // C. TypeScript enum or GraphQL enum object map
+      // C. GraphQL union created via `createUnionType(...)` (`Union<T>` = union of class instances)
+      if (
+        exprType.isUnion() &&
+        exprType.types.length >= 2 &&
+        exprType.types.every(
+          (member) => hasClassSymbol(member) && !isDefaultLibraryType(member),
+        )
+      ) {
+        return areTypesEquivalent(typeChecker, propType, exprType);
+      }
+
+      // D. TypeScript enum or GraphQL enum object map
       return matchesEnumObjectType(
         typeChecker,
         exprNode,

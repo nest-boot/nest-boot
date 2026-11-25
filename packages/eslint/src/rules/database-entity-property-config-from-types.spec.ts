@@ -392,6 +392,22 @@ class Book {
         inlineIntersection!: { a: string } & { b: number };
       }
     `,
+    // Preserves @Enum decorators with spread options without false-positive array/nullable rewrites
+    /* typescript */ `
+      import { Entity, Enum } from "@mikro-orm/decorators/legacy";
+
+      enum Role {
+        ADMIN = "admin",
+        USER = "user",
+      }
+      const sharedEnumOptions = { array: true, nativeEnumName: "role_enum" };
+
+      @Entity()
+      class SpreadEnumEntity {
+        @Enum({ ...sharedEnumOptions, items: () => Role })
+        roles!: Role[];
+      }
+    `,
     // Explicit JSON storage and numeric ArrayType converters are valid for readonly/mutable arrays
     /* typescript */ `
       import { ArrayType, t } from "@mikro-orm/core";

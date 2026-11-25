@@ -1969,6 +1969,28 @@ export default createRule<
 
           // If there is an @Enum decorator, check its configuration regardless of whether the type is recognized as enum
           if (enumDecorator) {
+            const enumCall = enumDecorator.expression;
+            if (
+              enumCall.type === AST_NODE_TYPES.CallExpression &&
+              enumCall.arguments.some(
+                (argument) =>
+                  argument.type === AST_NODE_TYPES.SpreadElement ||
+                  (argument.type === AST_NODE_TYPES.ObjectExpression &&
+                    argument.properties.some(
+                      (option) => option.type === AST_NODE_TYPES.SpreadElement,
+                    )),
+              )
+            ) {
+              if (isTypeOnlyImportReference(source, enumCall.callee)) {
+                context.report({
+                  node: enumDecorator,
+                  messageId: "alignPropertyDecoratorWithTsType",
+                  fix: (fixer) =>
+                    promoteTypeImportFixes(fixer, source, [enumCall.callee]),
+                });
+              }
+              return;
+            }
             const enumConfig = parseEnumDecorator(enumDecorator);
             const missingArrayOption =
               typeInfo.isArray &&
