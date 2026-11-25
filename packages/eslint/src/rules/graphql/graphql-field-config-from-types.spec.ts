@@ -284,6 +284,42 @@ tester.run("graphql-field-config-from-types", rule, {
         userId!: string;
       }
     `,
+    // Readonly arrays, scalar subclasses, aliased enums, and generic Record<K, V> maps match
+    /* typescript */ `
+      class GraphQLScalarType<TInternal = unknown, TExternal = TInternal> {
+        readonly _internal?: TInternal;
+        readonly _external?: TExternal;
+      }
+      class SubScalar extends GraphQLScalarType<string, string> {}
+      declare const MySubScalar: SubScalar;
+      enum Status {
+        ACTIVE = "ACTIVE",
+        DISABLED = "DISABLED",
+      }
+      const StatusRef = Status;
+      type UnionRole = "admin" | "user";
+      declare const UnionRoleMap: Record<string, UnionRole>;
+      function createGeneric<K extends string>(GenericMap: Record<K, string>) {
+        @ObjectType()
+        class Item {
+          @Field(() => [String])
+          tags!: readonly string[];
+
+          @Field(() => MySubScalar)
+          code!: string;
+
+          @Field(() => StatusRef)
+          status!: Status;
+
+          @Field(() => UnionRoleMap)
+          role!: UnionRole;
+
+          @Field(() => GenericMap)
+          dynamicVal!: string;
+        }
+        return Item;
+      }
+    `,
   ],
   invalid: [
     // @Field type mismatch
@@ -885,6 +921,155 @@ class Note {
   text!: MaybeText;
 }`,
       errors: [{ messageId: "alignFieldDecoratorWithTsType" }],
+    },
+    // Missing @Field on a type-only interface reports without invalid runtime autofix
+    {
+      code: /* typescript */ `interface ProfileDto {
+  bio: string;
+}
+@ObjectType()
+class Account {
+  profile!: ProfileDto;
+}`,
+      output: null,
+      errors: [{ messageId: "alignFieldDecoratorWithTsType" }],
+    },
+    // Non-enum values (Date, primitive, empty object, non-literal object, computed enum, wrong literal set) are rejected
+    {
+      code: /* typescript */ `import { Field, Float, ObjectType } from "@nestjs/graphql";
+declare function compute(): number;
+enum ComputedEnum {
+  A = compute(),
+}
+const BuiltinDate = new Date();
+const PrimitiveVal = 42;
+const EmptyObj = {};
+const NonLiteralObj = { A: "a" };
+const DisjointEnum = { OTHER: "other" } as const;
+const SomeFn = (() => undefined) as (() => void) & { tag: string };
+type ExpectedState = "ready";
+type WideUnion = "ready" | number;
+@ObjectType()
+class BadEnums {
+  @Field(() => ComputedEnum)
+  computed!: ExpectedState;
+
+  @Field(() => BuiltinDate)
+  dateVal!: string;
+
+  @Field(() => PrimitiveVal)
+  primVal!: string;
+
+  @Field(() => EmptyObj)
+  emptyVal!: string;
+
+  @Field(() => SomeFn)
+  fnVal!: string;
+
+  @Field(() => NonLiteralObj)
+  nonLitVal!: ExpectedState;
+
+  @Field(() => DisjointEnum)
+  disjointVal!: ExpectedState;
+
+  @Field(() => DisjointEnum)
+  wideVal!: WideUnion;
+
+  @Field(() => String)
+  wrongBuiltin!: number;
+
+  @Field(() => UnresolvedRef)
+  unknownVal!: string;
+}`,
+      output: /* typescript */ `import { Field, Float, ObjectType } from "@nestjs/graphql";
+declare function compute(): number;
+enum ComputedEnum {
+  A = compute(),
+}
+const BuiltinDate = new Date();
+const PrimitiveVal = 42;
+const EmptyObj = {};
+const NonLiteralObj = { A: "a" };
+const DisjointEnum = { OTHER: "other" } as const;
+const SomeFn = (() => undefined) as (() => void) & { tag: string };
+type ExpectedState = "ready";
+type WideUnion = "ready" | number;
+@ObjectType()
+class BadEnums {
+  @Field(() => ComputedEnum)
+  computed!: ExpectedState;
+
+  @Field(() => String)
+  dateVal!: string;
+
+  @Field(() => String)
+  primVal!: string;
+
+  @Field(() => String)
+  emptyVal!: string;
+
+  @Field(() => String)
+  fnVal!: string;
+
+  @Field(() => NonLiteralObj)
+  nonLitVal!: ExpectedState;
+
+  @Field(() => DisjointEnum)
+  disjointVal!: ExpectedState;
+
+  @Field(() => DisjointEnum)
+  wideVal!: WideUnion;
+
+  @Field(() => Float)
+  wrongBuiltin!: number;
+
+  @Field(() => String)
+  unknownVal!: string;
+}`,
+      errors: [
+        { messageId: "alignFieldDecoratorWithTsType" },
+        { messageId: "alignFieldDecoratorWithTsType" },
+        { messageId: "alignFieldDecoratorWithTsType" },
+        { messageId: "alignFieldDecoratorWithTsType" },
+        { messageId: "alignFieldDecoratorWithTsType" },
+        { messageId: "alignFieldDecoratorWithTsType" },
+        { messageId: "alignFieldDecoratorWithTsType" },
+        { messageId: "alignFieldDecoratorWithTsType" },
+        { messageId: "alignFieldDecoratorWithTsType" },
+        { messageId: "alignFieldDecoratorWithTsType" },
+      ],
+    },
+    // Non-matching mapped record aliases (non-primitive value, non-Record alias, mismatched alias target) are rejected
+    {
+      code: /* typescript */ `type NonPrimitiveMap<T> = Record<string & keyof T, { nested: T }>;
+type OtherMapped<T> = { [K in keyof T]: string };
+type AlphaValue<T> = Extract<keyof T, string>;
+type BetaValue<T> = Extract<keyof T, string>;
+type AlphaMap<T> = Record<string & keyof T, AlphaValue<T>>;
+function createBad<T extends object>(
+  bad1: NonPrimitiveMap<T>,
+  bad2: OtherMapped<T>,
+  bad3: AlphaMap<T>,
+) {
+  @InputType()
+  class Bad {
+    @Field(() => bad1 as object)
+    f1!: AlphaValue<T>;
+
+    @Field(() => bad2 as object)
+    f2!: AlphaValue<T>;
+
+    @Field(() => bad3 as object)
+    f3!: BetaValue<T>;
+  }
+  return Bad;
+}`,
+      output: null,
+      errors: [
+        { messageId: "alignFieldDecoratorWithTsType" },
+        { messageId: "alignFieldDecoratorWithTsType" },
+        { messageId: "alignFieldDecoratorWithTsType" },
+      ],
     },
   ],
 });

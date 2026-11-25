@@ -743,3 +743,21 @@ export class Thing {
     false,
   );
 });
+
+it("promotes a type-only class import when replacing a mismatched @Field scalar", () => {
+  const code = `import { Field, ObjectType } from "@nest-boot/graphql";
+import type { User } from "./.cache/graphql-imports/barrel.js";
+@ObjectType()
+export class Holder {
+  @Field(() => String)
+  user!: User;
+}`;
+  const result = linter.verifyAndFix(code, config, { filename });
+  expect(result.messages).toEqual([]);
+  expect(result.output).not.toContain("import type");
+  expect(result.output).toContain("@Field(() => User)");
+  expect(compileDiagnostics(result.output, true)).toEqual([]);
+  expect(linter.verifyAndFix(result.output, config, { filename }).fixed).toBe(
+    false,
+  );
+});

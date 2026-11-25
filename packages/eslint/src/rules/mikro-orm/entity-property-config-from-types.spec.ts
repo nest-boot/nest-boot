@@ -363,6 +363,116 @@ class Book {
         progress!: NullableProgress;
       }
     `,
+    // Resolved type aliases (unions, primitives, recursive JSON objects/tuples, interfaces) infer matching column types
+    /* typescript */ `
+      import { BooleanType, DateTimeType, ArrayType, t } from "@mikro-orm/core";
+      import { Entity, Property } from "@mikro-orm/decorators/legacy";
+
+      type StatusLiteral = "open" | "closed";
+      type LevelLiteral = 1 | 2;
+      type FlagUnion = true | false;
+      type AlwaysTrue = true;
+      type BigIntUnion = 1n | 2n;
+      type NameAlias = string;
+      type ScoreAlias = number;
+      type ActiveAlias = boolean;
+      type CursorAlias = bigint;
+      type JsonValue = string | number | JsonValue[] | { [key: string]: JsonValue };
+      type TupleUnion = string | [number, string];
+      interface Metadata {
+        tag?: string;
+        counts: Record<string, number>;
+      }
+      type MetaOrString = string | Metadata;
+      declare function parseUnknown(value: string): unknown;
+
+      @Entity()
+      class ResolvedTypes {
+        @Property({ type: t.string })
+        status!: StatusLiteral;
+
+        @Property({ type: t.integer })
+        level!: LevelLiteral;
+
+        @Property({ type: BooleanType })
+        flag!: FlagUnion;
+
+        @Property({ type: t.boolean })
+        alwaysTrue!: AlwaysTrue;
+
+        @Property({ type: t.bigint })
+        bigUnion!: BigIntUnion;
+
+        @Property({ type: t.string })
+        name!: NameAlias;
+
+        @Property({ type: t.float })
+        score!: ScoreAlias;
+
+        @Property({ type: t.boolean })
+        active!: ActiveAlias;
+
+        @Property({ type: t.bigint })
+        cursor!: CursorAlias;
+
+        @Property({ type: DateTimeType })
+        createdAt!: Date;
+
+        @Property({ type: t.json })
+        json!: JsonValue;
+
+        @Property({ type: t.json })
+        tuple!: TupleUnion;
+
+        @Property({ type: t.json })
+        metadata!: Metadata;
+
+        @Property({ type: t.json })
+        metaOrString!: MetaOrString;
+
+        @Property({ type: ArrayType })
+        bareArray!: string[];
+
+        @Property({ type: new ArrayType(String) })
+        labels!: string[];
+
+        @Property({ type: new ArrayType(dynamicConverter) })
+        dynamicNumbers!: number[];
+
+        @Property({ type: new ArrayType(parseUnknown) })
+        unknownNumbers!: number[];
+      }
+    `,
+    // Non-JSON tuples, functions, and objects with bigint/Date properties are skipped for custom Types
+    /* typescript */ `
+      import { Type } from "@mikro-orm/core";
+      import { Entity, Property } from "@mikro-orm/decorators/legacy";
+
+      type BadTuple = string | [number, bigint];
+      type BadFn = string | (() => void);
+      type BadObj = string | { id: bigint };
+      type BadIndexObj = string | Record<string, bigint>;
+      type BadNumIndexObj = string | { [index: number]: Date };
+      class CustomType extends Type<unknown, string> {}
+
+      @Entity()
+      class NonJsonUnions {
+        @Property({ type: CustomType })
+        badTuple!: BadTuple;
+
+        @Property({ type: CustomType })
+        badFn!: BadFn;
+
+        @Property({ type: CustomType })
+        badObj!: BadObj;
+
+        @Property({ type: CustomType })
+        badIndexObj!: BadIndexObj;
+
+        @Property({ type: CustomType })
+        badNumIndexObj!: BadNumIndexObj;
+      }
+    `,
     // Decimal and BigInt number storage are valid number configurations
     /* typescript */ `
       import { Entity, Property } from "@mikro-orm/decorators/legacy";
@@ -1629,6 +1739,77 @@ type NullableProgress = string | number | null;
 class Job {
   @Property({ type: t.json, nullable: true })
   progress!: NullableProgress;
+}`,
+      errors: [{ messageId: "alignPropertyDecoratorWithTsType" }],
+    },
+    // ArrayType with Number converter should be rejected on string[]
+    {
+      code: /* typescript */ `import { ArrayType } from "@mikro-orm/core";
+import { Entity, Property } from "@mikro-orm/decorators/legacy";
+@Entity()
+class Tags {
+  @Property({ type: new ArrayType(Number) })
+  labels!: string[];
+}`,
+      output: /* typescript */ `import { ArrayType, t } from "@mikro-orm/core";
+import { Entity, Property } from "@mikro-orm/decorators/legacy";
+@Entity()
+class Tags {
+  @Property({ type: t.array })
+  labels!: string[];
+}`,
+      errors: [{ messageId: "alignPropertyDecoratorWithTsType" }],
+    },
+    // Nullability fix preserves BooleanType, BigIntType, and explicit t.json on readonly arrays
+    {
+      code: /* typescript */ `import { BigIntType, BooleanType, t } from "@mikro-orm/core";
+import { Entity, Property } from "@mikro-orm/decorators/legacy";
+@Entity()
+class Flags {
+  @Property({ type: BooleanType })
+  enabled?: boolean;
+
+  @Property({ type: new BigIntType("bigint") })
+  cursor?: bigint;
+
+  @Property({ type: t.json })
+  samples?: readonly number[];
+}`,
+      output: /* typescript */ `import { BigIntType, BooleanType, t } from "@mikro-orm/core";
+import { Entity, Property } from "@mikro-orm/decorators/legacy";
+@Entity()
+class Flags {
+  @Property({ type: BooleanType, nullable: true })
+  enabled?: boolean;
+
+  @Property({ type: new BigIntType("bigint"), nullable: true })
+  cursor?: bigint;
+
+  @Property({ type: t.json, nullable: true })
+  samples?: readonly number[];
+}`,
+      errors: [
+        { messageId: "alignPropertyDecoratorWithTsType" },
+        { messageId: "alignPropertyDecoratorWithTsType" },
+        { messageId: "alignPropertyDecoratorWithTsType" },
+      ],
+    },
+    // Unknown custom constructor expression on string falls back to t.string
+    {
+      code: /* typescript */ `import { Entity, Property } from "@mikro-orm/decorators/legacy";
+const Custom = { Type: class {} };
+@Entity()
+class Item {
+  @Property({ type: new Custom.Type() })
+  name!: string;
+}`,
+      output: /* typescript */ `import { t } from "@mikro-orm/core";
+import { Entity, Property } from "@mikro-orm/decorators/legacy";
+const Custom = { Type: class {} };
+@Entity()
+class Item {
+  @Property({ type: t.string })
+  name!: string;
 }`,
       errors: [{ messageId: "alignPropertyDecoratorWithTsType" }],
     },

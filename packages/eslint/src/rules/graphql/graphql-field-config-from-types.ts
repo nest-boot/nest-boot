@@ -398,8 +398,12 @@ export default createRule<
       );
     };
 
-    const areTypesEquivalent = (a: ts.Type, b: ts.Type): boolean => {
-      if (!checker || isUnusableType(a) || isUnusableType(b)) {
+    const areTypesEquivalent = (
+      typeChecker: ts.TypeChecker,
+      a: ts.Type,
+      b: ts.Type,
+    ): boolean => {
+      if (isUnusableType(a) || isUnusableType(b)) {
         return false;
       }
       // TypeScript treats broad `number` and numeric enums as mutually assignable;
@@ -413,7 +417,8 @@ export default createRule<
         return false;
       }
       return (
-        checker.isTypeAssignableTo(a, b) && checker.isTypeAssignableTo(b, a)
+        typeChecker.isTypeAssignableTo(a, b) &&
+        typeChecker.isTypeAssignableTo(b, a)
       );
     };
 
@@ -421,13 +426,19 @@ export default createRule<
       return Boolean(type.symbol && type.symbol.flags & ts.SymbolFlags.Class);
     };
 
-    const isPrimitiveEnumValueType = (type: ts.Type): boolean => {
-      if (!checker || isUnusableType(type)) {
+    const isPrimitiveEnumValueType = (
+      typeChecker: ts.TypeChecker,
+      type: ts.Type,
+    ): boolean => {
+      if (isUnusableType(type)) {
         return false;
       }
       if (type.isUnion()) {
         return (
-          type.types.length > 0 && type.types.every(isPrimitiveEnumValueType)
+          type.types.length > 0 &&
+          type.types.every((member) =>
+            isPrimitiveEnumValueType(typeChecker, member),
+          )
         );
       }
       if (
@@ -438,9 +449,9 @@ export default createRule<
       ) {
         return true;
       }
-      const constraint = checker.getBaseConstraintOfType(type);
+      const constraint = typeChecker.getBaseConstraintOfType(type);
       return constraint !== undefined && constraint !== type
-        ? isPrimitiveEnumValueType(constraint)
+        ? isPrimitiveEnumValueType(typeChecker, constraint)
         : false;
     };
 
@@ -485,10 +496,11 @@ export default createRule<
     };
 
     const extractGraphQLScalarInternalType = (
+      typeChecker: ts.TypeChecker,
       type: ts.Type,
       visited = new Set<ts.Type>(),
     ): ts.Type | null => {
-      if (!checker || visited.has(type)) {
+      if (visited.has(type)) {
         return null;
       }
       visited.add(type);
@@ -497,12 +509,18 @@ export default createRule<
         type.flags & ts.TypeFlags.Object &&
         (type as ts.ObjectType).objectFlags & ts.ObjectFlags.Reference
       ) {
-        const internal = checker.getTypeArguments(type as ts.TypeReference)[0];
+        const internal = typeChecker.getTypeArguments(
+          type as ts.TypeReference,
+        )[0];
         return internal && !isUnusableType(internal) ? internal : null;
       }
       if (type.isClassOrInterface()) {
-        for (const base of checker.getBaseTypes(type)) {
-          const found = extractGraphQLScalarInternalType(base, visited);
+        for (const base of typeChecker.getBaseTypes(type)) {
+          const found = extractGraphQLScalarInternalType(
+            typeChecker,
+            base,
+            visited,
+          );
           if (found) {
             return found;
           }
@@ -512,13 +530,11 @@ export default createRule<
     };
 
     const extractConstructedInstanceType = (
+      typeChecker: ts.TypeChecker,
       type: ts.Type,
       location: ts.Node,
     ): ts.Type | null => {
-      if (!checker) {
-        return null;
-      }
-      const constructSignatures = checker.getSignaturesOfType(
+      const constructSignatures = typeChecker.getSignaturesOfType(
         type,
         ts.SignatureKind.Construct,
       );
@@ -530,8 +546,8 @@ export default createRule<
       // Constructor-like intersections such as MikroORM's EntityClass<T> = Function & { prototype: T }
       const members = type.isIntersection() ? type.types : [type];
       const isFunctionLike =
-        checker.getSignaturesOfType(type, ts.SignatureKind.Call).length > 0 ||
-        members.some((member) => member.symbol?.name === "Function");
+        typeChecker.getSignaturesOfType(type, ts.SignatureKind.Call).length >
+          0 || members.some((member) => member.symbol?.name === "Function");
       if (!isFunctionLike) {
         return null;
       }
@@ -539,11 +555,14 @@ export default createRule<
         if (member.symbol?.name === "Function") {
           continue;
         }
-        const proto = checker.getPropertyOfType(member, "prototype");
+        const proto = typeChecker.getPropertyOfType(member, "prototype");
         if (!proto) {
           continue;
         }
-        const protoType = checker.getTypeOfSymbolAtLocation(proto, location);
+        const protoType = typeChecker.getTypeOfSymbolAtLocation(
+          proto,
+          location,
+        );
         if (!isUnusableType(protoType)) {
           return protoType;
         }
@@ -551,24 +570,22 @@ export default createRule<
       return null;
     };
 
-    const resolveAliasedSymbol = (node: ts.Node): ts.Symbol | undefined => {
-      if (!checker) {
-        return undefined;
-      }
-      const raw = checker.getSymbolAtLocation(node);
+    const resolveAliasedSymbol = (
+      typeChecker: ts.TypeChecker,
+      node: ts.Node,
+    ): ts.Symbol | undefined => {
+      const raw = typeChecker.getSymbolAtLocation(node);
       return raw && raw.flags & ts.SymbolFlags.Alias
-        ? checker.getAliasedSymbol(raw)
+        ? typeChecker.getAliasedSymbol(raw)
         : raw;
     };
 
     const matchesMappedRecordAliasValue = (
+      typeChecker: ts.TypeChecker,
       exprType: ts.Type,
       propType: ts.Type,
       propTypeNode: ts.TypeNode,
     ): boolean => {
-      if (!checker) {
-        return false;
-      }
       const aliasDecl = exprType.aliasSymbol?.declarations?.find(
         ts.isTypeAliasDeclaration,
       );
@@ -583,21 +600,24 @@ export default createRule<
       }
 
       const valueTypeNode = aliasDecl.type.typeArguments[1];
-      const declaredValueType = checker.getTypeFromTypeNode(valueTypeNode);
+      const declaredValueType = typeChecker.getTypeFromTypeNode(valueTypeNode);
       if (
-        !isPrimitiveEnumValueType(declaredValueType) ||
-        !isPrimitiveEnumValueType(propType)
+        !isPrimitiveEnumValueType(typeChecker, declaredValueType) ||
+        !isPrimitiveEnumValueType(typeChecker, propType)
       ) {
         return false;
       }
-      if (!aliasDecl.typeParameters?.length) {
-        return areTypesEquivalent(propType, declaredValueType);
-      }
-      if (!ts.isTypeReferenceNode(valueTypeNode)) {
+      if (
+        !aliasDecl.typeParameters?.length ||
+        !ts.isTypeReferenceNode(valueTypeNode)
+      ) {
         return false;
       }
 
-      const targetSym = resolveAliasedSymbol(valueTypeNode.typeName);
+      const targetSym = resolveAliasedSymbol(
+        typeChecker,
+        valueTypeNode.typeName,
+      );
       if (!targetSym) {
         return false;
       }
@@ -606,11 +626,11 @@ export default createRule<
       let propAliasSym = propType.aliasSymbol;
       let propArgs = propType.aliasTypeArguments;
       if (targetSym !== propAliasSym && ts.isTypeReferenceNode(propTypeNode)) {
-        const refSym = resolveAliasedSymbol(propTypeNode.typeName);
+        const refSym = resolveAliasedSymbol(typeChecker, propTypeNode.typeName);
         if (refSym === targetSym) {
           propAliasSym = refSym;
           propArgs = (propTypeNode.typeArguments ?? []).map((arg) =>
-            checker.getTypeFromTypeNode(arg),
+            typeChecker.getTypeFromTypeNode(arg),
           );
         }
       }
@@ -631,7 +651,7 @@ export default createRule<
 
       const paramMap = new Map<ts.Symbol, ts.Type>();
       declaredParams.forEach((param, index) => {
-        const paramSym = checker.getSymbolAtLocation(param.name);
+        const paramSym = typeChecker.getSymbolAtLocation(param.name);
         if (paramSym) {
           paramMap.set(paramSym, instantiatedArgs[index]);
         }
@@ -640,39 +660,47 @@ export default createRule<
       return valueArgNodes.every((argNode, index) => {
         const argSym =
           ts.isTypeReferenceNode(argNode) && !argNode.typeArguments?.length
-            ? checker.getSymbolAtLocation(argNode.typeName)
+            ? typeChecker.getSymbolAtLocation(argNode.typeName)
             : undefined;
         const substituted =
           (argSym ? paramMap.get(argSym) : undefined) ??
-          checker.getTypeFromTypeNode(argNode);
-        return areTypesEquivalent(substituted, actualPropArgs[index]);
+          typeChecker.getTypeFromTypeNode(argNode);
+        return areTypesEquivalent(
+          typeChecker,
+          substituted,
+          actualPropArgs[index],
+        );
       });
     };
 
     const matchesEnumObjectType = (
+      typeChecker: ts.TypeChecker,
       exprNode: TSESTree.Node,
       exprType: ts.Type,
       propType: ts.Type,
       location: ts.Node,
       propTypeNode: ts.TypeNode,
     ): boolean => {
-      if (!checker || exprNode.type === AST_NODE_TYPES.ObjectExpression) {
+      if (exprNode.type === AST_NODE_TYPES.ObjectExpression) {
         return false;
       }
 
       // 1. TypeScript enum declaration (e.g. enum Status { ACTIVE = "ACTIVE" })
       if (exprType.symbol && exprType.symbol.flags & ts.SymbolFlags.Enum) {
-        const declared = checker.getDeclaredTypeOfSymbol(exprType.symbol);
-        if (areTypesEquivalent(propType, declared)) {
+        const declared = typeChecker.getDeclaredTypeOfSymbol(exprType.symbol);
+        if (areTypesEquivalent(typeChecker, propType, declared)) {
           return true;
         }
         const enumValues = new Set<string | number>();
         let allLiterals = true;
-        for (const prop of checker.getPropertiesOfType(exprType)) {
+        for (const prop of typeChecker.getPropertiesOfType(exprType)) {
           if (!(prop.flags & ts.SymbolFlags.EnumMember)) {
             continue;
           }
-          const memberType = checker.getTypeOfSymbolAtLocation(prop, location);
+          const memberType = typeChecker.getTypeOfSymbolAtLocation(
+            prop,
+            location,
+          );
           if (memberType.isStringLiteral() || memberType.isNumberLiteral()) {
             enumValues.add(memberType.value);
           } else {
@@ -691,12 +719,13 @@ export default createRule<
         return false;
       }
       if (
-        checker.isArrayType(exprType) ||
-        checker.isTupleType(exprType) ||
+        typeChecker.isArrayType(exprType) ||
+        typeChecker.isTupleType(exprType) ||
         hasClassSymbol(exprType) ||
-        checker.getSignaturesOfType(exprType, ts.SignatureKind.Construct)
+        typeChecker.getSignaturesOfType(exprType, ts.SignatureKind.Construct)
           .length > 0 ||
-        checker.getSignaturesOfType(exprType, ts.SignatureKind.Call).length > 0
+        typeChecker.getSignaturesOfType(exprType, ts.SignatureKind.Call)
+          .length > 0
       ) {
         return false;
       }
@@ -714,14 +743,14 @@ export default createRule<
       }
 
       // 2a. Concrete string index signature (e.g. Record<string, string>)
-      const stringIndexType = checker.getIndexTypeOfType(
+      const stringIndexType = typeChecker.getIndexTypeOfType(
         exprType,
         ts.IndexKind.String,
       );
       if (stringIndexType) {
         return (
-          isPrimitiveEnumValueType(stringIndexType) &&
-          areTypesEquivalent(propType, stringIndexType)
+          isPrimitiveEnumValueType(typeChecker, stringIndexType) &&
+          areTypesEquivalent(typeChecker, propType, stringIndexType)
         );
       }
 
@@ -734,19 +763,27 @@ export default createRule<
         ) {
           const valType = exprType.aliasTypeArguments[1];
           return (
-            isPrimitiveEnumValueType(valType) &&
-            areTypesEquivalent(propType, valType)
+            isPrimitiveEnumValueType(typeChecker, valType) &&
+            areTypesEquivalent(typeChecker, propType, valType)
           );
         }
-        return matchesMappedRecordAliasValue(exprType, propType, propTypeNode);
+        return matchesMappedRecordAliasValue(
+          typeChecker,
+          exprType,
+          propType,
+          propTypeNode,
+        );
       }
 
       // 2c. Plain `as const` enum object literal (e.g. const Status = { OPEN: "open", CLOSED: "closed" } as const)
-      const properties = checker.getPropertiesOfType(exprType);
+      const properties = typeChecker.getPropertiesOfType(exprType);
       if (properties.length > 0) {
         const objectValues = new Set<string | number>();
         for (const prop of properties) {
-          const memberType = checker.getTypeOfSymbolAtLocation(prop, location);
+          const memberType = typeChecker.getTypeOfSymbolAtLocation(
+            prop,
+            location,
+          );
           if (memberType.isStringLiteral() || memberType.isNumberLiteral()) {
             objectValues.add(memberType.value);
           } else {
@@ -759,19 +796,15 @@ export default createRule<
       return false;
     };
 
-    const resolveRuntimeExpressionType = (tsExpr: ts.Node): ts.Type | null => {
-      if (!checker) {
-        return null;
-      }
-      let exprType = checker.getTypeAtLocation(tsExpr);
+    const resolveRuntimeExpressionType = (
+      typeChecker: ts.TypeChecker,
+      tsExpr: ts.Node,
+    ): ts.Type | null => {
+      let exprType = typeChecker.getTypeAtLocation(tsExpr);
       if (isUnusableType(exprType)) {
-        const sym = checker.getSymbolAtLocation(tsExpr);
+        const sym = resolveAliasedSymbol(typeChecker, tsExpr);
         if (sym) {
-          const resolved =
-            sym.flags & ts.SymbolFlags.Alias
-              ? checker.getAliasedSymbol(sym)
-              : sym;
-          exprType = checker.getTypeOfSymbolAtLocation(resolved, tsExpr);
+          exprType = typeChecker.getTypeOfSymbolAtLocation(sym, tsExpr);
         }
       }
       return isUnusableType(exprType) ? null : exprType;
@@ -781,6 +814,7 @@ export default createRule<
       innerExprNode: TSESTree.Node,
       typeNode: TSESTree.TypeNode,
     ): {
+      typeChecker: ts.TypeChecker;
       exprNode: TSESTree.Node;
       tsExpr: ts.Node;
       tsTarget: ts.TypeNode;
@@ -814,14 +848,21 @@ export default createRule<
       if (!ts.isTypeNode(tsTarget)) {
         return null;
       }
-      const exprType = resolveRuntimeExpressionType(tsExpr);
+      const exprType = resolveRuntimeExpressionType(checker, tsExpr);
       const propType = checker.getNonNullableType(
         checker.getTypeFromTypeNode(tsTarget),
       );
       if (!exprType || isUnusableType(propType)) {
         return null;
       }
-      return { exprNode: unwrapped, tsExpr, tsTarget, exprType, propType };
+      return {
+        typeChecker: checker,
+        exprNode: unwrapped,
+        tsExpr,
+        tsTarget,
+        exprType,
+        propType,
+      };
     };
 
     const matchesGraphqlReturnType = (
@@ -833,19 +874,27 @@ export default createRule<
       if (!resolved) {
         return false;
       }
-      const { exprNode, tsExpr, tsTarget, exprType, propType } = resolved;
+      const { typeChecker, exprNode, tsExpr, tsTarget, exprType, propType } =
+        resolved;
 
       // A. Custom GraphQLScalarType<TInternal, TExternal>
-      const scalarInternalType = extractGraphQLScalarInternalType(exprType);
+      const scalarInternalType = extractGraphQLScalarInternalType(
+        typeChecker,
+        exprType,
+      );
       if (scalarInternalType) {
-        return areTypesEquivalent(propType, scalarInternalType);
+        return areTypesEquivalent(typeChecker, propType, scalarInternalType);
       }
       if (scalarOnly) {
         return false;
       }
 
       // B. Runtime class / Type<T> / EntityClass<T>
-      const instanceType = extractConstructedInstanceType(exprType, tsExpr);
+      const instanceType = extractConstructedInstanceType(
+        typeChecker,
+        exprType,
+        tsExpr,
+      );
       if (instanceType) {
         if (
           hasClassSymbol(instanceType) &&
@@ -854,11 +903,12 @@ export default createRule<
         ) {
           return false;
         }
-        return areTypesEquivalent(propType, instanceType);
+        return areTypesEquivalent(typeChecker, propType, instanceType);
       }
 
       // C. TypeScript enum or GraphQL enum object map
       return matchesEnumObjectType(
+        typeChecker,
         exprNode,
         exprType,
         propType,
@@ -871,7 +921,10 @@ export default createRule<
       if (!node || !checker || !esTreeNodeToTSNodeMap) {
         return false;
       }
-      const sym = resolveAliasedSymbol(esTreeNodeToTSNodeMap.get(node));
+      const sym = resolveAliasedSymbol(
+        checker,
+        esTreeNodeToTSNodeMap.get(node),
+      );
       return sym !== undefined && (sym.flags & ts.SymbolFlags.Value) === 0;
     };
 

@@ -190,19 +190,10 @@ export default createRule<
       firstArg?: TSESTree.Node;
       isFullText: boolean;
     } => {
-      if (!typeNode) {
-        if (!typeConfig) {
-          return {
-            canonical: null,
-            isNew: false,
-            hasModeArg: false,
-            mode: null,
-            isFullText: false,
-          };
-        }
+      if (!typeNode || !typeConfig) {
         return {
-          canonical: typeConfig,
-          isNew: typeConfig.startsWith("new "),
+          canonical: null,
+          isNew: false,
           hasModeArg: false,
           mode: null,
           isFullText: false,
@@ -1861,17 +1852,6 @@ export default createRule<
 
           // Check if existing decorator matches the type
           const currentConfig = parsePropertyDecorator(propertyDecorator);
-          if (
-            typeInfo.propertyType === "t.string" &&
-            currentConfig.typeReference &&
-            importedBindingName(
-              source,
-              fullTextModules,
-              currentConfig.typeReference,
-            ) === "FullTextType"
-          ) {
-            typeInfo.propertyType = currentConfig.type;
-          }
           let expectedType = typeInfo.propertyType;
 
           // PrimaryKey number type expects t.integer
