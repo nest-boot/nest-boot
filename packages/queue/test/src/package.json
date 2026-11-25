@@ -2,9 +2,6 @@
   "name": "@nest-boot-tests/queue-cli",
   "private": true,
   "type": "module",
-  "scripts": {
-    "clean": "rm -rf .turbo node_modules"
-  },
   "devDependencies": {
     "@nest-boot/command": "workspace:^",
     "@nest-boot/queue": "workspace:^",
