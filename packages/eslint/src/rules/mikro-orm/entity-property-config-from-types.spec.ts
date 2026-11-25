@@ -441,6 +441,37 @@ class Book {
 
         @Property({ type: new ArrayType(parseUnknown) })
         unknownNumbers!: number[];
+
+        @Property({ type: new ArrayType((value): 0 | 1 => (value === "1" ? 1 : 0)) })
+        bitFlags!: number[];
+      }
+    `,
+    // ReadonlyArray and Array type aliases map consistently to array/vector/json column types
+    /* typescript */ `
+      import { ArrayType, t } from "@mikro-orm/core";
+      import { Entity, Property } from "@mikro-orm/decorators/legacy";
+
+      type ReadonlyTags = readonly string[];
+      type ReadonlyVector = readonly number[];
+      type ReadonlyFlags = readonly boolean[];
+      type ReadonlyBigIds = readonly bigint[];
+
+      @Entity()
+      class Tagged {
+        @Property({ type: t.array })
+        tags!: ReadonlyTags;
+
+        @Property({ type: t.json })
+        jsonTags!: ReadonlyTags;
+
+        @Property({ type: new VectorType(3) })
+        embedding!: ReadonlyVector;
+
+        @Property({ type: t.json })
+        flags!: ReadonlyFlags;
+
+        @Property({ type: new ArrayType(BigInt) })
+        bigIds!: ReadonlyBigIds;
       }
     `,
     // Non-JSON tuples, functions, and objects with bigint/Date properties are skipped for custom Types
@@ -450,6 +481,7 @@ class Book {
 
       type BadTuple = string | [number, bigint];
       type BadFn = string | (() => void);
+      type BadCallableObj = string | ((() => void) & { tag: string });
       type BadObj = string | { id: bigint };
       type BadIndexObj = string | Record<string, bigint>;
       type BadNumIndexObj = string | { [index: number]: Date };
@@ -462,6 +494,9 @@ class Book {
 
         @Property({ type: CustomType })
         badFn!: BadFn;
+
+        @Property({ type: CustomType })
+        badCallableObj!: BadCallableObj;
 
         @Property({ type: CustomType })
         badObj!: BadObj;
@@ -1810,6 +1845,24 @@ const Custom = { Type: class {} };
 class Item {
   @Property({ type: t.string })
   name!: string;
+}`,
+      errors: [{ messageId: "alignPropertyDecoratorWithTsType" }],
+    },
+    // DecimalType(undefined) honors runtimeType fallback and is rejected on mismatched string property
+    {
+      code: /* typescript */ `import { DecimalType } from "@mikro-orm/core";
+import { Entity, Property } from "@mikro-orm/decorators/legacy";
+@Entity()
+class Invoice {
+  @Property({ type: new DecimalType(undefined), runtimeType: "number" })
+  amount!: string;
+}`,
+      output: /* typescript */ `import { DecimalType, t } from "@mikro-orm/core";
+import { Entity, Property } from "@mikro-orm/decorators/legacy";
+@Entity()
+class Invoice {
+  @Property({ type: t.string, runtimeType: "number" })
+  amount!: string;
 }`,
       errors: [{ messageId: "alignPropertyDecoratorWithTsType" }],
     },

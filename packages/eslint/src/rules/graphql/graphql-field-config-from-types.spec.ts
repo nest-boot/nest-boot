@@ -1064,6 +1064,7 @@ enum Beta {
 }
 type CrossEnum = Alpha.X | Beta.Y;
 declare const CrossScalar: GraphQLScalarType<CrossEnum>;
+declare const AlphaArrayScalar: GraphQLScalarType<Alpha[]>;
 @ObjectType()
 class BuiltinAndCrossEnum {
   @Field(() => Object)
@@ -1071,6 +1072,9 @@ class BuiltinAndCrossEnum {
 
   @Field(() => CrossScalar)
   rank!: number;
+
+  @Field(() => AlphaArrayScalar)
+  ranks!: number[];
 }`,
       output: /* typescript */ `import { Field, Float, ObjectType } from "@nestjs/graphql";
 import { GraphQLJSONObject } from "graphql-type-json";
@@ -1086,6 +1090,7 @@ enum Beta {
 }
 type CrossEnum = Alpha.X | Beta.Y;
 declare const CrossScalar: GraphQLScalarType<CrossEnum>;
+declare const AlphaArrayScalar: GraphQLScalarType<Alpha[]>;
 @ObjectType()
 class BuiltinAndCrossEnum {
   @Field(() => GraphQLJSONObject)
@@ -1093,11 +1098,60 @@ class BuiltinAndCrossEnum {
 
   @Field(() => Float)
   rank!: number;
+
+  @Field(() => [Float])
+  ranks!: number[];
 }`,
       errors: [
         { messageId: "alignFieldDecoratorWithTsType" },
         { messageId: "alignFieldDecoratorWithTsType" },
+        { messageId: "alignFieldDecoratorWithTsType" },
       ],
+    },
+    // Nullable list items must not silently match non-nullable GraphQL list scalar
+    {
+      code: /* typescript */ `import { Field, ObjectType } from "@nestjs/graphql";
+class GraphQLScalarType<TInternal = unknown, TExternal = TInternal> {
+  readonly _internal?: TInternal;
+  readonly _external?: TExternal;
+}
+declare const CustomStringScalar: GraphQLScalarType<string>;
+type MaybeText = string | null;
+@ObjectType()
+class ListItemNullability {
+  @Field(() => [CustomStringScalar])
+  values!: MaybeText[];
+}`,
+      output: null,
+      errors: [{ messageId: "alignFieldDecoratorWithTsType" }],
+    },
+    // Parenthesized sequence expression in semantic callback preserves grouping when fixing nullability
+    {
+      code: /* typescript */ `import { Field, ObjectType } from "@nestjs/graphql";
+class GraphQLScalarType<TInternal = unknown, TExternal = TInternal> {
+  readonly _internal?: TInternal;
+  readonly _external?: TExternal;
+}
+declare function trackUse(): void;
+declare const CustomStringScalar: GraphQLScalarType<string>;
+@ObjectType()
+class GroupedCallback {
+  @Field(() => (trackUse(), CustomStringScalar))
+  text?: string;
+}`,
+      output: /* typescript */ `import { Field, ObjectType } from "@nestjs/graphql";
+class GraphQLScalarType<TInternal = unknown, TExternal = TInternal> {
+  readonly _internal?: TInternal;
+  readonly _external?: TExternal;
+}
+declare function trackUse(): void;
+declare const CustomStringScalar: GraphQLScalarType<string>;
+@ObjectType()
+class GroupedCallback {
+  @Field(() => (trackUse(), CustomStringScalar), { nullable: true })
+  text?: string;
+}`,
+      errors: [{ messageId: "alignFieldDecoratorWithTsType" }],
     },
     // Non-matching mapped record aliases (non-primitive value, non-Record alias, mismatched alias target) are rejected
     {

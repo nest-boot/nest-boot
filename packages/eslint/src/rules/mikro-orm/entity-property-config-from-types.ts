@@ -203,8 +203,19 @@ export default createRule<
       const isNew = typeNode.type === AST_NODE_TYPES.NewExpression;
       const target = isNew ? typeNode.callee : typeNode;
       const firstArg = isNew ? typeNode.arguments.at(0) : undefined;
-      const hasModeArg = firstArg !== undefined;
-      const mode = resolveStringLiteralValue(firstArg);
+      let isExplicitUndefined = false;
+      if (firstArg) {
+        try {
+          const argType = checker.getTypeAtLocation(
+            parserServices.esTreeNodeToTSNodeMap.get(firstArg),
+          );
+          isExplicitUndefined = argType.flags === ts.TypeFlags.Undefined;
+        } catch {
+          // Leave unresolved if type lookup fails.
+        }
+      }
+      const hasModeArg = firstArg !== undefined && !isExplicitUndefined;
+      const mode = hasModeArg ? resolveStringLiteralValue(firstArg) : null;
 
       if (
         importedBindingName(source, fullTextModules, target) === "FullTextType"
@@ -420,13 +431,20 @@ export default createRule<
           elementTypeName === "number"
             ? ts.TypeFlags.NumberLike
             : ts.TypeFlags.StringLike;
-        return signatures.some((signature) => {
-          const returnType = signature.getReturnType();
-          if (returnType.flags & (ts.TypeFlags.Any | ts.TypeFlags.Unknown)) {
+        const matchesExpectedType = (type: ts.Type): boolean => {
+          if (type.flags & (ts.TypeFlags.Any | ts.TypeFlags.Unknown)) {
             return true;
           }
-          return (returnType.flags & expectedFlag) !== 0;
-        });
+          if (type.isUnion()) {
+            return (
+              type.types.length > 0 && type.types.every(matchesExpectedType)
+            );
+          }
+          return (type.flags & expectedFlag) !== 0;
+        };
+        return signatures.some((signature) =>
+          matchesExpectedType(signature.getReturnType()),
+        );
       } catch {
         return true;
       }
@@ -552,9 +570,7 @@ export default createRule<
       }
       if (member.flags & ts.TypeFlags.Object) {
         if (
-          checker.getSignaturesOfType(member, ts.SignatureKind.Call).length >
-            0 &&
-          checker.getPropertiesOfType(member).length === 0
+          checker.getSignaturesOfType(member, ts.SignatureKind.Call).length > 0
         ) {
           return false;
         }
@@ -652,7 +668,11 @@ export default createRule<
 
     const inferPropertyTypeFromResolvedTsType = (
       node: TSESTree.TypeNode,
-    ): { propertyType: string | null; unsupportedUnion?: boolean } => {
+    ): {
+      propertyType: string | null;
+      arrayElementTypeName?: string;
+      unsupportedUnion?: boolean;
+    } => {
       try {
         const tsNode = parserServices.esTreeNodeToTSNodeMap.get(node);
         if (!ts.isTypeNode(tsNode)) {
@@ -722,10 +742,36 @@ export default createRule<
         if (resolved.flags & ts.TypeFlags.BigIntLike) {
           return { propertyType: "t.bigint" };
         }
+        // Resolved array / ReadonlyArray type aliases (e.g. type Tags = readonly string[])
+        if (
+          checker.isArrayType(resolved) ||
+          resolved.symbol?.name === "ReadonlyArray"
+        ) {
+          const elemType =
+            checker.getTypeArguments(resolved as ts.TypeReference)[0] ??
+            checker.getIndexTypeOfType(resolved, ts.IndexKind.Number);
+          if (!elemType) {
+            return { propertyType: null };
+          }
+          if (elemType.flags & ts.TypeFlags.StringLike) {
+            return { propertyType: "t.array", arrayElementTypeName: "string" };
+          }
+          if (elemType.flags & ts.TypeFlags.NumberLike) {
+            return { propertyType: "t.array", arrayElementTypeName: "number" };
+          }
+          if (elemType.flags & ts.TypeFlags.BooleanLike) {
+            return { propertyType: "t.json", arrayElementTypeName: "boolean" };
+          }
+          if (elemType.flags & ts.TypeFlags.BigIntLike) {
+            return { propertyType: null, unsupportedUnion: true };
+          }
+          return isJsonSerializableType(elemType)
+            ? { propertyType: "t.json" }
+            : { propertyType: null, unsupportedUnion: true };
+        }
         // Plain non-class object/interface types (excluding classes, arrays, built-in objects)
         if (
           resolved.flags & ts.TypeFlags.Object &&
-          !checker.isArrayType(resolved) &&
           !checker.isTupleType(resolved) &&
           !(resolved.symbol && resolved.symbol.flags & ts.SymbolFlags.Class) &&
           ![
@@ -735,6 +781,7 @@ export default createRule<
             "Set",
             "Promise",
             "Array",
+            "ReadonlyArray",
             "Uint8Array",
             "Buffer",
           ].includes(resolved.symbol?.name ?? "") &&
@@ -1040,11 +1087,11 @@ export default createRule<
         }
         return {
           typeName: ident,
-          isArray,
+          isArray: resolvedInfo.arrayElementTypeName !== undefined,
           isNullable,
           isEnum,
           propertyType: resolvedInfo.propertyType,
-          arrayElementTypeName: undefined,
+          arrayElementTypeName: resolvedInfo.arrayElementTypeName,
         };
       }
 

@@ -398,6 +398,23 @@ export default createRule<
       );
     };
 
+    const extractArrayElementTsType = (
+      typeChecker: ts.TypeChecker,
+      type: ts.Type,
+    ): ts.Type | null => {
+      if (
+        typeChecker.isArrayType(type) ||
+        type.symbol?.name === "ReadonlyArray"
+      ) {
+        return (
+          typeChecker.getTypeArguments(type as ts.TypeReference)[0] ??
+          typeChecker.getIndexTypeOfType(type, ts.IndexKind.Number) ??
+          null
+        );
+      }
+      return null;
+    };
+
     const areTypesEquivalent = (
       typeChecker: ts.TypeChecker,
       a: ts.Type,
@@ -416,10 +433,18 @@ export default createRule<
       ) {
         return false;
       }
-      return (
-        typeChecker.isTypeAssignableTo(a, b) &&
-        typeChecker.isTypeAssignableTo(b, a)
-      );
+      if (
+        !typeChecker.isTypeAssignableTo(a, b) ||
+        !typeChecker.isTypeAssignableTo(b, a)
+      ) {
+        return false;
+      }
+      const elemA = extractArrayElementTsType(typeChecker, a);
+      const elemB = extractArrayElementTsType(typeChecker, b);
+      if (elemA && elemB) {
+        return areTypesEquivalent(typeChecker, elemA, elemB);
+      }
+      return true;
     };
 
     const hasClassSymbol = (type: ts.Type): boolean => {
@@ -813,6 +838,7 @@ export default createRule<
     const resolveCustomReturnTypes = (
       innerExprNode: TSESTree.Node,
       typeNode: TSESTree.TypeNode,
+      preserveNullability = false,
     ): {
       typeChecker: ts.TypeChecker;
       exprNode: TSESTree.Node;
@@ -849,9 +875,10 @@ export default createRule<
         return null;
       }
       const exprType = resolveRuntimeExpressionType(checker, tsExpr);
-      const propType = checker.getNonNullableType(
-        checker.getTypeFromTypeNode(tsTarget),
-      );
+      const rawPropType = checker.getTypeFromTypeNode(tsTarget);
+      const propType = preserveNullability
+        ? rawPropType
+        : checker.getNonNullableType(rawPropType);
       if (!exprType || isUnusableType(propType)) {
         return null;
       }
@@ -869,8 +896,13 @@ export default createRule<
       innerExprNode: TSESTree.Node,
       targetTypeNode: TSESTree.TypeNode,
       scalarOnly = false,
+      preserveNullability = false,
     ): boolean => {
-      const resolved = resolveCustomReturnTypes(innerExprNode, targetTypeNode);
+      const resolved = resolveCustomReturnTypes(
+        innerExprNode,
+        targetTypeNode,
+        preserveNullability,
+      );
       if (!resolved) {
         return false;
       }
@@ -1384,6 +1416,10 @@ export default createRule<
               isValidNumberType ||
               isValidScalar;
 
+            const formatScalarExpression = (node: TSESTree.Node) =>
+              node.type === AST_NODE_TYPES.SequenceExpression
+                ? `(${source.getText(node)})`
+                : source.getText(node);
             const isIdField =
               !typeInfo.isCustomType && typeInfo.typeName === "ID";
             if (
@@ -1395,11 +1431,12 @@ export default createRule<
                 scalarNode,
                 typeInfo.targetTypeNode,
                 isIdField,
+                typeInfo.isArray && bodyIsArray,
               )
             ) {
               typeMatches = true;
               isSemanticMatch = true;
-              typeInfo.scalarExpression = source.getText(scalarNode);
+              typeInfo.scalarExpression = formatScalarExpression(scalarNode);
             } else if (
               !typeMatches &&
               scalarNode &&
@@ -1411,7 +1448,7 @@ export default createRule<
               typeMatches = true;
               isSemanticMatch = true;
               typeInfo.isWholeValueScalar = true;
-              typeInfo.scalarExpression = source.getText(scalarNode);
+              typeInfo.scalarExpression = formatScalarExpression(scalarNode);
             }
 
             if (typeMatches && hasNullableOption === typeInfo.isNullable) {
