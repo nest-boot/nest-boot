@@ -4,7 +4,6 @@ import { useMutation } from "@apollo/client/react";
 import { useNavigate } from "@tanstack/react-router";
 import { useTranslation } from "react-i18next";
 import { z } from "zod";
-import type { GetWorkspaceServiceAccountGrantsFromCreateWorkspaceMemberRouteQuery } from "@/gql/graphql";
 import { defaultFormOptions, handleFieldBlur, submitForm } from "@/lib/form";
 import { graphql } from "@/gql";
 import {
@@ -26,6 +25,7 @@ import { getFormErrorMessage } from "@/lib/form-errors";
 import { Card, CardContent, CardFooter } from "@/components/ui/card";
 import { SubmitButton } from "@/components/form/submit-button";
 import { Input } from "@/components/thread-ui/input";
+import type { GetWorkspaceServiceAccountGrantsFromCreateWorkspaceMemberRouteQuery } from "@/gql/graphql";
 
 const ADD_SERVICE_ACCOUNT = graphql(`
   mutation addWorkspaceServiceAccountFromWorkspaceMembersRoute(

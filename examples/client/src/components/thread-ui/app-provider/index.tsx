@@ -1,12 +1,12 @@
 "use client";
 
 import { I18nextProvider } from "react-i18next";
+import { AlertDialogProvider } from "@/components/thread-ui/alert-dialog";
+import { ToastProvider } from "@/components/thread-ui/toast";
 import type { FC, PropsWithChildren } from "react";
 import type { i18n as I18nInstance } from "i18next";
 
 import type { ToastProviderProps } from "@/components/thread-ui/toast";
-import { AlertDialogProvider } from "@/components/thread-ui/alert-dialog";
-import { ToastProvider } from "@/components/thread-ui/toast";
 
 export type AppProviderProps = PropsWithChildren<{
   i18n: I18nInstance;

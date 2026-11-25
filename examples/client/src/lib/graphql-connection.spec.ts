@@ -1,5 +1,11 @@
 import { describe, expect, expectTypeOf, it } from "vitest";
 import { z } from "zod";
+import { dataFilterDefaultCheckboxOperators } from "@/components/thread-ui/data-filter/utils/data-filter-default-checkbox-operators";
+import { dataFilterDefaultDatePickerOperators } from "@/components/thread-ui/data-filter/utils/data-filter-default-date-picker-operators";
+import { dataFilterDefaultInputOperators } from "@/components/thread-ui/data-filter/utils/data-filter-default-input-operators";
+import { dataFilterDefaultNumberInputOperators } from "@/components/thread-ui/data-filter/utils/data-filter-default-number-input-operators";
+import { dataFilterDefaultSelectOperators } from "@/components/thread-ui/data-filter/utils/data-filter-default-select-operators";
+import { serializeDataFilterValueFilter } from "@/components/thread-ui/data-filter/utils/data-filter-value";
 import { Cursor } from "../../../../packages/graphql-connection/src/cursor";
 import {
   OrderDirection,
@@ -19,12 +25,6 @@ import type {
   ConnectionSearch,
   CreateConnectionSearchSchemaOptions,
 } from "./graphql-connection";
-import { dataFilterDefaultCheckboxOperators } from "@/components/thread-ui/data-filter/utils/data-filter-default-checkbox-operators";
-import { dataFilterDefaultDatePickerOperators } from "@/components/thread-ui/data-filter/utils/data-filter-default-date-picker-operators";
-import { dataFilterDefaultInputOperators } from "@/components/thread-ui/data-filter/utils/data-filter-default-input-operators";
-import { dataFilterDefaultNumberInputOperators } from "@/components/thread-ui/data-filter/utils/data-filter-default-number-input-operators";
-import { dataFilterDefaultSelectOperators } from "@/components/thread-ui/data-filter/utils/data-filter-default-select-operators";
-import { serializeDataFilterValueFilter } from "@/components/thread-ui/data-filter/utils/data-filter-value";
 
 describe("connection search", () => {
   const start = "2026-09-01T00:00:00.000Z";

@@ -6,7 +6,6 @@ import { LogIn, ShieldCheck, UserPlus } from "lucide-react";
 import { t } from "i18next";
 import { useTranslation } from "react-i18next";
 import { z } from "zod";
-import type { ComponentProps } from "react";
 import { defaultFormOptions, handleFieldBlur, submitForm } from "@/lib/form";
 import { createExistingPasswordSchema } from "@/lib/password-schema";
 import { usePasswordPolicy } from "@/hooks/use-password-policy";
@@ -42,6 +41,7 @@ import {
 import { graphql } from "@/gql";
 import { SubmitButton } from "@/components/form/submit-button";
 import { Input } from "@/components/thread-ui/input";
+import type { ComponentProps } from "react";
 
 const AUTH_SIGN_IN_FROM_LOGIN_FORM = graphql(`
   mutation signInFromLoginForm($input: AuthSignInInput!) {

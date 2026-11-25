@@ -9,14 +9,14 @@ import {
 import { createInstance } from "i18next";
 import { I18nextProvider } from "react-i18next";
 import { afterEach, beforeAll, describe, expect, it, vi } from "vitest";
+import { SystemApiKeyPermission } from "@/gql/graphql";
+import { createAbility, createAbilitySubject } from "@/lib/ability";
 import apiKeyMessages from "../../public/locales/en/api-key.json";
 import common from "../../public/locales/en/common.json";
 import { Button } from "./thread-ui/button";
 import { ApiKeyFormPage } from "./api-key-form-page";
 import type { PageProps } from "./thread-ui/page";
 import type { ReactNode } from "react";
-import { SystemApiKeyPermission } from "@/gql/graphql";
-import { createAbility, createAbilitySubject } from "@/lib/ability";
 
 vi.mock("@/app/_authenticated/contexts/created-api-key-context", () => ({
   useCreatedApiKey: () => ({ secret: undefined }),

@@ -3,7 +3,6 @@ import { useMutation } from "@apollo/client/react";
 import { useTranslation } from "react-i18next";
 import { z } from "zod";
 import { useForm } from "@tanstack/react-form";
-import type { WorkspaceMemberFormProps } from "./workspace-member-form-props";
 import {
   defaultFormOptions,
   handleFieldBlur,
@@ -21,6 +20,7 @@ import { FieldSet } from "@/components/ui/field";
 import { SubmitButton } from "@/components/form/submit-button";
 import { Input } from "@/components/thread-ui/input";
 import { getFormErrorMessage } from "@/lib/form-errors";
+import type { WorkspaceMemberFormProps } from "./workspace-member-form-props";
 
 const UPDATE_WORKSPACE_MEMBER = graphql(`
   mutation updateWorkspaceMemberFromWorkspaceMemberRoute(

@@ -2,10 +2,6 @@ import { KeyRound, LayoutDashboard, Settings, User } from "lucide-react";
 
 import { linkOptions, useParams } from "@tanstack/react-router";
 import { useTranslation } from "react-i18next";
-import { AppSidebar } from "../../../components/app-sidebar";
-
-import type { LinkProps } from "@tanstack/react-router";
-import type { ComponentProps, ComponentType, FC } from "react";
 import { useAbility } from "@/contexts/ability-context";
 import {
   SidebarContent,
@@ -17,8 +13,11 @@ import {
   SidebarMenuItem,
   useSidebar,
 } from "@/components/ui/sidebar";
-
 import { Link } from "@/components/link";
+import { AppSidebar } from "../../../components/app-sidebar";
+
+import type { LinkProps } from "@tanstack/react-router";
+import type { ComponentProps, ComponentType, FC } from "react";
 
 type SidebarItem = {
   title: string;

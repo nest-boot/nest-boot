@@ -8,7 +8,6 @@ import { useTranslation } from "react-i18next";
 import { zodValidator } from "@tanstack/zod-adapter";
 import { z } from "zod";
 
-import { AuthPageShell } from "../components/auth-page-shell";
 import { defaultFormOptions, handleFieldBlur, submitForm } from "@/lib/form";
 import { usePasswordPolicy } from "@/hooks/use-password-policy";
 import { getFormErrorMessage } from "@/lib/form-errors";
@@ -28,6 +27,7 @@ import {
 import { graphql } from "@/gql";
 import { SubmitButton } from "@/components/form/submit-button";
 import { Input } from "@/components/thread-ui/input";
+import { AuthPageShell } from "../components/auth-page-shell";
 
 const RESET_PASSWORD_FROM_RESET_PASSWORD = graphql(`
   mutation resetPasswordFromResetPassword($input: AuthResetPasswordInput!) {

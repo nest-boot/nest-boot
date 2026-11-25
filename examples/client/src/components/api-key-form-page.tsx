@@ -3,23 +3,7 @@ import { useForm, useSelector } from "@tanstack/react-form";
 import { useTranslation } from "react-i18next";
 import { AlertTriangle } from "lucide-react";
 import z from "zod";
-import {
-  ApiKeyAccountField,
-  ApiKeyOwnerTypeField,
-} from "./api-key-owner-fields";
-import { ApiKeySecretField } from "./api-key-secret-field";
-import { ApiKeyMetadata } from "./api-key-metadata";
-import type { ApiKeyAccountOption } from "./api-key-owner-fields";
-import type {
-  SystemApiKeyPermission,
-  UserApiKeyPermission,
-  WorkspaceApiKeyPermission,
-} from "@/gql/graphql";
 
-import type { PagePaginationActionsConfig } from "@/components/thread-ui/page";
-import type { ApiKeyRow } from "@/components/api-keys-page";
-import type { ApiKeySearch } from "@/schemas/api-key-search-schema";
-import type { PermissionOption } from "@/lib/permissions";
 import {
   defaultFormOptions,
   handleFieldBlur,
@@ -44,6 +28,22 @@ import { Card, CardContent, CardFooter } from "@/components/ui/card";
 import { getFormErrorMessage } from "@/lib/form-errors";
 import { useFormChanges, useSyncFormChanges } from "@/hooks/use-form-changes";
 import { SubmitButton } from "@/components/form/submit-button";
+import { ApiKeyMetadata } from "./api-key-metadata";
+import { ApiKeySecretField } from "./api-key-secret-field";
+import {
+  ApiKeyAccountField,
+  ApiKeyOwnerTypeField,
+} from "./api-key-owner-fields";
+import type { PermissionOption } from "@/lib/permissions";
+import type { ApiKeySearch } from "@/schemas/api-key-search-schema";
+import type { ApiKeyRow } from "@/components/api-keys-page";
+import type { PagePaginationActionsConfig } from "@/components/thread-ui/page";
+import type {
+  SystemApiKeyPermission,
+  UserApiKeyPermission,
+  WorkspaceApiKeyPermission,
+} from "@/gql/graphql";
+import type { ApiKeyAccountOption } from "./api-key-owner-fields";
 
 type CredentialPermission =
   | UserApiKeyPermission

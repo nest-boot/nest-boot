@@ -1,7 +1,6 @@
 "use client";
 
 import { isValidElement } from "react";
-import type { ComponentProps, FC, ReactNode } from "react";
 
 import { Button } from "@/components/thread-ui/button";
 import {
@@ -12,6 +11,7 @@ import {
   Empty as EmptyRoot,
   EmptyTitle,
 } from "@/components/ui/empty";
+import type { ComponentProps, FC, ReactNode } from "react";
 
 export type EmptyActionProps = Omit<
   ComponentProps<typeof Button>,

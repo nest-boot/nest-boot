@@ -3,18 +3,7 @@ import { useLocation, useNavigate } from "@tanstack/react-router";
 import dayjs from "dayjs";
 import { useTranslation } from "react-i18next";
 import { isEmpty } from "lodash";
-import type {
-  SystemApiKeyPermission,
-  UserApiKey,
-  UserApiKeyPermission,
-  WorkspaceApiKeyPermission,
-} from "@/gql/graphql";
-import type { ComponentProps } from "react";
 
-import type { DataFilterField } from "@/components/thread-ui/data-filter";
-import type { ApiKeySearch } from "@/schemas/api-key-search-schema";
-import type { PageInfo } from "@/lib/graphql-connection";
-import type { createAbility } from "@/lib/ability";
 import { ApiKeyStatusBadge } from "@/components/api-key-status-badge";
 import { Link } from "@/components/link";
 import { DataFilter } from "@/components/thread-ui/data-filter";
@@ -25,6 +14,17 @@ import {
 import { Page } from "@/components/thread-ui/page";
 import { Card, CardContent } from "@/components/ui/card";
 import { getNextSearch, getPreviousSearch } from "@/lib/graphql-connection";
+import type { createAbility } from "@/lib/ability";
+import type { PageInfo } from "@/lib/graphql-connection";
+import type { ApiKeySearch } from "@/schemas/api-key-search-schema";
+import type { DataFilterField } from "@/components/thread-ui/data-filter";
+import type { ComponentProps } from "react";
+import type {
+  SystemApiKeyPermission,
+  UserApiKey,
+  UserApiKeyPermission,
+  WorkspaceApiKeyPermission,
+} from "@/gql/graphql";
 
 export type ApiKeyOwnerRow = {
   __typename?: string;

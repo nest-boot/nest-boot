@@ -11,7 +11,6 @@ import { t } from "i18next";
 import { useTranslation } from "react-i18next";
 import { Check, X } from "lucide-react";
 import { isEmpty } from "lodash";
-import type { DataFilterField } from "@/components/thread-ui/data-filter";
 import { refreshAfterMutation } from "@/lib/refresh-after-mutation";
 import { useAuthUserContext } from "@/app/_authenticated/contexts/auth-user-context";
 import { workspaceSearchSchema } from "@/schemas/workspace-search-schema";
@@ -41,6 +40,7 @@ import {
 import { graphql } from "@/gql";
 import { getNextSearch, getPreviousSearch } from "@/lib/graphql-connection";
 import { getRolesLabel } from "@/utils/get-role-label";
+import type { DataFilterField } from "@/components/thread-ui/data-filter";
 
 const GET_WORKSPACES_FROM_USER_WORKSPACES_ROUTE = graphql(`
   query getWorkspacesFromUserWorkspacesRoute(

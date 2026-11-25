@@ -1,7 +1,7 @@
 import { useTranslation } from "react-i18next";
 
-import type { PermissionOption } from "@/lib/permissions";
 import { CheckboxGroup } from "@/components/thread-ui/checkbox-group";
+import type { PermissionOption } from "@/lib/permissions";
 
 export interface PermissionCheckboxGroupProps<Permission extends string> {
   options: ReadonlyArray<PermissionOption<Permission>>;

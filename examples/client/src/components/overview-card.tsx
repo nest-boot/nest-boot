@@ -1,5 +1,4 @@
 import { useTranslation } from "react-i18next";
-import type { ReactNode } from "react";
 import { Button } from "@/components/thread-ui/button";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import {
@@ -11,6 +10,7 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
+import type { ReactNode } from "react";
 
 export function OverviewCard({
   title,

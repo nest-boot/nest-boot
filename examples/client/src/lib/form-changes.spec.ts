@@ -16,7 +16,7 @@ describe("form changes", () => {
       getFormChanges(
         {
           name: "Old",
-          email: "old@example.com" as string | null,
+          email: "old@example.com",
           verified: true,
           count: 1,
         },

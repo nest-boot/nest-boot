@@ -1,8 +1,7 @@
 "use client";
 
-import type { ComponentProps, FC } from "react";
-
 import { Toaster, toast } from "@/components/ui/toast";
+import type { ComponentProps, FC } from "react";
 
 export type ToastProviderProps = ComponentProps<typeof Toaster>;
 

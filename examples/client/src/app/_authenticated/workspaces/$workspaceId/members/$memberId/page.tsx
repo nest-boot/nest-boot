@@ -9,13 +9,6 @@ import {
 import { t } from "i18next";
 import { useTranslation } from "react-i18next";
 
-import { useAuthWorkspaceMemberContext } from "../../contexts/auth-workspace-member-context";
-import { WorkspaceMemberProfileForm } from "./components/workspace-member-profile-form";
-import { WorkspaceMemberRolesForm } from "./components/workspace-member-roles-form";
-import { WorkspaceMemberPermissionsForm } from "./components/workspace-member-permissions-form";
-import type { WorkspaceMemberFormProps } from "./components/workspace-member-form-props";
-import type { GetWorkspaceMemberFromWorkspaceMemberRouteQuery } from "@/gql/graphql";
-import type { ResourceNavigationQueryOptions } from "@/hooks/use-resource-navigation";
 import { refreshAfterMutation } from "@/lib/refresh-after-mutation";
 import { Link } from "@/components/link";
 import { useAuthUserContext } from "@/app/_authenticated/contexts/auth-user-context";
@@ -36,6 +29,13 @@ import { WorkspaceMemberStatus } from "@/gql/graphql";
 import { graphql } from "@/gql";
 import { createAbilitySubject } from "@/lib/ability";
 import { isAccessDenied } from "@/lib/auth-errors";
+import { useAuthWorkspaceMemberContext } from "../../contexts/auth-workspace-member-context";
+import { WorkspaceMemberPermissionsForm } from "./components/workspace-member-permissions-form";
+import { WorkspaceMemberRolesForm } from "./components/workspace-member-roles-form";
+import { WorkspaceMemberProfileForm } from "./components/workspace-member-profile-form";
+import type { ResourceNavigationQueryOptions } from "@/hooks/use-resource-navigation";
+import type { GetWorkspaceMemberFromWorkspaceMemberRouteQuery } from "@/gql/graphql";
+import type { WorkspaceMemberFormProps } from "./components/workspace-member-form-props";
 
 const GET_WORKSPACE_MEMBER_NEIGHBORS = graphql(`
   query getWorkspaceMemberNeighbors(

@@ -2,6 +2,13 @@ import { ChevronDown } from "lucide-react";
 import { useState } from "react";
 
 import { useTranslation } from "react-i18next";
+import { Button } from "@/components/ui/button";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 import {
   createDataFilterCondition,
   getDataFilterCondition,
@@ -29,13 +36,6 @@ import type {
   DataFilterOperator,
 } from "../types";
 import type { FC, ReactNode } from "react";
-import { Button } from "@/components/ui/button";
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipProvider,
-  TooltipTrigger,
-} from "@/components/ui/tooltip";
 
 interface DataFilterTagItemProps {
   item: DataFilterField;

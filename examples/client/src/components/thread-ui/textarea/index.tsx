@@ -1,9 +1,9 @@
 import { useId } from "react";
-import type { ComponentProps, FC } from "react";
 
 import { Field, FieldDescription, FieldLabel } from "@/components/ui/field";
 import { Textarea as TextareaComponent } from "@/components/ui/textarea";
 import { cn } from "@/lib/utils";
+import type { ComponentProps, FC } from "react";
 
 export type TextareaProps = ComponentProps<typeof TextareaComponent> & {
   label?: string;

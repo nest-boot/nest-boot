@@ -1,9 +1,4 @@
 import { useId } from "react";
-import type {
-  RadioGroupChangeEventDetails,
-  RadioGroupProps as RadioGroupPrimitiveProps,
-} from "@base-ui/react";
-import type { ReactNode } from "react";
 
 import {
   RadioGroup as RadioGroupComponent,
@@ -18,6 +13,11 @@ import {
   FieldSet,
 } from "@/components/ui/field";
 import { cn } from "@/lib/utils";
+import type { ReactNode } from "react";
+import type {
+  RadioGroupChangeEventDetails,
+  RadioGroupProps as RadioGroupPrimitiveProps,
+} from "@base-ui/react";
 
 export type RadioGroupOptionProps<Value extends string | null> = {
   label: ReactNode;

@@ -1,12 +1,12 @@
 import { Outlet, createFileRoute, redirect } from "@tanstack/react-router";
-import { SelectedWorkspaceProvider } from "./contexts/selected-workspace-context";
-import { AuthWorkspaceMemberProvider } from "./contexts/auth-workspace-member-context";
-import { WorkspaceSidebar } from "./components/workspace-sidebar";
 import { graphql } from "@/gql";
 import { Layout, LayoutContent } from "@/components/thread-ui/layout";
 import { createAbility, createAbilitySubject } from "@/lib/ability";
 import { AbilityProvider } from "@/contexts/ability-context";
 import { isAccessDenied } from "@/lib/auth-errors";
+import { WorkspaceSidebar } from "./components/workspace-sidebar";
+import { AuthWorkspaceMemberProvider } from "./contexts/auth-workspace-member-context";
+import { SelectedWorkspaceProvider } from "./contexts/selected-workspace-context";
 
 const GET_CURRENT_WORKSPACE_FROM_WORKSPACE_LAYOUT = graphql(`
   query getCurrentWorkspaceFromWorkspaceLayout($workspaceId: ID!) {

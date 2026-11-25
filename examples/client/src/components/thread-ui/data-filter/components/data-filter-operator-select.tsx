@@ -1,5 +1,12 @@
 import { ChevronDown } from "lucide-react";
 import { useTranslation } from "react-i18next";
+import { Button } from "@/components/ui/button";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import {
   getDataFilterBetweenValue,
   getDataFilterOperatorLabel,
@@ -8,13 +15,6 @@ import {
 import type { FC } from "react";
 
 import type { DataFilterField, DataFilterOperator } from "../types";
-import { Button } from "@/components/ui/button";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
 
 const isUpperBoundOperator = (operator: DataFilterOperator) => {
   return operator === "$lt" || operator === "$lte";

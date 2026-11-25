@@ -11,7 +11,6 @@ import dayjs from "dayjs";
 import { t } from "i18next";
 import { useTranslation } from "react-i18next";
 import { isEmpty } from "lodash";
-import type { DataFilterField } from "@/components/thread-ui/data-filter";
 import { refreshAfterMutation } from "@/lib/refresh-after-mutation";
 import { useAuthUserContext } from "@/app/_authenticated/contexts/auth-user-context";
 import { getWorkspaceMembersResourceKey } from "@/lib/resource-keys";
@@ -41,6 +40,7 @@ import { cn } from "@/lib/utils";
 import { Badge } from "@/components/thread-ui/badge";
 import { getRolesLabel } from "@/utils/get-role-label";
 import { createAbilitySubject } from "@/lib/ability";
+import type { DataFilterField } from "@/components/thread-ui/data-filter";
 
 const GET_WORKSPACE_MEMBERS_FROM_WORKSPACE_MEMBERS_ROUTE = graphql(`
   query getWorkspaceMembersFromWorkspaceMembersRoute(

@@ -3,13 +3,6 @@ import { act, cleanup, renderHook, waitFor } from "@testing-library/react";
 import { StrictMode, useCallback } from "react";
 import { afterEach, describe, expect, expectTypeOf, it, vi } from "vitest";
 import { z } from "zod";
-import { useResourceNavigation } from "./use-resource-navigation";
-import type {
-  ResourceNavigationEdge,
-  ResourceNavigationQueryOptions,
-  ResourceNavigationQueryResult,
-} from "./use-resource-navigation";
-import type { ReactNode } from "react";
 import { apiKeySearchSchema } from "@/schemas/api-key-search-schema";
 import {
   OrderDirection,
@@ -17,6 +10,13 @@ import {
   createConnectionSearchSchema,
 } from "@/lib/graphql-connection";
 import { UserApiKeyOrderField } from "@/gql/graphql";
+import { useResourceNavigation } from "./use-resource-navigation";
+import type {
+  ResourceNavigationEdge,
+  ResourceNavigationQueryOptions,
+  ResourceNavigationQueryResult,
+} from "./use-resource-navigation";
+import type { ReactNode } from "react";
 
 describe("saved search", () => {
   const searchSchema = z.object({
@@ -91,6 +91,10 @@ describe("saved search", () => {
     it("ignores object key order without losing nested filter changes", () => {
       const filterSchema = searchSchema.extend({ filter: z.unknown() });
       const resourceKey = key();
+      const initialFilter: unknown = {
+        enabled: false,
+        roles: ["admin", "user"],
+      };
       const { result, rerender } = renderHook(
         ({ filter }: { filter: unknown }) =>
           useResourceNavigation({
@@ -101,7 +105,7 @@ describe("saved search", () => {
         {
           wrapper,
           initialProps: {
-            filter: { enabled: false, roles: ["admin", "user"] } as unknown,
+            filter: initialFilter,
           },
         },
       );
@@ -802,6 +806,10 @@ describe("record navigation", () => {
         filter: z.unknown(),
       });
       const query = vi.fn().mockResolvedValue(neighbors());
+      const initialFilter: unknown = {
+        enabled: false,
+        roles: ["admin", "user"],
+      };
       const { result, rerender } = renderHook(
         ({ filter }: { filter: unknown }) =>
           useResourceNavigation({
@@ -812,7 +820,7 @@ describe("record navigation", () => {
           }),
         {
           initialProps: {
-            filter: { enabled: false, roles: ["admin", "user"] } as unknown,
+            filter: initialFilter,
           },
         },
       );

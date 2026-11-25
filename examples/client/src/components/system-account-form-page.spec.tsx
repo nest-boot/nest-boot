@@ -9,6 +9,7 @@ import {
 import { createInstance } from "i18next";
 import { I18nextProvider } from "react-i18next";
 import { afterEach, beforeAll, describe, expect, it, vi } from "vitest";
+import { createAbility, createAbilitySubject } from "@/lib/ability";
 import apiKeyMessages from "../../public/locales/en/api-key.json";
 import admin from "../../public/locales/en/admin.json";
 import common from "../../public/locales/en/common.json";
@@ -16,7 +17,6 @@ import { Button } from "./thread-ui/button";
 import { SystemAccountFormPage } from "./system-account-form-page";
 import type { PageProps } from "./thread-ui/page";
 import type { ReactNode } from "react";
-import { createAbility, createAbilitySubject } from "@/lib/ability";
 
 vi.mock("@/app/_authenticated/contexts/auth-user-context", () => ({
   useAuthUserContext: () => ({ id: "administrator" }),

@@ -6,7 +6,6 @@ import dayjs from "dayjs";
 import { t } from "i18next";
 import { useTranslation } from "react-i18next";
 import { isEmpty } from "lodash";
-import type { DataFilterField } from "@/components/thread-ui/data-filter";
 import { useAuthUserContext } from "@/app/_authenticated/contexts/auth-user-context";
 import { adminUserSearchSchema } from "@/schemas/admin-user-search-schema";
 import { adminUsersResourceKey } from "@/lib/resource-keys";
@@ -25,6 +24,7 @@ import { Page } from "@/components/thread-ui/page";
 import { graphql } from "@/gql";
 import { getNextSearch, getPreviousSearch } from "@/lib/graphql-connection";
 import { Card, CardContent } from "@/components/ui/card";
+import type { DataFilterField } from "@/components/thread-ui/data-filter";
 
 const GET_USERS_FROM_USERS_ROUTE = graphql(`
   query getUsersFromUsersRoute(

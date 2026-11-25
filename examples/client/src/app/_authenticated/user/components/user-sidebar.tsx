@@ -8,10 +8,6 @@ import {
 import { useTranslation } from "react-i18next";
 
 import { linkOptions } from "@tanstack/react-router";
-import { AppSidebar } from "../../components/app-sidebar";
-
-import type { ComponentProps, ComponentType, FC } from "react";
-import type { LinkProps } from "@tanstack/react-router";
 import { useAbility } from "@/contexts/ability-context";
 import { Link } from "@/components/link";
 import {
@@ -24,6 +20,10 @@ import {
   SidebarMenuItem,
   useSidebar,
 } from "@/components/ui/sidebar";
+import { AppSidebar } from "../../components/app-sidebar";
+
+import type { ComponentProps, ComponentType, FC } from "react";
+import type { LinkProps } from "@tanstack/react-router";
 
 type SidebarItem = {
   title: string;

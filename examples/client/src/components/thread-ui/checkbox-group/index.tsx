@@ -2,11 +2,6 @@
 
 import { CheckboxGroup as CheckboxGroupPrimitive } from "@base-ui/react/checkbox-group";
 import { useId } from "react";
-import type {
-  CheckboxGroupChangeEventDetails,
-  CheckboxGroupProps as CheckboxGroupPrimitiveProps,
-} from "@base-ui/react/checkbox-group";
-import type { ComponentProps, ReactNode } from "react";
 
 import { Checkbox } from "@/components/ui/checkbox";
 import {
@@ -18,6 +13,11 @@ import {
   FieldSet,
 } from "@/components/ui/field";
 import { cn } from "@/lib/utils";
+import type { ComponentProps, ReactNode } from "react";
+import type {
+  CheckboxGroupChangeEventDetails,
+  CheckboxGroupProps as CheckboxGroupPrimitiveProps,
+} from "@base-ui/react/checkbox-group";
 
 export type CheckboxGroupOptionProps<Value extends string> = {
   label: ReactNode;

@@ -1,8 +1,6 @@
 "use client";
 
 import { useId } from "react";
-import type { SelectRootProps } from "@base-ui/react/select";
-import type { ReactNode } from "react";
 
 import { Field, FieldDescription, FieldLabel } from "@/components/ui/field";
 import {
@@ -13,6 +11,8 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { cn } from "@/lib/utils";
+import type { ReactNode } from "react";
+import type { SelectRootProps } from "@base-ui/react/select";
 
 export type SelectItemProps = {
   label: ReactNode;

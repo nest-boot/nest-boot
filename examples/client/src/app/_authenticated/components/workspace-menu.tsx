@@ -3,12 +3,12 @@ import { useQuery } from "@apollo/client/react";
 import { useTranslation } from "react-i18next";
 import { useEffect, useState } from "react";
 
-import type { Workspace } from "@/components/thread-ui/sidebar-account-menu";
 import { useSidebar } from "@/components/ui/sidebar";
 import { Link } from "@/components/link";
 import { SidebarAccountMenuItem } from "@/components/thread-ui/sidebar-account-menu";
 import { graphql } from "@/gql";
 import { toast } from "@/components/thread-ui/toast";
+import type { Workspace } from "@/components/thread-ui/sidebar-account-menu";
 
 const GET_WORKSPACES_FROM_WORKSPACE_SWITCHER = graphql(`
   query getWorkspacesFromWorkspaceSwitcher(

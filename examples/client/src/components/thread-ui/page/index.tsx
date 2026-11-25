@@ -4,6 +4,14 @@ import { cva } from "class-variance-authority";
 import { MoreHorizontalIcon } from "lucide-react";
 import { Children, isValidElement } from "react";
 import { useTranslation } from "react-i18next";
+import { Button } from "@/components/thread-ui/button";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import { cn } from "@/lib/utils";
 import { BreadcrumbAction, BreadcrumbActions } from "./breadcrumb-actions";
 import {
   PageNextAction,
@@ -22,14 +30,6 @@ import type { BreadcrumbActionProps } from "./breadcrumb-actions";
 import type { PagePaginationActionProps } from "./pagination";
 
 import type { DataAttributes } from "@/components/thread-ui/common";
-import { Button } from "@/components/thread-ui/button";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
-import { cn } from "@/lib/utils";
 
 const pageVariants = cva(
   "mx-auto flex min-h-min w-full min-w-0 flex-1 flex-col @container/page",

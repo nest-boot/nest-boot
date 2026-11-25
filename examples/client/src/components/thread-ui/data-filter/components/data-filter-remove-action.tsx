@@ -2,8 +2,8 @@
 
 import { Trash2 } from "lucide-react";
 import { useTranslation } from "react-i18next";
-import type { ComponentProps } from "react";
 import { Button } from "@/components/ui/button";
+import type { ComponentProps } from "react";
 
 export type DataFilterRemoveActionProps = ComponentProps<typeof Button>;
 

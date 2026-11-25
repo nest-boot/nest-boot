@@ -2,7 +2,6 @@ import { useId, useState } from "react";
 import { useForm, useSelector } from "@tanstack/react-form";
 import { useTranslation } from "react-i18next";
 import { z } from "zod";
-import type { PermissionOption } from "@/lib/permissions";
 import {
   defaultFormOptions,
   handleFieldBlur,
@@ -32,6 +31,7 @@ import { systemAccountSearchSchema } from "@/schemas/system-account-search-schem
 import { useAuthUserContext } from "@/app/_authenticated/contexts/auth-user-context";
 import { SubmitButton } from "@/components/form/submit-button";
 import { Input } from "@/components/thread-ui/input";
+import type { PermissionOption } from "@/lib/permissions";
 
 interface Account {
   id: string;

@@ -1,11 +1,11 @@
 "use client";
 
 import { useId } from "react";
-import type { ComponentProps, FC } from "react";
 
 import { Field, FieldDescription, FieldLabel } from "@/components/ui/field";
 import { Input as InputComponent } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
+import type { ComponentProps, FC } from "react";
 
 export type InputProps = ComponentProps<typeof InputComponent> & {
   label?: string;

@@ -4,8 +4,6 @@ import { useTranslation } from "react-i18next";
 import { z } from "zod";
 
 import { useForm } from "@tanstack/react-form";
-import type { WorkspaceMemberFormProps } from "./workspace-member-form-props";
-import type { GetWorkspaceMemberFromWorkspaceMemberRouteQuery } from "@/gql/graphql";
 import { defaultFormOptions, resetFormAfterSave, submitForm } from "@/lib/form";
 import { useFormChanges, useSyncFormChanges } from "@/hooks/use-form-changes";
 import { CardContent, CardFooter } from "@/components/ui/card";
@@ -17,6 +15,8 @@ import { RoleCheckboxGroup } from "@/components/role-checkbox-group";
 
 import { FieldError, FieldSet } from "@/components/ui/field";
 import { SubmitButton } from "@/components/form/submit-button";
+import type { GetWorkspaceMemberFromWorkspaceMemberRouteQuery } from "@/gql/graphql";
+import type { WorkspaceMemberFormProps } from "./workspace-member-form-props";
 
 const SET_WORKSPACE_MEMBER_ROLES = graphql(`
   mutation setWorkspaceMemberRolesFromWorkspaceMemberRoute(

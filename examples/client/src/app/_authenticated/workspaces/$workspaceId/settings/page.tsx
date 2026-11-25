@@ -8,7 +8,6 @@ import {
 } from "@tanstack/react-router";
 import { useTranslation } from "react-i18next";
 import { useForm } from "@tanstack/react-form";
-import { useSelectedWorkspaceContext } from "../contexts/selected-workspace-context";
 import {
   defaultFormOptions,
   handleFieldBlur,
@@ -52,6 +51,7 @@ import { createAbilitySubject } from "@/lib/ability";
 import { SubmitButton } from "@/components/form/submit-button";
 import { Input } from "@/components/thread-ui/input";
 import { getFormErrorMessage } from "@/lib/form-errors";
+import { useSelectedWorkspaceContext } from "../contexts/selected-workspace-context";
 
 const UPDATE_WORKSPACE_FROM_SETTINGS_ROUTE = graphql(`
   mutation updateWorkspaceFromSettingsRoute(

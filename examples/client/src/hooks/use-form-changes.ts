@@ -1,8 +1,8 @@
 import { useEffect, useRef, useState } from "react";
 import { useSelector } from "@tanstack/react-form";
+import { getFormChanges } from "@/lib/form-changes";
 import type { AnyFormApi } from "@tanstack/react-form";
 import type { FormChangesOptions } from "@/lib/form-changes";
-import { getFormChanges } from "@/lib/form-changes";
 
 /** Track the edit baseline separately from incoming server snapshots. */
 export function useFormChanges<Values extends object>(

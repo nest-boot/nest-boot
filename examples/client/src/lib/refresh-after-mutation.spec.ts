@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { refreshAfterMutation } from "./refresh-after-mutation";
 import { toast } from "@/components/thread-ui/toast";
+import { refreshAfterMutation } from "./refresh-after-mutation";
 
 vi.mock("i18next", () => ({ t: (key: string) => key }));
 vi.mock("@/components/thread-ui/toast", () => ({
