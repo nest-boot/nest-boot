@@ -495,7 +495,7 @@ const driver: GraphQLRateLimitDriver = new MemoryGraphQLRateLimitDriver();
   imports: [
     GraphQLRateLimitModule.forRoot({
       driver,
-      maximumAvailable: 1000, // 令牌桶容量
+      maximumAvailable: 2000, // 令牌桶容量
       restoreRate: 50, // 每秒恢复的点数
     }),
   ],

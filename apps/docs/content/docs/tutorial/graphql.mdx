@@ -496,7 +496,7 @@ const driver: GraphQLRateLimitDriver = new MemoryGraphQLRateLimitDriver();
   imports: [
     GraphQLRateLimitModule.forRoot({
       driver,
-      maximumAvailable: 1000, // Bucket capacity
+      maximumAvailable: 2000, // Bucket capacity
       restoreRate: 50, // Points restored per second
     }),
   ],
