@@ -1,0 +1,67 @@
+codecov:
+  notify:
+    after_n_builds: 5
+    wait_for_ci: true
+
+coverage:
+  status:
+    project:
+      default: false
+      packages:
+        target: auto
+        threshold: 0.5%
+        paths:
+          - "packages/"
+      examples:
+        target: auto
+        threshold: 1%
+        paths:
+          - "examples/"
+    patch:
+      default: false
+      packages:
+        target: auto
+        threshold: 1%
+        paths:
+          - "packages/"
+      examples:
+        target: auto
+        informational: true
+        paths:
+          - "examples/"
+
+flags:
+  packages:
+    paths:
+      - "packages/"
+    carryforward: true
+  examples:
+    paths:
+      - "examples/"
+    carryforward: true
+
+component_management:
+  default_rules:
+    statuses:
+      - type: project
+        target: auto
+        threshold: 1%
+  individual_components:
+    - component_id: packages
+      name: Packages
+      paths:
+        - "packages/**"
+    - component_id: examples
+      name: Examples
+      paths:
+        - "examples/**"
+
+ignore:
+  - "**/*.spec.ts"
+  - "**/*.spec.tsx"
+  - "**/test/**"
+  - "**/e2e/**"
+  - "examples/client/src/components/ui/**"
+  - "examples/client/src/components/thread-ui/**"
+  - "examples/client/src/gql/**"
+  - "examples/client/src/routeTree.gen.ts"

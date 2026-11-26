@@ -36,14 +36,24 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
-      - name: Typecheck package source and tests
-        run: pnpm typecheck
+      - name: Cache Turborepo build outputs
+        uses: actions/cache@v6
+        with:
+          path: .turbo
+          key: turbo-${{ runner.os }}-${{ github.sha }}
+          restore-keys: |
+            turbo-${{ runner.os }}-
 
+      # Always run one clean --force build in static checks to catch uncached build issues
+      # while refreshing .turbo for downstream jobs and subsequent runs.
       - name: Build packages
         run: pnpm build:packages --force
 
       - name: Build examples
-        run: pnpm build:examples --force
+        run: pnpm build:examples
+
+      - name: Typecheck package source and tests
+        run: pnpm typecheck
 
       - name: Typecheck example server
         run: pnpm --filter @nest-boot/example-server exec tsc --noEmit -p tsconfig.json
@@ -105,6 +115,9 @@ jobs:
 
       - name: Upload client coverage to Codecov
         uses: codecov/codecov-action@v7
+        with:
+          directory: examples/client/coverage
+          flags: examples
         env:
           CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
 
@@ -115,7 +128,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        shard: [1/2, 2/2]
+        shard: [1/3, 2/3, 3/3]
 
     services:
       postgres:
@@ -177,8 +190,17 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
+      - name: Cache Turborepo build outputs
+        uses: actions/cache@v6
+        with:
+          path: .turbo
+          key: turbo-${{ runner.os }}-${{ github.sha }}-pkg-${{ strategy.job-index }}
+          restore-keys: |
+            turbo-${{ runner.os }}-${{ github.sha }}-
+            turbo-${{ runner.os }}-
+
       - name: Build packages
-        run: pnpm build:packages --force
+        run: pnpm build:packages
 
       # Storage e2e suites create their buckets through the AWS SDK.
       - name: Test packages (${{ matrix.shard }})
@@ -188,7 +210,7 @@ jobs:
           shard_index=$(( ${{ strategy.job-index }} ))
           filters=()
           for i in "${!pkgs[@]}"; do
-            if (( i % 2 == shard_index )); then
+            if (( i % 3 == shard_index )); then
               filters+=(--filter "./${pkgs[$i]}")
             fi
           done
@@ -206,6 +228,9 @@ jobs:
 
       - name: Upload package coverage to Codecov
         uses: codecov/codecov-action@v7
+        with:
+          directory: packages
+          flags: packages
         env:
           CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
 
@@ -268,19 +293,33 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
-      - name: Build example server and dependencies
-        run: pnpm turbo run build --force --filter=@nest-boot/example-server...
+      - name: Cache Turborepo build outputs
+        uses: actions/cache@v6
+        with:
+          path: .turbo
+          key: turbo-${{ runner.os }}-${{ github.sha }}-server
+          restore-keys: |
+            turbo-${{ runner.os }}-${{ github.sha }}-
+            turbo-${{ runner.os }}-
 
-      - name: Verify full example server integration
-        run: |
-          pnpm --filter @nest-boot/example-server test:unit
-          pnpm --filter @nest-boot/example-server test:integration
-          pnpm --filter @nest-boot/example-server test:e2e
+      - name: Build example server and dependencies
+        run: pnpm turbo run build --filter=@nest-boot/example-server...
+
+      - name: Verify full example server integration with coverage
+        run: pnpm --filter @nest-boot/example-server test:cov
         env:
           SERVER_E2E_DATABASE_URL: postgres://postgres:postgres@localhost:5432/postgres
           SERVER_E2E_REDIS_URL: redis://localhost:6379
           SERVER_E2E_MAILPIT_URL: http://127.0.0.1:38025
           SERVER_E2E_SMTP_URL: smtp://127.0.0.1:31025
+
+      - name: Upload server coverage to Codecov
+        uses: codecov/codecov-action@v7
+        with:
+          directory: examples/server/coverage
+          flags: examples
+        env:
+          CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
 
   browser-e2e:
     name: Browser E2E (${{ matrix.shard }})
@@ -345,8 +384,17 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
+      - name: Cache Turborepo build outputs
+        uses: actions/cache@v6
+        with:
+          path: .turbo
+          key: turbo-${{ runner.os }}-${{ github.sha }}-e2e-${{ strategy.job-index }}
+          restore-keys: |
+            turbo-${{ runner.os }}-${{ github.sha }}-
+            turbo-${{ runner.os }}-
+
       - name: Build example server and client
-        run: pnpm turbo run build --force --filter=@nest-boot/example-server... --filter=@nest-boot/example-client...
+        run: pnpm turbo run build --filter=@nest-boot/example-server... --filter=@nest-boot/example-client...
 
       - name: Cache Playwright headless shell
         id: playwright-cache
