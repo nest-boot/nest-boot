@@ -8,6 +8,12 @@ import {
 } from "graphql/index.js";
 
 const RETURN_TYPE_FOR_COMPLEXITY = "nestBootReturnTypeForComplexity";
+const UNREFLECTABLE_RETURN_TYPES = new Set<unknown>([
+  Promise,
+  Array,
+  Object,
+  Function,
+]);
 
 /**
  * Records a return type for default complexity after field metadata is merged.
@@ -22,15 +28,21 @@ export function defaultComplexityForField(
     key: string | symbol,
     descriptor?: PropertyDescriptor,
   ) => {
-    const getReturnType =
-      typeFn ??
-      (() =>
-        Reflect.getMetadata(
-          descriptor?.value ? "design:returntype" : "design:type",
-          target,
-          key,
-        ) as unknown);
-    Extensions({ [RETURN_TYPE_FOR_COMPLEXITY]: getReturnType })(target, key);
+    if (typeFn) {
+      Extensions({ [RETURN_TYPE_FOR_COMPLEXITY]: typeFn })(target, key);
+      return;
+    }
+    const reflectedType: unknown = Reflect.getMetadata(
+      descriptor?.value ? "design:returntype" : "design:type",
+      target,
+      key,
+    );
+    if (reflectedType && !UNREFLECTABLE_RETURN_TYPES.has(reflectedType)) {
+      Extensions({ [RETURN_TYPE_FOR_COMPLEXITY]: () => reflectedType })(
+        target,
+        key,
+      );
+    }
   };
 }
 
