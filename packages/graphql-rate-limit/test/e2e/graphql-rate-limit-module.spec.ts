@@ -89,7 +89,11 @@ describe("GraphQLRateLimitModule", () => {
     );
 
     const options = moduleRef.get<GraphQLRateLimitOptions>(OPTIONS_TOKEN);
-    expect(options.maximumAvailable).toBe(2000);
+    expect(options).toMatchObject({
+      maxComplexity: 1000,
+      maximumAvailable: 2000,
+      restoreRate: 100,
+    });
     const createContext = (
       ips: string[],
       ip?: string,
