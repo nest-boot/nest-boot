@@ -2,7 +2,7 @@
 
 📝 Enforce @Property and @Enum decorator configuration from TypeScript types and require Opt<T> on initialized properties.
 
-💼 This rule is enabled in the following configs: ✅ `recommended`, 🧩 `rules`.
+💼 This rule is enabled in the ✅ `recommended` config.
 
 🔧 This rule is automatically fixable by the [`--fix` CLI option](https://eslint.org/docs/latest/user-guide/command-line-interface#--fix).
 

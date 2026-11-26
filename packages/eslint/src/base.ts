@@ -1,23 +1,16 @@
 import js from "@eslint/js";
 import tsParser from "@typescript-eslint/parser";
-import type { ESLint, Linter } from "eslint";
+import type { Linter } from "eslint";
 import prettierConfig from "eslint-config-prettier";
 import jsdoc from "eslint-plugin-jsdoc";
 import simpleImportSort from "eslint-plugin-simple-import-sort";
 import tsEslint from "typescript-eslint";
 
-/** Flat configuration presets exported by `@nest-boot/eslint`. */
-export interface NestBootConfigs extends Record<string, Linter.Config[]> {
-  readonly standard: Linter.Config[];
-  readonly rules: Linter.Config[];
-  readonly recommended: Linter.Config[];
-}
-
 /**
- * Shared standard ESLint presets and TypeScript/JSDoc/Prettier rules without
- * Nest Boot domain-specific rules.
+ * Shared base ESLint flat configuration with JavaScript, TypeScript, JSDoc,
+ * import sorting, and Prettier rules, without Nest Boot domain rules.
  */
-const standardConfig: Linter.Config[] = [
+export const base: Linter.Config[] = [
   js.configs.recommended,
 
   ...(tsEslint.configs.strictTypeChecked as Linter.Config[]),
@@ -28,7 +21,7 @@ const standardConfig: Linter.Config[] = [
   prettierConfig,
 
   {
-    name: "@nest-boot/eslint/standard",
+    name: "@nest-boot/eslint/base",
     languageOptions: {
       parser: tsParser,
       parserOptions: {
@@ -74,34 +67,4 @@ const standardConfig: Linter.Config[] = [
   },
 ];
 
-/**
- * Builds the flat config presets bound to the given `nest-boot` plugin instance.
- * @param plugin - The ESLint plugin object to register under `"nest-boot"`.
- * @returns The `standard`, `rules`, and `recommended` flat config arrays.
- */
-export function createConfigs(plugin: ESLint.Plugin): NestBootConfigs {
-  const rulesConfig: Linter.Config[] = [
-    {
-      name: "@nest-boot/eslint/rules",
-      files: ["**/*.{ts,mts,cts,tsx}"],
-      plugins: {
-        "nest-boot": plugin,
-      },
-      rules: {
-        "nest-boot/database-entity-property-config-from-types": "error",
-        "nest-boot/database-entity-property-definite-assignment": "error",
-        "nest-boot/database-entity-property-no-spread": "error",
-        "nest-boot/graphql-field-config-from-types": "error",
-        "nest-boot/graphql-field-definite-assignment": "error",
-        "nest-boot/graphql-no-direct-nestjs-import": "error",
-        "nest-boot/queue-processor-name": "error",
-      },
-    },
-  ];
-
-  return {
-    standard: standardConfig,
-    rules: rulesConfig,
-    recommended: [...standardConfig, ...rulesConfig],
-  };
-}
+export default base;

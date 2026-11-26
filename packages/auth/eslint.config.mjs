@@ -1,8 +1,8 @@
-import nestBoot from "@nest-boot/eslint";
+import library from "@nest-boot/eslint/library";
 import { defineConfig } from "eslint/config";
 
 export default defineConfig([
-  ...nestBoot.configs.recommended,
+  ...library,
   {
     // These fixtures exercise Auth with the upstream module or decorators.
     files: [

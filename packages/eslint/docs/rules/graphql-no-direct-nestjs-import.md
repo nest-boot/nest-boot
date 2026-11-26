@@ -2,7 +2,7 @@
 
 📝 Require importing GraphQL symbols through the Nest Boot public entry point.
 
-💼 This rule is enabled in the following configs: ✅ `recommended`, 🧩 `rules`.
+💼 This rule is enabled in the ✅ `recommended` config.
 
 <!-- end auto-generated rule header -->
 

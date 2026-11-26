@@ -1,4 +1,4 @@
-import nestBoot from '@nest-boot/eslint';
+import app from '@nest-boot/eslint/app';
 import { defineConfig } from 'eslint/config';
 
 export default defineConfig([
@@ -10,7 +10,7 @@ export default defineConfig([
       'src/database/migrations/**',
     ],
   },
-  ...nestBoot.configs.recommended,
+  ...app,
   {
     rules: {
       '@typescript-eslint/no-unnecessary-boolean-literal-compare': 'off',
