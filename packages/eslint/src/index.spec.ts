@@ -1,20 +1,19 @@
 import type { ESLint } from "eslint";
 
-import nestBoot, { configs, meta, rules } from "./index.js";
+import nestBoot from "./index.js";
+import { rules } from "./rules/index.js";
 
 describe("@nest-boot/eslint public plugin API", () => {
   it("exports a standard ESLint plugin with meta, rules, and recommended config", () => {
     const asPlugin: ESLint.Plugin = nestBoot;
     expect(asPlugin).toBe(nestBoot);
-    expect(nestBoot.meta).toBe(meta);
     expect(nestBoot.rules).toBe(rules);
-    expect(nestBoot.configs).toBe(configs);
-    expect(meta).toMatchObject({
+    expect(nestBoot.meta).toMatchObject({
       name: "eslint-plugin-nest-boot",
       namespace: "nest-boot",
     });
-    expect(typeof meta.version).toBe("string");
-    expect(Object.keys(rules).sort()).toEqual([
+    expect(typeof nestBoot.meta.version).toBe("string");
+    expect(Object.keys(nestBoot.rules).sort()).toEqual([
       "database-entity-property-config-from-types",
       "database-entity-property-definite-assignment",
       "database-entity-property-no-spread",
@@ -23,19 +22,15 @@ describe("@nest-boot/eslint public plugin API", () => {
       "graphql-no-direct-nestjs-import",
       "queue-processor-name",
     ]);
-    expect(Object.keys(configs)).toEqual(["recommended"]);
-    expect(configs.recommended).toHaveLength(1);
+    expect(Object.keys(nestBoot.configs)).toEqual(["recommended"]);
+    expect(nestBoot.configs.recommended).toHaveLength(1);
 
-    // @ts-expect-error -- `standard` moved to `@nest-boot/eslint/base`
-    expect(configs.standard).toBeUndefined();
-    // @ts-expect-error -- `rules` was replaced by `configs.recommended`
-    expect(configs.rules).toBeUndefined();
-    // @ts-expect-error -- default plugin export also rejects `standard`
+    // @ts-expect-error -- `standard` preset was removed
     expect(nestBoot.configs.standard).toBeUndefined();
-    // @ts-expect-error -- default plugin export also rejects `rules`
+    // @ts-expect-error -- `rules` was replaced by `configs.recommended`
     expect(nestBoot.configs.rules).toBeUndefined();
 
-    const [recommendedEntry] = configs.recommended;
+    const [recommendedEntry] = nestBoot.configs.recommended;
     expect(recommendedEntry.name).toBe("@nest-boot/eslint/recommended");
     expect(recommendedEntry.files).toEqual(["**/*.{ts,mts,cts,tsx}"]);
     expect(recommendedEntry.languageOptions).toBeUndefined();

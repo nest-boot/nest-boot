@@ -1,9 +1,7 @@
-import baseDefault, { base } from "./base.js";
+import base from "./base.js";
 
-describe("@nest-boot/eslint/base", () => {
+describe("internal base preset", () => {
   it("enables type-aware parsing and external base rules without Nest Boot rules", () => {
-    expect(baseDefault).toBe(base);
-
     const baseEntry = base.find(
       (entry) => entry.name === "@nest-boot/eslint/base",
     );

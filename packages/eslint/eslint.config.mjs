@@ -1,9 +1,9 @@
-import base from "@nest-boot/eslint/base";
+import library from "@nest-boot/eslint/library";
 import { defineConfig } from "eslint/config";
 import eslintPlugin from "eslint-plugin-eslint-plugin";
 
 export default defineConfig([
-  ...base,
+  ...library,
   eslintPlugin.configs.recommended,
   {
     files: ["src/rules/*.ts"],

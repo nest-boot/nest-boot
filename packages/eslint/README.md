@@ -24,15 +24,6 @@ import { defineConfig } from "eslint/config";
 export default defineConfig([...library]);
 ```
 
-如仅需通用 JS / TypeScript / JSDoc / Import 排序 / Prettier 底座（不含 Nest Boot 领域规则），可使用 `@nest-boot/eslint/base`：
-
-```js
-import base from "@nest-boot/eslint/base";
-import { defineConfig } from "eslint/config";
-
-export default defineConfig([...base]);
-```
-
 ### 2. 仅作为 ESLint 插件接入已有配置
 
 如果项目已有自有 TypeScript ESLint 配置，可通过主入口导入标准 ESLint 插件并叠加 `nestBoot.configs.recommended`（需启用 `@typescript-eslint/parser` 与类型服务 `projectService: true`）：
@@ -83,20 +74,11 @@ export default [
 
 ## Exports & Configs
 
-| 入口                                                 | 说明                                                                                                                                            |
-| :--------------------------------------------------- | :---------------------------------------------------------------------------------------------------------------------------------------------- |
-| `@nest-boot/eslint/app`                              | 业务应用完整预设（`base` + `nestBoot.configs.recommended`）                                                                                     |
-| `@nest-boot/eslint/library`                          | 可复用库完整预设（`base` + `nestBoot.configs.recommended`）                                                                                     |
-| `@nest-boot/eslint/base`                             | 通用基础规则（`@eslint/js`、`typescript-eslint`、`jsdoc`、`simple-import-sort`、`prettier` 及 `projectService: true`，不含 `nest-boot/*` 规则） |
-| `@nest-boot/eslint` (`nestBoot.configs.recommended`) | 标准 ESLint 插件推荐预设（仅注册 `nest-boot` 插件并启用全部领域规则，不覆盖外部规则与 `parserOptions`）                                         |
-
-<!-- begin auto-generated configs list -->
-
-|     | Name          |
-| :-- | :------------ |
-| ✅  | `recommended` |
-
-<!-- end auto-generated configs list -->
+| 入口                                                 | 说明                                                                                                    |
+| :--------------------------------------------------- | :------------------------------------------------------------------------------------------------------ |
+| `@nest-boot/eslint/app`                              | 业务应用完整预设（通用 JS/TS/JSDoc/Import/Prettier 规则 + `nestBoot.configs.recommended`）              |
+| `@nest-boot/eslint/library`                          | 可复用库完整预设（通用 JS/TS/JSDoc/Import/Prettier 规则 + `nestBoot.configs.recommended`）              |
+| `@nest-boot/eslint` (`nestBoot.configs.recommended`) | 标准 ESLint 插件推荐预设（仅注册 `nest-boot` 插件并启用全部领域规则，不覆盖外部规则与 `parserOptions`） |
 
 ## Rules
 

@@ -1,5 +1,4 @@
 import js from "@eslint/js";
-import tsParser from "@typescript-eslint/parser";
 import type { Linter } from "eslint";
 import prettierConfig from "eslint-config-prettier";
 import jsdoc from "eslint-plugin-jsdoc";
@@ -7,10 +6,10 @@ import simpleImportSort from "eslint-plugin-simple-import-sort";
 import tsEslint from "typescript-eslint";
 
 /**
- * Shared base ESLint flat configuration with JavaScript, TypeScript, JSDoc,
- * import sorting, and Prettier rules, without Nest Boot domain rules.
+ * Internal shared base ESLint flat configuration with JavaScript, TypeScript,
+ * JSDoc, import sorting, and Prettier rules, without Nest Boot domain rules.
  */
-export const base: Linter.Config[] = [
+const base: Linter.Config[] = [
   js.configs.recommended,
 
   ...(tsEslint.configs.strictTypeChecked as Linter.Config[]),
@@ -23,7 +22,6 @@ export const base: Linter.Config[] = [
   {
     name: "@nest-boot/eslint/base",
     languageOptions: {
-      parser: tsParser,
       parserOptions: {
         projectService: true,
       },
@@ -34,15 +32,11 @@ export const base: Linter.Config[] = [
     rules: {
       curly: ["error", "all"],
       "no-void": "off",
-      "no-use-before-define": "off",
 
-      "import/order": "off",
       "simple-import-sort/imports": "error",
       "simple-import-sort/exports": "error",
 
-      "no-unused-expressions": "off",
       "@typescript-eslint/no-unused-expressions": "off",
-
       "@typescript-eslint/no-empty-function": [
         "error",
         { allow: ["constructors"] },

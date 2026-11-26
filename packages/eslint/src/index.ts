@@ -10,31 +10,33 @@ const { version } = require("../package.json") as { version: string };
 /** Flat configuration presets exported by the `@nest-boot/eslint` plugin. */
 export type NestBootConfigs = Readonly<Record<"recommended", Linter.Config[]>>;
 
-/** Metadata identifying the Nest Boot ESLint plugin. */
-export const meta: NonNullable<ESLint.Plugin["meta"]> = {
-  name: "eslint-plugin-nest-boot",
-  namespace: "nest-boot",
-  version,
-};
-
-/** Flat configuration presets (`recommended`) for the Nest Boot ESLint plugin. */
-export const configs = {} as NestBootConfigs;
-
 /** Standard ESLint v9 plugin exported by `@nest-boot/eslint`. */
 export interface NestBootPlugin extends Omit<
   ESLint.Plugin,
   "configs" | "meta" | "rules"
 > {
-  readonly meta: typeof meta;
+  readonly meta: NonNullable<ESLint.Plugin["meta"]>;
   readonly rules: NonNullable<ESLint.Plugin["rules"]>;
   readonly configs: NestBootConfigs;
 }
 
+const configs = {} as NestBootConfigs;
+
 const plugin: NestBootPlugin = {
-  meta,
+  meta: {
+    name: "eslint-plugin-nest-boot",
+    namespace: "nest-boot",
+    version,
+  },
   rules: rules as unknown as NonNullable<ESLint.Plugin["rules"]>,
   configs,
 } satisfies ESLint.Plugin;
+
+const recommendedRules: Linter.RulesRecord = Object.fromEntries(
+  Object.entries(rules)
+    .filter(([, rule]) => rule.meta.docs?.recommended)
+    .map(([name]) => [`nest-boot/${name}`, "error"]),
+);
 
 Object.assign(configs, {
   recommended: [
@@ -44,18 +46,9 @@ Object.assign(configs, {
       plugins: {
         "nest-boot": plugin,
       },
-      rules: {
-        "nest-boot/database-entity-property-config-from-types": "error",
-        "nest-boot/database-entity-property-definite-assignment": "error",
-        "nest-boot/database-entity-property-no-spread": "error",
-        "nest-boot/graphql-field-config-from-types": "error",
-        "nest-boot/graphql-field-definite-assignment": "error",
-        "nest-boot/graphql-no-direct-nestjs-import": "error",
-        "nest-boot/queue-processor-name": "error",
-      },
+      rules: recommendedRules,
     },
   ],
 } satisfies NestBootConfigs);
 
-export { rules };
 export default plugin;

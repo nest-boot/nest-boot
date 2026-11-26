@@ -1,5 +1,6 @@
 import type { TSESLint } from "@typescript-eslint/utils";
 
+import type { PluginDocs } from "../utils/createRule.js";
 import databaseEntityPropertyConfigFromTypes from "./database-entity-property-config-from-types.js";
 import databaseEntityPropertyDefiniteAssignment from "./database-entity-property-definite-assignment.js";
 import databaseEntityPropertyNoSpread from "./database-entity-property-no-spread.js";
@@ -11,7 +12,7 @@ import queueProcessorName from "./queue-processor-name.js";
 /** All Nest Boot ESLint rules keyed by `<domain>-<rule>`. */
 export const rules: Record<
   string,
-  TSESLint.RuleModule<string, readonly unknown[]>
+  TSESLint.RuleModule<string, readonly unknown[], PluginDocs>
 > = {
   "database-entity-property-config-from-types":
     databaseEntityPropertyConfigFromTypes,

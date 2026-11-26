@@ -1,9 +1,8 @@
 import { mkdtemp, rm, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 
-import nestBoot, { configs } from "@nest-boot/eslint";
+import nestBoot from "@nest-boot/eslint";
 import app from "@nest-boot/eslint/app";
-import base from "@nest-boot/eslint/base";
 import library from "@nest-boot/eslint/library";
 import tsParser from "@typescript-eslint/parser";
 import { ESLint } from "eslint";
@@ -247,7 +246,7 @@ export function identity<T>(value: T): T {
 
   it("applies only Nest Boot custom rules when using nestBoot.configs.recommended", async () => {
     // @ts-expect-error -- public d.ts rejects removed `standard` preset
-    expect(configs.standard).toBeUndefined();
+    expect(nestBoot.configs.standard).toBeUndefined();
     // @ts-expect-error -- public d.ts rejects removed `rules` preset
     expect(nestBoot.configs.rules).toBeUndefined();
 
@@ -289,27 +288,5 @@ export { Query };
       "nest-boot/database-entity-property-definite-assignment",
     );
     expect(ruleIds.every((id) => id?.startsWith("nest-boot/"))).toBe(true);
-  });
-
-  it("applies only base rules when using @nest-boot/eslint/base", async () => {
-    const file = join(fixtureDirectory, "base-only.ts");
-    await writeFile(
-      file,
-      `import { Query } from "@nestjs/graphql";
-const unusedValue = 42;
-export { Query };
-`,
-    );
-    const eslint = new ESLint({
-      cwd: fixtureDirectory,
-      overrideConfig: base,
-      overrideConfigFile: true,
-    });
-
-    const results = await eslint.lintFiles([file]);
-    const ruleIds = results[0]?.messages.map((message) => message.ruleId) ?? [];
-
-    expect(ruleIds).toContain("@typescript-eslint/no-unused-vars");
-    expect(ruleIds.some((id) => id?.startsWith("nest-boot/"))).toBe(false);
   });
 });
