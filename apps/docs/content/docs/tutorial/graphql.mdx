@@ -512,7 +512,7 @@ To supply a custom Redis instance managed outside the rate limit module, pass `n
 
 With `GraphQLModule` from `@nest-boot/graphql`, `Query`, `Mutation`, `ResolveField`, and `Field` use the return type's static `complexity` as the default for fields that return a single concrete object. Generated Connections and their subclasses provide this callback. Use the explicit `complexity` option to customize list costs or override an inferred default, including setting it to zero.
 
-The rate limiter reserves one point per requested edge and settles that part of the cost using the number of edges returned by the resolver. This applies to cursor-only selections as well. The callback charges once for the normalized `query` and `filter`. Each comparison and logical group costs one point. Array comparisons such as `$in` cost one point per value, with a minimum of one.
+The rate limiter reserves one point per requested edge and settles that part of the cost using the number of edges returned by the resolver. This applies to cursor-only selections as well. Generated `Edge.node` fields have zero base cost. Fields selected under `node` use their own costs. The callback charges once for the normalized `query` and `filter`. Each comparison and logical group costs one point. Array comparisons such as `$in` cost one point per value, with a minimum of one.
 
 Standalone fields returning `Count` use the filters in their generated `CountArgs` to calculate complexity automatically. Each count costs 10 base points plus one charge for the filters using the list rules. The child fields of `Count` cost zero.
 

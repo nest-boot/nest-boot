@@ -27,6 +27,7 @@ export function createEdge<Entity extends object>(
   })
   class Edge implements EdgeInterface<Entity> {
     @Field(() => entityClass, {
+      complexity: 0,
       description: `The item at the end of ${entityName}Edge.`,
     })
     node!: Entity;

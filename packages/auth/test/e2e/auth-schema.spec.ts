@@ -297,6 +297,11 @@ describe("auth GraphQL schema", () => {
       expect(mutations[`delete${scope}ApiKey`].type.toString()).toBe(
         `${scope}ApiKey!`,
       );
+      const edgeFields = (
+        schema.getType(`${scope}ApiKeyEdge`) as GraphQLObjectType
+      ).getFields();
+      expect(edgeFields.node.extensions.complexity).toBe(0);
+      expect(edgeFields.cursor.extensions.complexity).toBe(0);
       const fields = (
         schema.getType(`${scope}ApiKey`) as GraphQLObjectType
       ).getFields();

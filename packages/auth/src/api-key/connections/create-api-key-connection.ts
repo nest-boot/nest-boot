@@ -69,6 +69,7 @@ export function createApiKeyConnection<Key extends ApiKeyObject>(
   class Edge implements EdgeInterface<ApiKey> {
     // eslint-disable-next-line nest-boot/graphql-field-config-from-types -- Services project persistence rows to this DTO before GraphQL serialization.
     @Field(() => view, {
+      complexity: 0,
       description: `The item at the end of ${view.name}Edge.`,
     })
     node!: ApiKey;
