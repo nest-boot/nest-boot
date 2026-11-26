@@ -210,7 +210,8 @@ jobs:
           shard_index=$(( ${{ strategy.job-index }} ))
           filters=()
           for i in "${!pkgs[@]}"; do
-            if (( i % 4 == shard_index )); then
+            slot=$(( (i / 4) % 2 == 0 ? i % 4 : 3 - (i % 4) ))
+            if (( slot == shard_index )); then
               filters+=(--filter "./${pkgs[$i]}")
             fi
           done

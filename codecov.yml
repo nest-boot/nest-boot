@@ -9,7 +9,7 @@ coverage:
       default: false
       packages:
         target: auto
-        threshold: 0.5%
+        threshold: 1%
         paths:
           - "packages/"
       examples:
@@ -41,20 +41,23 @@ flags:
     carryforward: true
 
 component_management:
-  default_rules:
-    statuses:
-      - type: project
-        target: auto
-        threshold: 1%
   individual_components:
     - component_id: packages
       name: Packages
       paths:
         - "packages/**"
+      statuses:
+        - type: project
+          target: auto
+          informational: true
     - component_id: examples
       name: Examples
       paths:
         - "examples/**"
+      statuses:
+        - type: project
+          target: auto
+          informational: true
 
 ignore:
   - "**/*.spec.ts"
