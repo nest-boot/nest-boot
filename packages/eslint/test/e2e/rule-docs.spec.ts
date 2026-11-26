@@ -4,7 +4,8 @@ import path from "node:path";
 import tsParser from "@typescript-eslint/parser";
 import { TSESLint } from "@typescript-eslint/utils";
 
-import nestBoot, { rules } from "../../src/index.js";
+import nestBoot from "../../src/index.js";
+import { rules } from "../../src/rules/index.js";
 
 const packageRoot = path.resolve(import.meta.dirname, "../..");
 const linter = new TSESLint.Linter();

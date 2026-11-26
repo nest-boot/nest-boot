@@ -2,7 +2,7 @@
 
 📝 Require a processor class name to match its declared queue class.
 
-💼 This rule is enabled in the following configs: ✅ `recommended`, 🧩 `rules`.
+💼 This rule is enabled in the ✅ `recommended` config.
 
 💭 This rule requires [type information](https://typescript-eslint.io/linting/typed-linting).
 

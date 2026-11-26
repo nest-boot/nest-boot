@@ -2,11 +2,6 @@ import prettier from "prettier";
 
 /** @type {import("eslint-doc-generator").GenerateOptions} */
 const config = {
-  configEmoji: [
-    ["recommended", "✅"],
-    ["rules", "🧩"],
-    ["standard", "📐"],
-  ],
   ruleDocSectionInclude: ["Examples"],
   postprocess: async (content, filePath) => {
     const normalized = content.replaceAll(

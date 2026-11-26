@@ -1,34 +1,54 @@
 import { createRequire } from "node:module";
 
-import type { ESLint } from "eslint";
+import type { ESLint, Linter } from "eslint";
 
-import { createConfigs, type NestBootConfigs } from "./config.js";
 import { rules } from "./rules/index.js";
 
 const require = createRequire(import.meta.url);
 const { version } = require("../package.json") as { version: string };
 
-/** Metadata identifying the Nest Boot ESLint plugin. */
-export const meta: NonNullable<ESLint.Plugin["meta"]> = {
-  name: "eslint-plugin-nest-boot",
-  namespace: "nest-boot",
-  version,
-};
+/** Flat configuration presets exported by the `@nest-boot/eslint` plugin. */
+export type NestBootConfigs = Readonly<Record<"recommended", Linter.Config[]>>;
 
-/** Flat configuration presets (`recommended`, `standard`, and `rules`). */
-export const configs = {} as NestBootConfigs;
-
-const plugin: ESLint.Plugin & {
-  readonly meta: typeof meta;
+/** Standard ESLint v9 plugin exported by `@nest-boot/eslint`. */
+export interface NestBootPlugin extends Omit<
+  ESLint.Plugin,
+  "configs" | "meta" | "rules"
+> {
+  readonly meta: NonNullable<ESLint.Plugin["meta"]>;
   readonly rules: NonNullable<ESLint.Plugin["rules"]>;
   readonly configs: NestBootConfigs;
-} = {
-  meta,
+}
+
+const configs = {} as NestBootConfigs;
+
+const plugin: NestBootPlugin = {
+  meta: {
+    name: "eslint-plugin-nest-boot",
+    namespace: "nest-boot",
+    version,
+  },
   rules: rules as unknown as NonNullable<ESLint.Plugin["rules"]>,
   configs,
-};
+} satisfies ESLint.Plugin;
 
-Object.assign(configs, createConfigs(plugin));
+const recommendedRules: Linter.RulesRecord = Object.fromEntries(
+  Object.entries(rules)
+    .filter(([, rule]) => rule.meta.docs?.recommended)
+    .map(([name]) => [`nest-boot/${name}`, "error"]),
+);
 
-export { rules };
+Object.assign(configs, {
+  recommended: [
+    {
+      name: "@nest-boot/eslint/recommended",
+      files: ["**/*.{ts,mts,cts,tsx}"],
+      plugins: {
+        "nest-boot": plugin,
+      },
+      rules: recommendedRules,
+    },
+  ],
+} satisfies NestBootConfigs);
+
 export default plugin;

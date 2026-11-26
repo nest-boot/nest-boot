@@ -2,7 +2,7 @@
 
 📝 Require explicit options in entity field decorators.
 
-💼 This rule is enabled in the following configs: ✅ `recommended`, 🧩 `rules`.
+💼 This rule is enabled in the ✅ `recommended` config.
 
 <!-- end auto-generated rule header -->
 

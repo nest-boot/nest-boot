@@ -6,7 +6,7 @@
     "url": "https://github.com/nest-boot/nest-boot.git",
     "directory": "packages/eslint"
   },
-  "description": "Shared ESLint flat configuration and custom rules for Nest Boot applications",
+  "description": "Shared ESLint flat configurations and custom rules for Nest Boot",
   "author": {
     "name": "Xudong Huang",
     "email": "me@huangxudong.com",
@@ -28,6 +28,14 @@
     ".": {
       "types": "./dist/index.d.ts",
       "import": "./dist/index.js"
+    },
+    "./app": {
+      "types": "./dist/app.d.ts",
+      "import": "./dist/app.js"
+    },
+    "./library": {
+      "types": "./dist/library.d.ts",
+      "import": "./dist/library.js"
     },
     "./package.json": "./package.json"
   },
