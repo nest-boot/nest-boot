@@ -124,6 +124,14 @@ class BookResolver {
   }
 }
 
+@Resolver(() => CostBook)
+class CostBookResolver {
+  @ResolveField(() => BookOwner)
+  owner(): BookOwner {
+    return { present: true };
+  }
+}
+
 describe("Connection complexity over GraphQL HTTP", () => {
   let orm: MikroORM<PgliteDriver>;
   let app: INestApplication | undefined;
@@ -181,10 +189,22 @@ describe("Connection complexity over GraphQL HTTP", () => {
         actual: 6,
       },
       {
+        selection: "books(first: 1) { edges { node { name } } }",
+        books: { edges: [{ node: { name: "alpha" } }] },
+        requested: 4,
+        actual: 4,
+      },
+      {
         selection: "books(last: 2) { edges { node { id } } }",
         books: { edges: [{ node: { id: "2" } }, { node: { id: "3" } }] },
-        requested: 9,
-        actual: 9,
+        requested: 7,
+        actual: 7,
+      },
+      {
+        selection: "books(first: 1) { edges { node { owner { present } } } }",
+        books: { edges: [{ node: { owner: { present: true } } }] },
+        requested: 5,
+        actual: 5,
       },
       {
         selection: "books(first: 1) { pageInfo { hasNextPage } }",
@@ -347,6 +367,7 @@ describe("Connection complexity over GraphQL HTTP", () => {
       imports,
       providers: [
         BookResolver,
+        CostBookResolver,
         {
           provide: ConnectionManager,
           useValue: new ConnectionManager(orm.em.fork()),
