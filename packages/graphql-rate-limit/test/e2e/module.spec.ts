@@ -3,6 +3,8 @@ import {
   Field,
   type FieldComplexityEstimatorArgs,
   GraphQLModule,
+  ID,
+  InputType,
   Int,
   Mutation,
   ObjectType,
@@ -26,6 +28,20 @@ interface GraphQLResponse {
     };
   };
 }
+
+@InputType()
+class SkillOwnerInput {
+  @Field(() => String)
+  type!: string;
+}
+
+@InputType()
+class CreateSkillInput {
+  @Field(() => SkillOwnerInput)
+  owner!: SkillOwnerInput;
+}
+
+const createSkillResolver = vi.fn(() => "skill-1");
 
 @ObjectType()
 class MutationDetails {
@@ -159,6 +175,13 @@ class TestResolver {
   })
   updateWithResolvedCost(): number {
     return 3;
+  }
+
+  @Mutation(() => ID)
+  createSkill(
+    @Args("input", { type: () => CreateSkillInput }) _input: CreateSkillInput,
+  ): string {
+    return createSkillResolver();
   }
 }
 
@@ -447,6 +470,78 @@ describe("GraphQLRateLimitModule - e2e", () => {
     expect(body.errors?.[0]).toMatchObject({
       message: "Too Many Requests",
       extensions: { code: "TOO_MANY_REQUESTS" },
+    });
+  });
+
+  it("returns HTTP 400 BAD_USER_INPUT for invalid variables without calling resolvers or charging points", async () => {
+    createSkillResolver.mockClear();
+    const app = await createApp(
+      GraphQLRateLimitModule.forRoot({
+        defaultComplexity: 10,
+        maximumAvailable: 10,
+        restoreRate: 1,
+        getId: () => "client",
+      }),
+    );
+    apps.push(app);
+    const http = request(app.getHttpServer());
+    const createSkillMutation = /* GraphQL */ `
+      mutation CreateSkill($input: CreateSkillInput!) {
+        createSkill(input: $input)
+      }
+    `;
+
+    for (const [query, variables, expectedMessage] of [
+      [
+        createSkillMutation,
+        { input: {} },
+        'Variable "$input" got invalid value {}; Field "owner" of required type "SkillOwnerInput!" was not provided.',
+      ],
+      [
+        createSkillMutation,
+        {},
+        'Variable "$input" of required type "CreateSkillInput!" was not provided.',
+      ],
+      [
+        createSkillMutation,
+        { input: null },
+        'Variable "$input" of non-null type "CreateSkillInput!" must not be null.',
+      ],
+      [
+        "mutation Update($include: Boolean!) { updateStatus @include(if: $include) }",
+        { include: null },
+        'Variable "$include" of non-null type "Boolean!" must not be null.',
+      ],
+    ] as const) {
+      const response = await http
+        .post("/graphql")
+        .send({ query, variables })
+        .expect(400);
+      const body = response.body as GraphQLResponse;
+
+      expect(body.data).toBeUndefined();
+      expect(body.extensions?.cost).toBeUndefined();
+      expect(body.errors?.[0]).toMatchObject({
+        message: expectedMessage,
+        extensions: { code: "BAD_USER_INPUT" },
+      });
+      expect(body.errors?.[0]?.extensions).not.toHaveProperty("http");
+    }
+
+    expect(createSkillResolver).not.toHaveBeenCalled();
+
+    const validResponse = await http
+      .post("/graphql")
+      .send({ query: "{ hello }" })
+      .expect(200);
+    expect(validResponse.body).toMatchObject({
+      data: { hello: "world" },
+      extensions: {
+        cost: {
+          requestedQueryCost: 10,
+          actualQueryCost: 10,
+        },
+      },
     });
   });
 

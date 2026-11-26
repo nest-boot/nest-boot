@@ -5,13 +5,14 @@ import {
   type BaseContext,
   type GraphQLRequestListener,
 } from "@apollo/server";
+import { ApolloServerErrorCode } from "@apollo/server/errors";
 import {
   type FieldComplexityEstimatorArgs,
   GraphQLSchemaHost,
   GraphQLTooManyRequestsError,
 } from "@nest-boot/graphql";
 import { Plugin } from "@nestjs/apollo";
-import { Inject } from "@nestjs/common";
+import { HttpStatus, Inject } from "@nestjs/common";
 import { ModuleRef } from "@nestjs/core";
 import { collectFields } from "graphql/execution/collectFields.js";
 import {
@@ -19,6 +20,7 @@ import {
   type FieldNode,
   getNamedType,
   getVariableValues,
+  GraphQLError,
   type GraphQLField,
   type GraphQLSchema,
   isCompositeType,
@@ -149,6 +151,66 @@ function mutationBaseCost(field: GraphQLField<unknown, unknown>): number {
   return typeof mutationComplexity === "number" ? mutationComplexity : 10;
 }
 
+/**
+ * Checks whether an error came from GraphQL variable coercion.
+ * @param error - The thrown value to inspect.
+ * @returns Whether the error is a variable coercion error.
+ */
+function isVariableCoercionError(error: unknown): error is GraphQLError {
+  if (!(error instanceof GraphQLError) || error.nodes?.length !== 1) {
+    return false;
+  }
+
+  const [node] = error.nodes;
+  if (node.kind !== Kind.VARIABLE_DEFINITION) {
+    return false;
+  }
+
+  const variableName = node.variable.name.value;
+  return (
+    error.message.startsWith(`Variable "$${variableName}" has invalid value`) ||
+    error.message.startsWith(
+      `Variable "$${variableName}" got invalid value `,
+    ) ||
+    error.message.startsWith(`Variable "$${variableName}" of required type `) ||
+    error.message.startsWith(`Variable "$${variableName}" of non-null type `)
+  );
+}
+
+/**
+ * Preserves Apollo Server's user-input classification for variable coercion errors.
+ * @param error - The error thrown while coercing operation variables.
+ * @returns A classified `GraphQLError`, or the original error when unrelated.
+ */
+function normalizeVariableCoercionError(error: unknown): unknown {
+  if (!isVariableCoercionError(error)) {
+    return error;
+  }
+
+  const http =
+    typeof error.extensions.http === "object" && error.extensions.http !== null
+      ? error.extensions.http
+      : undefined;
+
+  return new GraphQLError(error.message, {
+    nodes: error.nodes,
+    source: error.source,
+    positions: error.positions,
+    originalError: error.originalError ?? error,
+    extensions: {
+      ...error.extensions,
+      code: error.extensions.code ?? ApolloServerErrorCode.BAD_USER_INPUT,
+      http: {
+        ...http,
+        status:
+          http && "status" in http && typeof http.status === "number"
+            ? http.status
+            : HttpStatus.BAD_REQUEST,
+      },
+    },
+  });
+}
+
 @Plugin()
 export class GraphQLRateLimitPlugin implements ApolloServerPlugin {
   private readonly defaultEstimator: ComplexityEstimator;
@@ -196,39 +258,46 @@ export class GraphQLRateLimitPlugin implements ApolloServerPlugin {
     return {
       didResolveOperation: async (args) => {
         const { request, document, operation } = args;
-        let query = document;
-        let mutationSelections: Set<FieldNode> | undefined;
-        if (operation?.operation === OperationTypeNode.MUTATION) {
-          const selections = collectMutationSelections(
-            schema,
-            document,
-            operation,
-            request.variables ?? {},
-          );
-          query = {
-            ...document,
-            definitions: document.definitions.map((definition) =>
-              definition === operation
-                ? {
-                    ...operation,
-                    selectionSet: { ...operation.selectionSet, selections },
-                  }
-                : definition,
-            ),
-          };
-          mutationSelections = new Set(selections);
-        }
+        try {
+          let query = document;
+          let mutationSelections: Set<FieldNode> | undefined;
+          if (operation?.operation === OperationTypeNode.MUTATION) {
+            const selections = collectMutationSelections(
+              schema,
+              document,
+              operation,
+              request.variables ?? {},
+            );
+            query = {
+              ...document,
+              definitions: document.definitions.map((definition) =>
+                definition === operation
+                  ? {
+                      ...operation,
+                      selectionSet: { ...operation.selectionSet, selections },
+                    }
+                  : definition,
+              ),
+            };
+            mutationSelections = new Set(selections);
+          }
 
-        cost.requestedQueryCost = getComplexity({
-          schema,
-          operationName: request.operationName,
-          query,
-          variables: request.variables,
-          estimators: [
-            (field) =>
-              estimateCost(field, mutationSelections?.has(field.node) === true),
-          ],
-        });
+          cost.requestedQueryCost = getComplexity({
+            schema,
+            operationName: request.operationName,
+            query,
+            variables: request.variables,
+            estimators: [
+              (field) =>
+                estimateCost(
+                  field,
+                  mutationSelections?.has(field.node) === true,
+                ),
+            ],
+          });
+        } catch (error) {
+          throw normalizeVariableCoercionError(error);
+        }
 
         if (cost.requestedQueryCost > maxComplexity) {
           throw new GraphQLTooManyRequestsError(

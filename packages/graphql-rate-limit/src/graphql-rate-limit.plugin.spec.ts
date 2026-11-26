@@ -6,6 +6,7 @@ import {
   buildSchema,
   FieldNode,
   getOperationAST,
+  GraphQLError,
   GraphQLResolveInfo,
   Kind,
   parse,
@@ -57,8 +58,17 @@ describe("GraphQLRateLimitPlugin", () => {
       failedItem: Item
     }
 
+    input SkillOwnerInput {
+      type: String!
+    }
+
+    input CreateSkillInput {
+      owner: SkillOwnerInput!
+    }
+
     type Mutation {
       update: UpdateResult!
+      createSkill(input: CreateSkillInput!): ID!
     }
 
     type UpdateResult {
@@ -275,9 +285,100 @@ describe("GraphQLRateLimitPlugin", () => {
 
     await expect(
       listener.didResolveOperation(mutationContext(null)),
-    ).rejects.toThrow(
-      'Variable "$include" of non-null type "Boolean!" must not be null.',
+    ).rejects.toMatchObject({
+      message:
+        'Variable "$include" of non-null type "Boolean!" must not be null.',
+      extensions: {
+        code: "BAD_USER_INPUT",
+        http: { status: 400 },
+      },
+    });
+    expect(subPoint).not.toHaveBeenCalled();
+  });
+
+  it("classifies missing required input fields as BAD_USER_INPUT with HTTP 400", async () => {
+    const actual = await vi.importActual<
+      typeof import("graphql-query-complexity")
+    >("graphql-query-complexity");
+    mockedGetComplexity.mockImplementationOnce(actual.getComplexity);
+    const createSkillDocument = parse(
+      "mutation CreateSkill($input: CreateSkillInput!) { createSkill(input: $input) }",
     );
+    const context = {
+      request: {
+        operationName: "CreateSkill",
+        variables: { input: {} },
+      },
+      document: createSkillDocument,
+      operation: getOperationAST(createSkillDocument, "CreateSkill"),
+    } as unknown as GraphQLRequestContext<BaseContext>;
+    const listener =
+      (await createPlugin().requestDidStart()) as TestRequestListener;
+
+    await expect(listener.didResolveOperation(context)).rejects.toMatchObject({
+      message:
+        'Variable "$input" got invalid value {}; Field "owner" of required type "SkillOwnerInput!" was not provided.',
+      locations: [{ line: 1, column: 22 }],
+      extensions: {
+        code: "BAD_USER_INPUT",
+        http: { status: 400 },
+      },
+    });
+    expect(subPoint).not.toHaveBeenCalled();
+  });
+
+  it("preserves explicit error extensions on variable coercion errors and ignores unrelated errors", async () => {
+    const listener =
+      (await createPlugin().requestDidStart()) as TestRequestListener;
+    const operation = getOperationAST(mutationDocument, "Update");
+    const variableNode = operation?.variableDefinitions?.[0];
+    if (!variableNode) {
+      throw new Error("Expected variable definition");
+    }
+
+    const customCoercionError = new GraphQLError(
+      'Variable "$include" has invalid value "forbidden".',
+      {
+        nodes: [variableNode],
+        extensions: {
+          code: "FORBIDDEN",
+          http: { status: 403 },
+        },
+      },
+    );
+    mockedGetComplexity.mockImplementationOnce(() => {
+      throw customCoercionError;
+    });
+    await expect(
+      listener.didResolveOperation({
+        request: { operationName: "TestQuery", variables: {} },
+        document,
+      } as unknown as GraphQLRequestContext<BaseContext>),
+    ).rejects.toMatchObject({
+      message: 'Variable "$include" has invalid value "forbidden".',
+      extensions: {
+        code: "FORBIDDEN",
+        http: { status: 403 },
+      },
+    });
+
+    for (const unrelatedError of [
+      new Error("Estimator crashed"),
+      new GraphQLError("No complexity calculated"),
+      new GraphQLError("Unrelated field error", { nodes: [operation] }),
+      new GraphQLError("Unrelated variable error", { nodes: [variableNode] }),
+    ]) {
+      mockedGetComplexity.mockImplementationOnce(() => {
+        throw unrelatedError;
+      });
+      await expect(
+        listener.didResolveOperation({
+          request: { operationName: "TestQuery", variables: {} },
+          document,
+        } as unknown as GraphQLRequestContext<BaseContext>),
+      ).rejects.toBe(unrelatedError);
+    }
+
     expect(subPoint).not.toHaveBeenCalled();
   });
 
