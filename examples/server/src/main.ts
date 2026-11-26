@@ -2,7 +2,7 @@ import { Logger } from '@nest-boot/logger';
 import { ZodValidationPipe } from '@nest-boot/validator';
 import { NestFactory } from '@nestjs/core';
 
-import { AppModule } from './app/app.module.js';
+import { AppModule } from '@/app/app.module.js';
 
 /**
  * Starts the example Nest application.

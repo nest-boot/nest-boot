@@ -176,6 +176,66 @@ it("prefers relative TypeScript sources over adjacent JavaScript during source e
   expect(result.stdout).toContain("SOURCE:Alice!");
   expect(result.stdout).not.toContain("STALE");
 });
+it("resolves tsconfig paths aliases (@/*) for static and dynamic source imports", () => {
+  writeSource();
+  write(
+    "tsconfig.json",
+    JSON.stringify({
+      ...sourceConfig,
+      compilerOptions: {
+        ...sourceConfig.compilerOptions,
+        paths: {
+          "@exact": ["${configDir}/src/app/exact.ts"],
+          "@/*": ["${configDir}/src/*"],
+          "fixture-package": [
+            "${configDir}/node_modules/fixture-package/index.d.ts",
+          ],
+        },
+      },
+    }),
+  );
+  write("src/app/exact.ts", "export const exactTag = 'EXACT';");
+  write("src/app/legacy.d.ts", "export declare const legacyTag: string;");
+  write("src/app/legacy.js", "export const legacyTag = 'LEGACY';");
+  write("src/app/types-only.d.ts", "export declare const ghost: string;");
+  write(
+    "node_modules/fixture-package/package.json",
+    JSON.stringify({ type: "module", exports: "./index.js" }),
+  );
+  write(
+    "node_modules/fixture-package/index.d.ts",
+    "export declare const pkgTag: string;",
+  );
+  write(
+    "node_modules/fixture-package/index.js",
+    "export const pkgTag = 'EXTERNAL';",
+  );
+  write(
+    "src/cli.ts",
+    readFileSync(join(testApplication, "src/cli.ts"), "utf8").replace(
+      "./app/app.module.js",
+      "@/app/app.module.js",
+    ),
+  );
+  write(
+    "src/app/hello.command.ts",
+    `import { exactTag } from "@exact";\nimport { pkgTag } from "fixture-package";\n` +
+      commands
+        .replace("./greeting.service.js", "@/app/greeting.service.js")
+        .replace(
+          'const { punctuation } = await import("./punctuation.js");',
+          'const { punctuation } = await import("@/app/punctuation.js");\n    const { legacyTag } = await import("@/app/legacy.js");\n    await import("@/app/types-only.js").catch(() => undefined);\n    this.context.stdout.write(`${exactTag}:${pkgTag}:${legacyTag}\\n`);',
+        ),
+  );
+  write("src/app/punctuation.js", "export const punctuation = 'STALE';");
+  const result = run(["hello", "Alice", "--loud"]);
+  expect(result.stderr).not.toMatch(/Error|SyntaxError|TSError/);
+  expect(result.status).toBe(0);
+  expect(result.stdout).toContain("EXACT:EXTERNAL:LEGACY");
+  expect(result.stdout).toContain("SOURCE:ALICE!");
+  expect(result.stdout).toContain("CLOSED");
+  expect(result.stdout).not.toContain("STALE");
+});
 it("loads JavaScript implementations when relative declarations exist without TypeScript source", () => {
   write(
     "src/cli.ts",

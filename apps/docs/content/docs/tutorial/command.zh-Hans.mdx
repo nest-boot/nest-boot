@@ -80,7 +80,7 @@ CLI 与 HTTP、REPL 共享 `AppModule`。Nest 应用初始化钩子仍会执行�
 
 开发环境依次查找 `src/cli.ts`、`dist/cli.js`；`NODE_ENV=production` 时依次查找 `dist/cli.js`、`src/cli.ts`。选中的入口报错时直接返回错误，不回退到旧产物。源码执行使用 `ts-node` 的 transpile-only 模式，启用 `experimentalResolver` 和 `preferTsExts`。ESM 加载、相对导入的扩展名映射和 JSX 编译遵循项目的 tsconfig 与 `ts-node` 配置。源码应用使用 `"type": "module"`，并将 `module`、`moduleResolution` 设为 `"NodeNext"`。Nest 依赖注入需要开启 `experimentalDecorators` 和 `emitDecoratorMetadata`。没有 tsconfig 时使用 NodeNext 和 Nest 装饰器默认配置。运行时转译不代替类型检查。编译后的 JavaScript 不需要源码或 tsconfig。
 
-`ts-node` 不会自动实现 `paths`、`baseUrl` 或 `dist` 到 `src` 的映射，运行时别名由项目配置。详见 [ts-node 文档](https://typestrong.org/ts-node/docs/paths/)。
+源码执行通过 TypeScript 模块解析处理本地 `compilerOptions.paths` 别名（包括 `@nest-boot/tsconfig/app.json` 提供的 `@/*`）。生产环境执行 `dist` 产物时，需在构建阶段改写 `paths` 别名（例如使用 `nest build`）或使用 Node.js 子路径导入。
 
 入口是可执行的 bootstrap 脚本，无需默认导出模块。在 CLI bootstrap 中调用一次 `CommandFactory.run(AppModule)`，内部会设置 `process.exitCode`；编译后的 `dist/cli.js` 也可以直接通过 Node.js 执行。`execute()` 可以返回退出码；帮助和成功执行返回 0，未知命令、无效参数、执行失败返回非零。执行结束后会关闭 Nest 上下文并调用资源清理钩子，失败时也会清理。
 

@@ -13,6 +13,7 @@ export {
   type HealthIndicatorResult,
   HealthIndicatorService,
   type HealthServiceCheck,
+  // eslint-disable-next-line @typescript-eslint/no-deprecated -- Preserve Terminus v12 re-export compatibility.
   HttpHealthIndicator,
   MemoryHealthIndicator,
   MicroserviceHealthIndicator,

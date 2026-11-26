@@ -15,8 +15,8 @@ import { Global, Module } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
 import type { Request, Response } from 'express';
 
-import { GreetCommand } from './commands/greet.command.js';
-import { createSessionContext } from './session-context.js';
+import { GreetCommand } from '@/app/common/commands/greet.command.js';
+import { createSessionContext } from '@/app/common/session-context.js';
 
 /** 全局配置动态模块。 */
 const ConfigDynamicModule = ConfigModule.forRoot({

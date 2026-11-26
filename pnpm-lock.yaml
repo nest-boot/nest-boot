@@ -35,26 +35,26 @@ importers:
         specifier: workspace:^
         version: link:packages/tsconfig
       '@nestjs/apollo':
-        specifier: ^14.0.0
-        version: 14.0.0
+        specifier: ^14.2.1
+        version: 14.2.1
       '@nestjs/common':
-        specifier: ^12.0.1
-        version: 12.0.1
+        specifier: ^12.6.2
+        version: 12.6.2
       '@nestjs/config':
-        specifier: ^12.0.0
-        version: 12.0.0
+        specifier: ^12.1.1
+        version: 12.1.1
       '@nestjs/core':
-        specifier: ^12.0.1
-        version: 12.0.1
+        specifier: ^12.6.2
+        version: 12.6.2
       '@nestjs/graphql':
-        specifier: ^14.0.3
-        version: 14.0.3
+        specifier: ^14.2.1
+        version: 14.2.1
       '@nestjs/platform-express':
-        specifier: ^12.1.2
-        version: 12.1.2
+        specifier: ^12.6.2
+        version: 12.6.2
       '@nestjs/testing':
-        specifier: ^12.0.1
-        version: 12.0.1
+        specifier: ^12.6.2
+        version: 12.6.2
       '@types/node':
         specifier: ^24.0.0
         version: 24.13.3
@@ -484,23 +484,23 @@ importers:
         specifier: workspace:^
         version: link:../../packages/validator
       '@nestjs/apollo':
-        specifier: ^14.0.0
-        version: 14.0.0
+        specifier: ^14.2.1
+        version: 14.2.1
       '@nestjs/common':
-        specifier: ^12.0.1
-        version: 12.0.1
+        specifier: ^12.6.2
+        version: 12.6.2
       '@nestjs/config':
-        specifier: ^12.0.0
-        version: 12.0.0
+        specifier: ^12.1.1
+        version: 12.1.1
       '@nestjs/core':
-        specifier: ^12.0.1
-        version: 12.0.1
+        specifier: ^12.6.2
+        version: 12.6.2
       '@nestjs/graphql':
-        specifier: ^14.0.3
-        version: 14.0.3
+        specifier: ^14.2.1
+        version: 14.2.1
       '@nestjs/platform-express':
-        specifier: ^12.1.2
-        version: 12.1.2
+        specifier: ^12.6.2
+        version: 12.6.2
       bullmq:
         specifier: ^6.3.12
         version: 6.3.12
@@ -557,14 +557,14 @@ importers:
         specifier: workspace:^
         version: link:../../packages/tsconfig
       '@nestjs/cli':
-        specifier: ^12.0.0
-        version: 12.0.0
+        specifier: ^12.0.15
+        version: 12.0.15
       '@nestjs/schematics':
-        specifier: ^12.0.0
-        version: 12.0.0
+        specifier: ^12.0.16
+        version: 12.0.16
       '@nestjs/testing':
-        specifier: ^12.0.1
-        version: 12.0.1
+        specifier: ^12.6.2
+        version: 12.6.2
       '@types/express':
         specifier: ^5.0.6
         version: 5.0.6
@@ -669,23 +669,23 @@ importers:
         specifier: workspace:^
         version: link:../validator
       '@nestjs/apollo':
-        specifier: ^14.0.0
-        version: 14.0.0
+        specifier: ^14.2.1
+        version: 14.2.1
       '@nestjs/common':
-        specifier: ^12.0.1
-        version: 12.0.1
+        specifier: ^12.6.2
+        version: 12.6.2
       '@nestjs/config':
-        specifier: ^12.0.0
-        version: 12.0.0
+        specifier: ^12.1.1
+        version: 12.1.1
       '@nestjs/core':
-        specifier: ^12.0.1
-        version: 12.0.1
+        specifier: ^12.6.2
+        version: 12.6.2
       '@nestjs/graphql':
-        specifier: ^14.0.3
-        version: 14.0.3
+        specifier: ^14.2.1
+        version: 14.2.1
       '@nestjs/testing':
-        specifier: ^12.0.1
-        version: 12.0.1
+        specifier: ^12.6.2
+        version: 12.6.2
       '@types/express':
         specifier: ^5.0.3
         version: 5.0.6
@@ -745,14 +745,14 @@ importers:
         specifier: workspace:^
         version: link:../tsconfig
       '@nestjs/common':
-        specifier: ^12.0.1
-        version: 12.0.1
+        specifier: ^12.6.2
+        version: 12.6.2
       '@nestjs/core':
-        specifier: ^12.0.1
-        version: 12.0.1
+        specifier: ^12.6.2
+        version: 12.6.2
       '@nestjs/testing':
-        specifier: ^12.0.1
-        version: 12.0.1
+        specifier: ^12.6.2
+        version: 12.6.2
       '@types/node':
         specifier: ^24.0.0
         version: 24.19.0
@@ -784,14 +784,14 @@ importers:
         specifier: workspace:^
         version: link:../tsconfig
       '@nestjs/common':
-        specifier: ^12.0.1
-        version: 12.0.1
+        specifier: ^12.6.2
+        version: 12.6.2
       '@nestjs/core':
-        specifier: ^12.0.1
-        version: 12.0.1
+        specifier: ^12.6.2
+        version: 12.6.2
       '@nestjs/testing':
-        specifier: ^12.0.1
-        version: 12.0.1
+        specifier: ^12.6.2
+        version: 12.6.2
       '@types/node':
         specifier: ^24.0.0
         version: 24.13.3
@@ -878,17 +878,17 @@ importers:
         specifier: workspace:^
         version: link:../tsconfig
       '@nestjs/common':
-        specifier: ^12.0.1
-        version: 12.0.1
+        specifier: ^12.6.2
+        version: 12.6.2
       '@nestjs/core':
-        specifier: ^12.0.1
-        version: 12.0.1
+        specifier: ^12.6.2
+        version: 12.6.2
       '@nestjs/platform-express':
-        specifier: ^12.1.2
-        version: 12.1.2
+        specifier: ^12.6.2
+        version: 12.6.2
       '@nestjs/testing':
-        specifier: ^12.0.1
-        version: 12.0.1
+        specifier: ^12.6.2
+        version: 12.6.2
       '@types/lodash-es':
         specifier: ^4.17.12
         version: 4.17.12
@@ -1092,20 +1092,20 @@ importers:
         specifier: workspace:^
         version: link:../validator
       '@nestjs/apollo':
-        specifier: ^14.0.0
-        version: 14.0.0
+        specifier: ^14.2.1
+        version: 14.2.1
       '@nestjs/common':
-        specifier: ^12.0.1
-        version: 12.0.1
+        specifier: ^12.6.2
+        version: 12.6.2
       '@nestjs/core':
-        specifier: ^12.0.1
-        version: 12.0.1
+        specifier: ^12.6.2
+        version: 12.6.2
       '@nestjs/graphql':
-        specifier: ^14.0.3
-        version: 14.0.3
+        specifier: ^14.2.1
+        version: 14.2.1
       '@nestjs/testing':
-        specifier: ^12.0.1
-        version: 12.0.1
+        specifier: ^12.6.2
+        version: 12.6.2
       '@types/express':
         specifier: ^5.0.3
         version: 5.0.6
@@ -1192,17 +1192,17 @@ importers:
         specifier: workspace:^
         version: link:../tsconfig
       '@nestjs/apollo':
-        specifier: ^14.0.0
-        version: 14.0.0
+        specifier: ^14.2.1
+        version: 14.2.1
       '@nestjs/common':
-        specifier: ^12.0.1
-        version: 12.0.1
+        specifier: ^12.6.2
+        version: 12.6.2
       '@nestjs/core':
-        specifier: ^12.0.1
-        version: 12.0.1
+        specifier: ^12.6.2
+        version: 12.6.2
       '@nestjs/graphql':
-        specifier: ^14.0.3
-        version: 14.0.3
+        specifier: ^14.2.1
+        version: 14.2.1
       '@types/express':
         specifier: ^5.0.3
         version: 5.0.6
@@ -1264,23 +1264,23 @@ importers:
         specifier: workspace:^
         version: link:../tsconfig
       '@nestjs/apollo':
-        specifier: ^14.0.0
-        version: 14.0.0
+        specifier: ^14.2.1
+        version: 14.2.1
       '@nestjs/common':
-        specifier: ^12.0.1
-        version: 12.0.1
+        specifier: ^12.6.2
+        version: 12.6.2
       '@nestjs/core':
-        specifier: ^12.0.1
-        version: 12.0.1
+        specifier: ^12.6.2
+        version: 12.6.2
       '@nestjs/graphql':
-        specifier: ^14.0.3
-        version: 14.0.3
+        specifier: ^14.2.1
+        version: 14.2.1
       '@nestjs/platform-express':
-        specifier: ^12.1.2
-        version: 12.1.2
+        specifier: ^12.6.2
+        version: 12.6.2
       '@nestjs/testing':
-        specifier: ^12.0.1
-        version: 12.0.1
+        specifier: ^12.6.2
+        version: 12.6.2
       '@types/express':
         specifier: ^5.0.3
         version: 5.0.6
@@ -1349,23 +1349,23 @@ importers:
         specifier: workspace:^
         version: link:../tsconfig
       '@nestjs/apollo':
-        specifier: ^14.0.0
-        version: 14.0.0
+        specifier: ^14.2.1
+        version: 14.2.1
       '@nestjs/common':
-        specifier: ^12.0.1
-        version: 12.0.1
+        specifier: ^12.6.2
+        version: 12.6.2
       '@nestjs/core':
-        specifier: ^12.0.1
-        version: 12.0.1
+        specifier: ^12.6.2
+        version: 12.6.2
       '@nestjs/graphql':
-        specifier: ^14.0.3
-        version: 14.0.3
+        specifier: ^14.2.1
+        version: 14.2.1
       '@nestjs/platform-express':
-        specifier: ^12.1.2
-        version: 12.1.2
+        specifier: ^12.6.2
+        version: 12.6.2
       '@nestjs/testing':
-        specifier: ^12.0.1
-        version: 12.0.1
+        specifier: ^12.6.2
+        version: 12.6.2
       '@types/express':
         specifier: ^5.0.3
         version: 5.0.6
@@ -1422,14 +1422,14 @@ importers:
         specifier: workspace:^
         version: link:../tsconfig
       '@nestjs/common':
-        specifier: ^12.0.1
-        version: 12.0.1
+        specifier: ^12.6.2
+        version: 12.6.2
       '@nestjs/core':
-        specifier: ^12.0.1
-        version: 12.0.1
+        specifier: ^12.6.2
+        version: 12.6.2
       '@nestjs/testing':
-        specifier: ^12.0.1
-        version: 12.0.1
+        specifier: ^12.6.2
+        version: 12.6.2
       '@types/node':
         specifier: ^24.0.0
         version: 24.13.3
@@ -1467,20 +1467,20 @@ importers:
         specifier: workspace:^
         version: link:../tsconfig
       '@nestjs/common':
-        specifier: ^12.0.1
-        version: 12.0.1
+        specifier: ^12.6.2
+        version: 12.6.2
       '@nestjs/core':
-        specifier: ^12.0.1
-        version: 12.0.1
+        specifier: ^12.6.2
+        version: 12.6.2
       '@nestjs/platform-express':
-        specifier: ^12.1.2
-        version: 12.1.2
+        specifier: ^12.6.2
+        version: 12.6.2
       '@nestjs/terminus':
-        specifier: ^12.1.0
-        version: 12.1.0
+        specifier: ^12.2.0
+        version: 12.2.0
       '@nestjs/testing':
-        specifier: ^12.0.1
-        version: 12.0.1
+        specifier: ^12.6.2
+        version: 12.6.2
       '@types/node':
         specifier: ^24.0.0
         version: 24.19.0
@@ -1527,17 +1527,17 @@ importers:
         specifier: workspace:^
         version: link:../tsconfig
       '@nestjs/common':
-        specifier: ^12.0.1
-        version: 12.0.1
+        specifier: ^12.6.2
+        version: 12.6.2
       '@nestjs/core':
-        specifier: ^12.0.1
-        version: 12.0.1
+        specifier: ^12.6.2
+        version: 12.6.2
       '@nestjs/platform-express':
-        specifier: ^12.1.2
-        version: 12.1.2
+        specifier: ^12.6.2
+        version: 12.6.2
       '@nestjs/testing':
-        specifier: ^12.0.1
-        version: 12.0.1
+        specifier: ^12.6.2
+        version: 12.6.2
       '@types/express':
         specifier: ^5.0.6
         version: 5.0.6
@@ -1609,20 +1609,20 @@ importers:
         specifier: workspace:^
         version: link:../tsconfig
       '@nestjs/common':
-        specifier: ^12.0.1
-        version: 12.0.1
+        specifier: ^12.6.2
+        version: 12.6.2
       '@nestjs/config':
-        specifier: ^12.0.0
-        version: 12.0.0
+        specifier: ^12.1.1
+        version: 12.1.1
       '@nestjs/core':
-        specifier: ^12.0.1
-        version: 12.0.1
+        specifier: ^12.6.2
+        version: 12.6.2
       '@nestjs/platform-express':
-        specifier: ^12.1.2
-        version: 12.1.2
+        specifier: ^12.6.2
+        version: 12.6.2
       '@nestjs/testing':
-        specifier: ^12.0.1
-        version: 12.0.1
+        specifier: ^12.6.2
+        version: 12.6.2
       '@types/express':
         specifier: ^5.0.3
         version: 5.0.6
@@ -1670,14 +1670,14 @@ importers:
         specifier: workspace:^
         version: link:../tsconfig
       '@nestjs/common':
-        specifier: ^12.0.1
-        version: 12.0.1
+        specifier: ^12.6.2
+        version: 12.6.2
       '@nestjs/core':
-        specifier: ^12.0.1
-        version: 12.0.1
+        specifier: ^12.6.2
+        version: 12.6.2
       '@nestjs/testing':
-        specifier: ^12.0.1
-        version: 12.0.1
+        specifier: ^12.6.2
+        version: 12.6.2
       '@types/node':
         specifier: ^24.0.0
         version: 24.13.3
@@ -1740,17 +1740,17 @@ importers:
         specifier: workspace:^
         version: link:../tsconfig
       '@nestjs/common':
-        specifier: ^12.0.1
-        version: 12.0.1
+        specifier: ^12.6.2
+        version: 12.6.2
       '@nestjs/core':
-        specifier: ^12.0.1
-        version: 12.0.1
+        specifier: ^12.6.2
+        version: 12.6.2
       '@nestjs/platform-express':
-        specifier: ^12.1.2
-        version: 12.1.2
+        specifier: ^12.6.2
+        version: 12.6.2
       '@nestjs/testing':
-        specifier: ^12.0.1
-        version: 12.0.1
+        specifier: ^12.6.2
+        version: 12.6.2
       '@types/express':
         specifier: ^5.0.6
         version: 5.0.6
@@ -1800,17 +1800,17 @@ importers:
         specifier: workspace:^
         version: link:../tsconfig
       '@nestjs/common':
-        specifier: ^12.0.1
-        version: 12.0.1
+        specifier: ^12.6.2
+        version: 12.6.2
       '@nestjs/core':
-        specifier: ^12.0.1
-        version: 12.0.1
+        specifier: ^12.6.2
+        version: 12.6.2
       '@nestjs/platform-express':
-        specifier: ^12.1.2
-        version: 12.1.2
+        specifier: ^12.6.2
+        version: 12.6.2
       '@nestjs/testing':
-        specifier: ^12.0.1
-        version: 12.0.1
+        specifier: ^12.6.2
+        version: 12.6.2
       '@types/node':
         specifier: ^24.0.0
         version: 24.13.3
@@ -1854,14 +1854,14 @@ importers:
         specifier: workspace:^
         version: link:../tsconfig
       '@nestjs/common':
-        specifier: ^12.0.1
-        version: 12.0.1
+        specifier: ^12.6.2
+        version: 12.6.2
       '@nestjs/core':
-        specifier: ^12.0.1
-        version: 12.0.1
+        specifier: ^12.6.2
+        version: 12.6.2
       '@nestjs/testing':
-        specifier: ^12.0.1
-        version: 12.0.1
+        specifier: ^12.6.2
+        version: 12.6.2
       '@types/node':
         specifier: ^24.0.0
         version: 24.13.3
@@ -1912,17 +1912,17 @@ importers:
         specifier: workspace:^
         version: link:../tsconfig
       '@nestjs/common':
-        specifier: ^12.0.1
-        version: 12.0.1
+        specifier: ^12.6.2
+        version: 12.6.2
       '@nestjs/core':
-        specifier: ^12.0.1
-        version: 12.0.1
+        specifier: ^12.6.2
+        version: 12.6.2
       '@nestjs/platform-express':
-        specifier: ^12.1.2
-        version: 12.1.2
+        specifier: ^12.6.2
+        version: 12.6.2
       '@nestjs/testing':
-        specifier: ^12.0.1
-        version: 12.0.1
+        specifier: ^12.6.2
+        version: 12.6.2
       '@types/lodash-es':
         specifier: ^4.17.12
         version: 4.17.12
@@ -2006,20 +2006,20 @@ importers:
         specifier: workspace:^
         version: link:../tsconfig
       '@nestjs/common':
-        specifier: ^12.0.1
-        version: 12.0.1
+        specifier: ^12.6.2
+        version: 12.6.2
       '@nestjs/core':
-        specifier: ^12.0.1
-        version: 12.0.1
+        specifier: ^12.6.2
+        version: 12.6.2
       '@nestjs/graphql':
-        specifier: ^14.0.3
-        version: 14.0.3
+        specifier: ^14.2.1
+        version: 14.2.1
       '@nestjs/platform-express':
-        specifier: ^12.1.2
-        version: 12.1.2
+        specifier: ^12.6.2
+        version: 12.6.2
       '@nestjs/testing':
-        specifier: ^12.0.1
-        version: 12.0.1
+        specifier: ^12.6.2
+        version: 12.6.2
       '@types/express':
         specifier: ^5.0.6
         version: 5.0.6
@@ -2088,20 +2088,20 @@ importers:
         specifier: workspace:^
         version: link:../tsconfig
       '@nestjs/common':
-        specifier: ^12.0.1
-        version: 12.0.1
+        specifier: ^12.6.2
+        version: 12.6.2
       '@nestjs/config':
-        specifier: ^12.0.0
-        version: 12.0.0
+        specifier: ^12.1.1
+        version: 12.1.1
       '@nestjs/core':
-        specifier: ^12.0.1
-        version: 12.0.1
+        specifier: ^12.6.2
+        version: 12.6.2
       '@nestjs/platform-express':
-        specifier: ^12.1.2
-        version: 12.1.2
+        specifier: ^12.6.2
+        version: 12.6.2
       '@nestjs/testing':
-        specifier: ^12.0.1
-        version: 12.0.1
+        specifier: ^12.6.2
+        version: 12.6.2
       '@types/node':
         specifier: ^24.0.0
         version: 24.13.3
@@ -2146,11 +2146,11 @@ importers:
         specifier: workspace:^
         version: link:../tsconfig
       '@nestjs/common':
-        specifier: ^12.0.1
-        version: 12.0.1
+        specifier: ^12.6.2
+        version: 12.6.2
       '@nestjs/core':
-        specifier: ^12.0.1
-        version: 12.0.1
+        specifier: ^12.6.2
+        version: 12.6.2
       '@types/express':
         specifier: ^5.0.3
         version: 5.0.6
@@ -2203,14 +2203,14 @@ importers:
         specifier: workspace:^
         version: link:../tsconfig
       '@nestjs/common':
-        specifier: ^12.0.1
-        version: 12.0.1
+        specifier: ^12.6.2
+        version: 12.6.2
       '@nestjs/core':
-        specifier: ^12.0.1
-        version: 12.0.1
+        specifier: ^12.6.2
+        version: 12.6.2
       '@nestjs/testing':
-        specifier: ^12.0.1
-        version: 12.0.1
+        specifier: ^12.6.2
+        version: 12.6.2
       '@types/ms':
         specifier: ^0.7.31
         version: 0.7.34
@@ -2273,17 +2273,17 @@ importers:
         specifier: workspace:^
         version: link:../tsconfig
       '@nestjs/common':
-        specifier: ^12.0.1
-        version: 12.0.1
+        specifier: ^12.6.2
+        version: 12.6.2
       '@nestjs/config':
-        specifier: ^12.0.0
-        version: 12.0.0
+        specifier: ^12.1.1
+        version: 12.1.1
       '@nestjs/core':
-        specifier: ^12.0.1
-        version: 12.0.1
+        specifier: ^12.6.2
+        version: 12.6.2
       '@nestjs/testing':
-        specifier: ^12.0.1
-        version: 12.0.1
+        specifier: ^12.6.2
+        version: 12.6.2
       '@types/mime-types':
         specifier: ^2.1.4
         version: 2.1.4
@@ -2339,23 +2339,23 @@ importers:
         specifier: workspace:^
         version: link:../tsconfig
       '@nestjs/apollo':
-        specifier: ^14.0.0
-        version: 14.0.0
+        specifier: ^14.2.1
+        version: 14.2.1
       '@nestjs/common':
-        specifier: ^12.0.1
-        version: 12.0.1
+        specifier: ^12.6.2
+        version: 12.6.2
       '@nestjs/core':
-        specifier: ^12.0.1
-        version: 12.0.1
+        specifier: ^12.6.2
+        version: 12.6.2
       '@nestjs/graphql':
-        specifier: ^14.0.3
-        version: 14.0.3
+        specifier: ^14.2.1
+        version: 14.2.1
       '@nestjs/platform-express':
-        specifier: ^12.1.2
-        version: 12.1.2
+        specifier: ^12.6.2
+        version: 12.6.2
       '@nestjs/testing':
-        specifier: ^12.0.1
-        version: 12.0.1
+        specifier: ^12.6.2
+        version: 12.6.2
       '@types/node':
         specifier: ^24.0.0
         version: 24.13.3
@@ -2414,17 +2414,17 @@ importers:
         specifier: workspace:^
         version: link:../tsconfig
       '@nestjs/common':
-        specifier: ^12.0.1
-        version: 12.0.1
+        specifier: ^12.6.2
+        version: 12.6.2
       '@nestjs/core':
-        specifier: ^12.0.1
-        version: 12.0.1
+        specifier: ^12.6.2
+        version: 12.6.2
       '@nestjs/platform-express':
-        specifier: ^12.1.2
-        version: 12.1.2
+        specifier: ^12.6.2
+        version: 12.6.2
       '@nestjs/testing':
-        specifier: ^12.0.1
-        version: 12.0.1
+        specifier: ^12.6.2
+        version: 12.6.2
       '@types/node':
         specifier: ^24.0.0
         version: 24.13.3
@@ -2462,17 +2462,17 @@ importers:
         specifier: workspace:^
         version: link:../tsconfig
       '@nestjs/common':
-        specifier: ^12.0.1
-        version: 12.0.1
+        specifier: ^12.6.2
+        version: 12.6.2
       '@nestjs/core':
-        specifier: ^12.0.1
-        version: 12.0.1
+        specifier: ^12.6.2
+        version: 12.6.2
       '@nestjs/platform-express':
-        specifier: ^12.1.2
-        version: 12.1.2
+        specifier: ^12.6.2
+        version: 12.6.2
       '@nestjs/testing':
-        specifier: ^12.0.1
-        version: 12.0.1
+        specifier: ^12.6.2
+        version: 12.6.2
       '@types/node':
         specifier: ^24.0.0
         version: 24.13.3
@@ -2531,17 +2531,17 @@ importers:
         specifier: workspace:^
         version: link:../tsconfig
       '@nestjs/common':
-        specifier: ^12.0.1
-        version: 12.0.1
+        specifier: ^12.6.2
+        version: 12.6.2
       '@nestjs/core':
-        specifier: ^12.0.1
-        version: 12.0.1
+        specifier: ^12.6.2
+        version: 12.6.2
       '@nestjs/mapped-types':
-        specifier: ^12.0.0
-        version: 12.0.0
-      '@nestjs/testing':
         specifier: ^12.0.1
         version: 12.0.1
+      '@nestjs/testing':
+        specifier: ^12.6.2
+        version: 12.6.2
       '@types/node':
         specifier: ^24.0.0
         version: 24.13.3
@@ -2579,17 +2579,17 @@ importers:
         specifier: workspace:^
         version: link:../tsconfig
       '@nestjs/common':
-        specifier: ^12.0.1
-        version: 12.0.1
+        specifier: ^12.6.2
+        version: 12.6.2
       '@nestjs/core':
-        specifier: ^12.0.1
-        version: 12.0.1
+        specifier: ^12.6.2
+        version: 12.6.2
       '@nestjs/platform-express':
-        specifier: ^12.1.2
-        version: 12.1.2
+        specifier: ^12.6.2
+        version: 12.6.2
       '@nestjs/testing':
-        specifier: ^12.0.1
-        version: 12.0.1
+        specifier: ^12.6.2
+        version: 12.6.2
       '@types/node':
         specifier: ^24.0.0
         version: 24.13.3
@@ -2661,17 +2661,17 @@ packages:
     resolution: {integrity: sha512-UrcABB+4bUrFABwbluTIBErXwvbsU/V7TZWfmbgJfbkwiBuziS9gxdODUyuiecfdGQ85jglMW6juS3+z5TsKLw==}
     engines: {node: '>=10'}
 
-  '@angular-devkit/core@22.1.5':
-    resolution: {integrity: sha512-HiY6d5dkIdJs5grP9OHvgkf14QOcDIo+hbuT7YKuLItQ++ZxCwUabJMLCCJ5R0KrstE5NqED0dNcyk5WD01t5Q==}
+  '@angular-devkit/core@22.2.7':
+    resolution: {integrity: sha512-cchZAMsV4d76RDZBlWzPhYxM/Hb6bmq71oUngdrwehMbBbdQu3W9C2tGlvxuPxbRKru9ZlUa14YVXQ0+QnhFtw==}
     engines: {node: ^22.22.3 || ^24.15.0 || >=26.0.0, npm: ^6.11.0 || ^7.5.6 || >=8.0.0, yarn: '>= 1.13.0'}
 
-  '@angular-devkit/schematics-cli@22.1.5':
-    resolution: {integrity: sha512-VB/5fH2b/2j8eeMm25vRYCJzBbpaM/VyHc8/+WqPzJahdWuvL0CeLWrxjHHT1exQ/kgbqHLaIWMgSywZe3EBhA==}
+  '@angular-devkit/schematics-cli@22.2.7':
+    resolution: {integrity: sha512-9Od0E8TiYTQWm/03QjYWnsryZA8ZSjTf/k5z61nPd/jgloVNvSW8kxC7/YMw+RoXh2idMzjiJxraKxg+gJxzPw==}
     engines: {node: ^22.22.3 || ^24.15.0 || >=26.0.0, npm: ^6.11.0 || ^7.5.6 || >=8.0.0, yarn: '>= 1.13.0'}
     hasBin: true
 
-  '@angular-devkit/schematics@22.1.5':
-    resolution: {integrity: sha512-HTmo9y8wjXKtJGVTYomTjZsjWzhirpu1pPRAzsVob3eiYOuxv1qDRAgWiHXNGp5CpnbHunZweXY/WffNGOFRyA==}
+  '@angular-devkit/schematics@22.2.7':
+    resolution: {integrity: sha512-a1h7xNqBLQVo1e5eCyOU3axSbA9AFU6nnSH5QhlNhggfMeZde+eBrueSt25xsewoxlKO8EvkVT3+knMUkDYiGQ==}
     engines: {node: ^22.22.3 || ^24.15.0 || >=26.0.0, npm: ^6.11.0 || ^7.5.6 || >=8.0.0, yarn: '>= 1.13.0'}
 
   '@apollo/cache-control-types@1.0.3':
@@ -3164,6 +3164,9 @@ packages:
 
   '@borewit/text-codec@0.2.2':
     resolution: {integrity: sha512-DDaRehssg1aNrH4+2hnj1B7vnUGEjU6OIlyRdkMd0aUdIUvKXrJfXsy8LVtXAy7DRvYVluWbMspsRhz2lcW0mQ==}
+
+  '@borewit/text-codec@0.2.3':
+    resolution: {integrity: sha512-49CycTz1aAZmvFcwkeFyhud1HUmRIB5Tabf7ALV+VA4Iu85MTfz2cUwzPagMFAdVBvrWdkCxG67I30tUwwpKsw==}
 
   '@casl/ability@7.0.1':
     resolution: {integrity: sha512-krOW1zQGEie5lH6fpryrcsPvc5r2pe5Vn5xbthuzc5X9gwzHIyZgGGgw9dMoSLHXdjB4BIVxGG/HBkG+1NuyZQ==}
@@ -3819,12 +3822,12 @@ packages:
     resolution: {integrity: sha512-cKRoXqJGy2zSRBLvotQpkACbXlHAb0yuHLN0l0ypKGCuL3NnF0zofYalkBJqiBxxxpK0lr3s9uowKFHCKi1/ZQ==}
     engines: {node: '>=16.0.0'}
 
-  '@graphql-tools/merge@9.2.4':
-    resolution: {integrity: sha512-vV+8uWNWn0+OsqT0r22lZuoT0cTe6fBqBtpLHre2rriLjI/ZTrsOHmabLPTUOyzgFnRrS2PzFSYGL3zKL1Wj4Q==}
-    engines: {node: '>=16.0.0'}
-
   '@graphql-tools/merge@9.2.6':
     resolution: {integrity: sha512-M7iI/qoCnks6iITkimtdZgI2SrWOInr+QRWuhEsInaumzQGPd0pnWbRAVTRVcFN2Gu9hM2aS5kYzASC93d9epw==}
+    engines: {node: '>=16.0.0'}
+
+  '@graphql-tools/merge@9.2.8':
+    resolution: {integrity: sha512-OsCEmJ9RIMT4LB/1jBbyKHe7pMIlfGhLAQ0FVNaZqteydDUC+rTI9wZ+yaKqxQpPOFFycD+UtMhovg19lPq92Q==}
     engines: {node: '>=16.0.0'}
 
   '@graphql-tools/optimize@2.0.0':
@@ -3839,12 +3842,12 @@ packages:
     resolution: {integrity: sha512-wao48XQnfY631s3jXoNrhEHvCI8mlKXmIuWrR7F6zAdv92VuSOfHoq9P9KL2EnUMgBUnaStnByOx9Mn6RieWDg==}
     engines: {node: '>=16.0.0'}
 
-  '@graphql-tools/schema@10.1.1':
-    resolution: {integrity: sha512-24jJghRxEW+SG1lbJ45Zg9HEZ8ZKS923ihbFjOicspFLpryxJkWp6gZJ7D8tCVaSAhli4x1+1wDPAfhT8mLqxg==}
-    engines: {node: '>=16.0.0'}
-
   '@graphql-tools/schema@10.1.3':
     resolution: {integrity: sha512-N1ZpzguxzqTy5fpurqWQ5BXyjirlrtvVLeSafsu+SCDNjDeRnVxf9n5PVbdgzwFPAmP/7NK9sq9UB/kyR8oFiw==}
+    engines: {node: '>=16.0.0'}
+
+  '@graphql-tools/schema@10.1.5':
+    resolution: {integrity: sha512-F0Onw0ZBREakKGqcgsKhdSCjOXgmntzQWL0QA+/WrwKmnJ7nJRyGKUJavwuVZL2TrXblaIUvQxm4t1h3FuA3cA==}
     engines: {node: '>=16.0.0'}
 
   '@graphql-tools/url-loader@9.1.7':
@@ -3859,12 +3862,12 @@ packages:
     resolution: {integrity: sha512-aMdIo/l+8j4lhamWAf+MWHr+lOW8zArSBKXspqtKHgt5I2JF9LS55KDLUe/L9AiJOV/O6qJJ60hgYydbnJHbxg==}
     engines: {node: '>=16.0.0'}
 
-  '@graphql-tools/utils@12.0.1':
-    resolution: {integrity: sha512-8YC6jn4xYDS6YTY6xDAgQAs/nGgvzRaIGHS8GeSfVItQzNK7Ms24CQtE3EJY+amvR+tBnhRSX0N83aGj+V/RIg==}
-    engines: {node: '>=16.0.0'}
-
   '@graphql-tools/utils@12.0.3':
     resolution: {integrity: sha512-M+04bHvI1SKoug7W2EkwfKjig2mdtgIIlFY8p2jLHmxPNVs5bC/3R+58JrD+7ZXWgPILWTwuqJ9AqTjPlahroA==}
+    engines: {node: '>=16.0.0'}
+
+  '@graphql-tools/utils@12.1.0':
+    resolution: {integrity: sha512-+mOuIX7u83/BHG0L9JviMzKid1j35cxOWhLoox47TXHAJ6Tnn30RgrmEQPmk1FhmaQbhJEcwYBDVyieUvZopJw==}
     engines: {node: '>=16.0.0'}
 
   '@graphql-tools/wrap@11.1.21':
@@ -4071,12 +4074,20 @@ packages:
     resolution: {integrity: sha512-3eTuUO1vH2cZm2ZKHeQxnOqlTi9EfZDGgIe3BL3I4u+rJHocr9Fz86M4fjYABPvFnQG/gGK551HqDiIcETwU6Q==}
     engines: {node: '>=23.5.0 || ^22.13.0 || ^20.17.0'}
 
+  '@inquirer/ansi@2.1.1':
+    resolution: {integrity: sha512-WwCc5T9554vU/M3W6mztOJvZK/5RgMwQsGlSZSZpKA/H2IfsTWIPdn1WiS8+HHjhe3H0IsmQCXUlDbvGM6vvuA==}
+    engines: {node: '>=23.5.0 || ^22.13.0 || ^20.17.0'}
+
   '@inquirer/checkbox@4.3.2':
     resolution: {integrity: sha512-VXukHf0RR1doGe6Sm4F0Em7SWYLTHSsbGfJdS9Ja2bX5/D5uwVOEjr07cncLROdBvmnvCATYEWlHqYmXv2IlQA==}
     engines: {node: '>=18'}
 
   '@inquirer/checkbox@5.2.3':
     resolution: {integrity: sha512-XEYX2WA8SBkLPczL6/yXPHLPCvDoptmh9v56Cy05BSV1Smk1vWy19bTC4qJBuIffw7+6l4CcaYYzGqG60RfW1g==}
+    engines: {node: '>=23.5.0 || ^22.13.0 || ^20.17.0'}
+
+  '@inquirer/checkbox@5.3.1':
+    resolution: {integrity: sha512-AWb8O1kl/olRQt0fReEIlu8iCn8qaQ0OEIffeFsMrfhIlVSz/ud1EeeBhWnm057xhRqD+kYVD7Fk2X9Bk/oW6w==}
     engines: {node: '>=23.5.0 || ^22.13.0 || ^20.17.0'}
 
   '@inquirer/confirm@5.1.21':
@@ -4087,12 +4098,20 @@ packages:
     resolution: {integrity: sha512-pZHXJImFtERmSNMBHcjwuz8Ck5vEFEYNUZnwbb8aJpjHv/TwGuFErNxF2Hp8+V+pNJs2EYPMlyWscvFEqO9jOQ==}
     engines: {node: '>=23.5.0 || ^22.13.0 || ^20.17.0'}
 
+  '@inquirer/confirm@6.4.1':
+    resolution: {integrity: sha512-ZLvGnS/+OtditM3RxULWDI3FVl3lR8mvh1ljZ8GCK8XKyfjI6Fq+ni6/2gbbH6n3gj6tinfNbE3QPplZ/xNVtQ==}
+    engines: {node: '>=23.5.0 || ^22.13.0 || ^20.17.0'}
+
   '@inquirer/core@10.3.2':
     resolution: {integrity: sha512-43RTuEbfP8MbKzedNqBrlhhNKVwoK//vUFNW3Q3vZ88BLcrs4kYpGg+B2mm5p2K/HfygoCxuKwJJiv8PbGmE0A==}
     engines: {node: '>=18'}
 
   '@inquirer/core@12.0.1':
     resolution: {integrity: sha512-JMD5Jy/ScL5TZE18m83Nw25HjqGFLoWXwnEkW7IdwwAhZpB9Bus55/WU7zn3UqR1MOCjjTQOIYpiD4vjWA3LPw==}
+    engines: {node: '>=23.5.0 || ^22.13.0 || ^20.17.0'}
+
+  '@inquirer/core@12.1.1':
+    resolution: {integrity: sha512-JrVSjoB/+B4le+A/0GyZGv/oIK30KgGNUA0eVtEMNQLUmdpizfyXM0zglUZnwTtHLjpKGRlU/q6Iv5z2GYQw9w==}
     engines: {node: '>=23.5.0 || ^22.13.0 || ^20.17.0'}
 
   '@inquirer/editor@4.2.23':
@@ -4103,12 +4122,20 @@ packages:
     resolution: {integrity: sha512-y43COoyVUjPWIobn2Qep/uI1drPS78aaZZZ9kVi94Tyu/GuW2N8d8Q4rifJXGAXCEAXCPTTMjD8gC1HyvM5ukA==}
     engines: {node: '>=23.5.0 || ^22.13.0 || ^20.17.0'}
 
+  '@inquirer/editor@5.5.0':
+    resolution: {integrity: sha512-g6wUVWLXDkW7/M+Jm82vMfPHEeZpJB2ltuSTZ/1Ovs/+h5eY65Bey91ZFoaVXaSKD0l+Sf4WCm/8km/e7oe7dg==}
+    engines: {node: '>=23.5.0 || ^22.13.0 || ^20.17.0'}
+
   '@inquirer/expand@4.0.23':
     resolution: {integrity: sha512-nRzdOyFYnpeYTTR2qFwEVmIWypzdAx/sIkCMeTNTcflFOovfqUk+HcFhQQVBftAh9gmGrpFj6QcGEqrDMDOiew==}
     engines: {node: '>=18'}
 
   '@inquirer/expand@5.1.3':
     resolution: {integrity: sha512-3NQJiXNJ/aj9wiAsr7pECdp5Qe9J0X9YUJCKsaFXS+ddOxfL6J4AIl3w3T4Gq3kK0WsQY5GMoDokK5X94m6lHw==}
+    engines: {node: '>=23.5.0 || ^22.13.0 || ^20.17.0'}
+
+  '@inquirer/expand@5.2.1':
+    resolution: {integrity: sha512-PPHYJokseQ7RQoAZ8fVh3gL7jD+lhQ6O5ikQXNTPtpxwprsoGNocJIPt+GTLJL3reTqhkJEsIsZeTTcvdNDFzg==}
     engines: {node: '>=23.5.0 || ^22.13.0 || ^20.17.0'}
 
   '@inquirer/external-editor@1.0.3':
@@ -4119,12 +4146,20 @@ packages:
     resolution: {integrity: sha512-tZbbaK2ovq6vlrRBNQvjrypmrED/p5x2ncIHQ79cD55tei3dD96v5glMMA+6tiq7K104i/25DVYKWVPJuV6ptA==}
     engines: {node: '>=23.5.0 || ^22.13.0 || ^20.17.0'}
 
+  '@inquirer/external-editor@3.1.1':
+    resolution: {integrity: sha512-XMDPBC6m7/3ZfeRrzgfz86pkyGcUAxHpsPEk2PumQ7Dfzh8EwV9VywkK1D+bFytxFHzQBTRF6O2HlhdSWwwqmA==}
+    engines: {node: '>=23.5.0 || ^22.13.0 || ^20.17.0'}
+
   '@inquirer/figures@1.0.15':
     resolution: {integrity: sha512-t2IEY+unGHOzAaVM5Xx6DEWKeXlDDcNPeDyUpsRc6CUhBfU3VQOEl+Vssh7VNp1dR8MdUJBWhuObjXCsVpjN5g==}
     engines: {node: '>=18'}
 
   '@inquirer/figures@2.0.8':
     resolution: {integrity: sha512-tApbon79GM9ry56ja/Ud3SY2CL4TQsao9fIwDQbgTeNY55025GdMzQ2+UdegV/lx51VNGUB59M0v0nMpybYY4Q==}
+    engines: {node: '>=23.5.0 || ^22.13.0 || ^20.17.0'}
+
+  '@inquirer/figures@2.1.1':
+    resolution: {integrity: sha512-63AOoKi9Wlsd1G+X5dKRg15GzN/WIEf0VghxHkcVn9JswideMlwq40qJMAO3II6JyhpDZPmi3CmVKjwOSYBAmA==}
     engines: {node: '>=23.5.0 || ^22.13.0 || ^20.17.0'}
 
   '@inquirer/input@4.3.1':
@@ -4135,12 +4170,20 @@ packages:
     resolution: {integrity: sha512-3xQkQrOvgOzpSN2ciTVdRDlg1FWMCA8l+0KfB6SNlILoTCGzJTzO/gc0Rwjcb3usuGyKdaGtI6OiyMdeMeLWkg==}
     engines: {node: '>=23.5.0 || ^22.13.0 || ^20.17.0'}
 
+  '@inquirer/input@5.2.1':
+    resolution: {integrity: sha512-HvxWvTZ+Yn7Ad0HJ6C4ajlLWL+cEIPMPjwkcqythTxu4nxwvFSNkEpBQJbnhSW3zbEi0JQ84I93CRsCz9P/opw==}
+    engines: {node: '>=23.5.0 || ^22.13.0 || ^20.17.0'}
+
   '@inquirer/number@3.0.23':
     resolution: {integrity: sha512-5Smv0OK7K0KUzUfYUXDXQc9jrf8OHo4ktlEayFlelCjwMXz0299Y8OrI+lj7i4gCBY15UObk76q0QtxjzFcFcg==}
     engines: {node: '>=18'}
 
   '@inquirer/number@4.2.1':
     resolution: {integrity: sha512-5KaqwZNLRpUuWcoCrYghPP9TMaXL5v2Sk4xqePM7RCVegcJStoXdWibio60YIC1bec+z1fCyb67N6XPJIkZtGA==}
+    engines: {node: '>=23.5.0 || ^22.13.0 || ^20.17.0'}
+
+  '@inquirer/number@4.3.1':
+    resolution: {integrity: sha512-9ApB+70Yin5Ty0dgR9GIAj4sNAu7IHJ9na6MLXjV0q8w51aaK8oMa2HUwWdNomNOX7c7UgykZkqtcPr8TY8d+Q==}
     engines: {node: '>=23.5.0 || ^22.13.0 || ^20.17.0'}
 
   '@inquirer/password@4.0.23':
@@ -4151,16 +4194,24 @@ packages:
     resolution: {integrity: sha512-CvVcW09emkBESEOW+4R8CjLNkP3fB3XrjeL8CDvfpjgrJN+V9oerXmJAXXM3l+4xqYPD5Yaujzy/Ph0PLOdDuA==}
     engines: {node: '>=23.5.0 || ^22.13.0 || ^20.17.0'}
 
+  '@inquirer/password@5.3.1':
+    resolution: {integrity: sha512-j9QfwKO4vJ5Y1elu9MwZMxq9zjX5GES+9lSKqa9cy4xXV5qo/eDZUpdIzsPn/rbao78PxxMUPEGkUvSoMPB2ug==}
+    engines: {node: '>=23.5.0 || ^22.13.0 || ^20.17.0'}
+
   '@inquirer/prompts@7.10.1':
     resolution: {integrity: sha512-Dx/y9bCQcXLI5ooQ5KyvA4FTgeo2jYj/7plWfV5Ak5wDPKQZgudKez2ixyfz7tKXzcJciTxqLeK7R9HItwiByg==}
     engines: {node: '>=18'}
 
-  '@inquirer/prompts@8.5.2':
-    resolution: {integrity: sha512-IYR/3C/paEVVQYQvdDlFZVjRCJVYHHON0XXMH91KO9GSxs0TdKYWlUdvfQl2EfAHDxUaN3IBffkE/BDTh5nJ6g==}
-    engines: {node: '>=23.5.0 || ^22.13.0 || ^20.17.0'}
-
   '@inquirer/prompts@8.7.0':
     resolution: {integrity: sha512-yQwBMYvpJ6jqrXtKiOwRD5XezjJoyt3VQvIyjsr5Arqb519nfIohOQymWVJ8/vEgg8xtZerrCsqlSaqt/LPC9A==}
+    engines: {node: '>=23.5.0 || ^22.13.0 || ^20.17.0'}
+
+  '@inquirer/prompts@8.7.2':
+    resolution: {integrity: sha512-QoRB4wFIjgH5iOhSjoIKMkTvSHDuV+O3OITlIqAYO0oK5x364GJILXiMBvlPiE+klg7Xx9tq5XVqQHcGUDYYPA==}
+    engines: {node: '>=23.5.0 || ^22.13.0 || ^20.17.0'}
+
+  '@inquirer/prompts@8.7.5':
+    resolution: {integrity: sha512-l/IWwC+QhOyXgxkZloOh+n5quGzc1m5ZawyzBmoizCZaxbJeLRdS3pStoqg/JVInJRXaG5aHMhjK6H6oYiBC9A==}
     engines: {node: '>=23.5.0 || ^22.13.0 || ^20.17.0'}
 
   '@inquirer/rawlist@4.1.11':
@@ -4171,12 +4222,20 @@ packages:
     resolution: {integrity: sha512-Mu7WrtmDLaXBDEyrRLS70SZgX9ZSm4Up1w0ZxiH8C1OOp9oaVCn2k8q3QGgmlnhsKYUhuaU3zFWhAP6wxkVIMA==}
     engines: {node: '>=23.5.0 || ^22.13.0 || ^20.17.0'}
 
+  '@inquirer/rawlist@5.4.1':
+    resolution: {integrity: sha512-hihU5YgysNOU7TxZcLtVijYPFbXKNwBsAGjuD/TSDU5RKtN6ElEAOdO/trfc3r7G//VmIGTFoaR65HdBRYNZBA==}
+    engines: {node: '>=23.5.0 || ^22.13.0 || ^20.17.0'}
+
   '@inquirer/search@3.2.2':
     resolution: {integrity: sha512-p2bvRfENXCZdWF/U2BXvnSI9h+tuA8iNqtUKb9UWbmLYCRQxd8WkvwWvYn+3NgYaNwdUkHytJMGG4MMLucI1kA==}
     engines: {node: '>=18'}
 
   '@inquirer/search@4.3.1':
     resolution: {integrity: sha512-0VWOvsHWI0rPj6CG70MoP4oXNCB6adcyN8bVFZXnh11eLDdPIK2f2XCmva78acPPDfJisfab7qNakwBh7hdBXw==}
+    engines: {node: '>=23.5.0 || ^22.13.0 || ^20.17.0'}
+
+  '@inquirer/search@4.4.1':
+    resolution: {integrity: sha512-9YpLazL6mR0TU77ldZ7mm7sCQpYE/aopXB1RLX7Zt5nSU27l40PQc2H317L+OudSe0xyr8N5WJl23bjnzNWuUw==}
     engines: {node: '>=23.5.0 || ^22.13.0 || ^20.17.0'}
 
   '@inquirer/select@4.4.2':
@@ -4187,12 +4246,20 @@ packages:
     resolution: {integrity: sha512-KuRTodDa6xBXX2noIpjuitpX/QT7Sfav7dIZ/OfUY54Hxg95nrGoshSzxx6Ey7qqLbImKdiGkSDt7KjPXjQgmA==}
     engines: {node: '>=23.5.0 || ^22.13.0 || ^20.17.0'}
 
+  '@inquirer/select@5.3.1':
+    resolution: {integrity: sha512-V5LBhmayDvTJwcY0ADCyikptINrzSr+SIsoflkWovVTJ3qETyVhyX96hfFgy80jK8YaUe/wjTb9to3oPaw5VyQ==}
+    engines: {node: '>=23.5.0 || ^22.13.0 || ^20.17.0'}
+
   '@inquirer/type@3.0.10':
     resolution: {integrity: sha512-BvziSRxfz5Ov8ch0z/n3oijRSEcEsHnhggm4xFZe93DHcUCTlutlq9Ox4SVENAfcRD22UQq7T/atg9Wr3k09eA==}
     engines: {node: '>=18'}
 
   '@inquirer/type@4.1.0':
     resolution: {integrity: sha512-FMiJpuHUG3Dk0ex+UIXkre7i+i4OcwHWk9YdcVtZHFwb/r2rnrU2ipTCNAB7A+QOP0ryzIcqOfy76fRyyvOEAw==}
+    engines: {node: '>=23.5.0 || ^22.13.0 || ^20.17.0'}
+
+  '@inquirer/type@4.3.1':
+    resolution: {integrity: sha512-WzfM7UPG5F8fhKPey5pTkAZQrGcGjOHbm6YLotuDdiuAkXEHiHSZh59yNeZs4RyrMHcZEZrl+GOcuLzzfLKJqg==}
     engines: {node: '>=23.5.0 || ^22.13.0 || ^20.17.0'}
 
   '@ioredis/commands@1.4.0':
@@ -4388,44 +4455,44 @@ packages:
   '@neodrag/core@3.0.0-next.11':
     resolution: {integrity: sha512-3WQWxyrbxiaK9zS5JU2wJsW2gpoQlZBXVghduBh61JpqaeE0T0cte8R0qYK2RuJo3J2TYQYqxO19CpG/C1i5eg==}
 
-  '@nestjs/apollo@14.0.0':
-    resolution: {integrity: sha512-+zui1iiSozGJX1X2rMSS01H9v18nZh1fgFBIdV6pAIzz9iRJCCLshnEbcWTTePYBbKyDguMKjqykBW2HF0vrbw==}
+  '@nestjs/apollo@14.2.1':
+    resolution: {integrity: sha512-wOulAxbvgJaf5p5DuqrhTg/58Nl2WOrjUSrvSPW/2UbwBe9Mxz6lfCN10Pcu0dDep/8F9nstvA6TZAHTeR655g==}
 
-  '@nestjs/cli@12.0.0':
-    resolution: {integrity: sha512-DxgGUKA4gj92lU2lF23Mlvm6y7AQBKEBuanNKNcmHeP6Cn3yqPZxN0LqyaJys25JCqO1bN8KgE3LICrvYlB93g==}
+  '@nestjs/cli@12.0.15':
+    resolution: {integrity: sha512-oNZ70g6wtE8X82PflsW2xfW50u4XiJQwq6u4HafrgP9eVnSw6m+WqnX4/7K6ehaod5E0+WFrczjT19rx5SHlhA==}
     engines: {node: '>= 20.11'}
     hasBin: true
 
-  '@nestjs/common@12.0.1':
-    resolution: {integrity: sha512-v0zTaRCTV2K2xSnb3GnJoQKtaR6VxouJtm+P2gpr5w61dlXeWpXl1WVknCSzUqx2QwTV10tBkHETxvQvkf2Exg==}
+  '@nestjs/common@12.6.2':
+    resolution: {integrity: sha512-pCJOaWNCTeRtd4B8V3/F95OOvO+1d1+VypTUqe1Mf+pBqKnPRjNWv7FUvNOe2k3D4xivi/1Kl0Nnl16bBCjJGA==}
 
-  '@nestjs/config@12.0.0':
-    resolution: {integrity: sha512-pG5+fFfCo3cdgVkLJLvvhUGfxEjwzv9hIAQ1aJVHvHlHVniDWfwX5pR/utgoAkJzSikv2oTR1BmIF03FXdi42Q==}
+  '@nestjs/config@12.1.1':
+    resolution: {integrity: sha512-e9DrgYbF0NBM6TU9tl6Q645kgzwaJ1fC+M1YYu7KX61+q2nSYm31CqlZmRel5ouhcSa5gaoGO1tMqeelreIBpw==}
 
-  '@nestjs/core@12.0.1':
-    resolution: {integrity: sha512-rU6tAi8vDdyzHgN0iW0J4UJvziroOqzHqzlqL7phOSPizaXVEePfv+OUOsdJEOh0Qd14mslc3udOheLrAEcZow==}
+  '@nestjs/core@12.6.2':
+    resolution: {integrity: sha512-WcY8hk9PI0JdgK5k9gZZ6khSCJOkraV/bLtCuK8UYbeGLLoM3xkAWm62aRB65ZaWMEgFqaoTsnmdQzh9V88J6A==}
     engines: {node: '>= 20'}
 
-  '@nestjs/graphql@14.0.3':
-    resolution: {integrity: sha512-FN+5Mgeuu+/P5+fOaBuK/4Aircqhe/z5ptT0yyYVLw80j3wEzI3XEAlrdEzwDKJgdwrZncUyfjPkM+TJyLqdng==}
+  '@nestjs/graphql@14.2.1':
+    resolution: {integrity: sha512-fvLlvXaEB5cNBPqWKF3F8zND9h68j6/ebtTZyttWmuPubDrENGU0EZeJi6fyfHkTCzIm05QFGMOSlZ5nnHJADQ==}
 
-  '@nestjs/mapped-types@12.0.0':
-    resolution: {integrity: sha512-aX7lxZcqXldtnSr0bgT2ZPQvpTpIwBMW1GMX29o4s3q02vmq6JoTYuPW0GwYXa8BiFMRX7WbGZVDA703pNqOMQ==}
+  '@nestjs/mapped-types@12.0.1':
+    resolution: {integrity: sha512-AHkgYt6UgJ5XBE3v4zGUUdfPD7kCGBzOa/uHfOYkkRTfojYWLRCCdAJiyWNpIFHCySJH/MR2F/z4MrMo5YheHg==}
     engines: {node: '>=20.19.0'}
 
-  '@nestjs/platform-express@12.1.2':
-    resolution: {integrity: sha512-//ftPv5+UONizm5zcme/AP91EFo1EsqFFyC2I3HC2w8swYVXadHKW1L3A2mgUuOhM1sdKkd2gzjQmL9504x85Q==}
+  '@nestjs/platform-express@12.6.2':
+    resolution: {integrity: sha512-du03Em5PuqPzIswonCi7yzWHgvgLB7qT4ObqFTbhzHAn8L/Lh32a/Dlo6/2MHO9menUXSL0bh0Dz20iGg728Qg==}
 
-  '@nestjs/schematics@12.0.0':
-    resolution: {integrity: sha512-ilsxam7i+SWd2psr12faLVSk86FYKnxRUGO6jAGNi1P9+O0kRaYVOScyrKeIj97W9T9UJoJF38fg+7KgjY/nOg==}
-    engines: {node: '>=22.12.0'}
+  '@nestjs/schematics@12.0.16':
+    resolution: {integrity: sha512-7K+8NlvmXVd/x0nY4h7myrJdl4C31x58xAsHELYXEIc6AJqiL+FOj+MgyCvZm8CcfD6uoI1wRXI0w0xdW4rUHA==}
+    engines: {node: ^22.22.3 || ^24.15.0 || >=26.0.0}
 
-  '@nestjs/terminus@12.1.0':
-    resolution: {integrity: sha512-bag1KT1Pk2KpDhXh6fhf3F7IpRGs8IMSdPaD1+9hclP3hSAIkCYN/YUhkAY+2G7OuoUmyDuKVb7MgNw+L5ZBbQ==}
+  '@nestjs/terminus@12.2.0':
+    resolution: {integrity: sha512-2ssbjf3rCZVVogAVzxOWnBAF5k2KxKHw4fabLfrLy8SiA0QTaG0YEgcdamzbSVSucnnMDF0QCbpYv0bEkxmwtw==}
     engines: {node: ^20.19.0 || ^22.12.0 || >=24.0.0}
 
-  '@nestjs/testing@12.0.1':
-    resolution: {integrity: sha512-prf3fsUaoKS6t04XcQt5aSTp68Po1GxUcbEBPv+3iqAef07hKQEO15r0jmmwA+rWZfONYT1UcV3YIylR++/tCg==}
+  '@nestjs/testing@12.6.2':
+    resolution: {integrity: sha512-eMKwmCV2Xv1jf6B/xiXwVY69RBl9IXLXBY8ig5g2U4abq7PG/YcR6p4u/7FIbEA0vuCPu49P/nQfqP8+XiVyVA==}
 
   '@next/env@16.3.8':
     resolution: {integrity: sha512-Al9zqHVV7TJv0eFuOU4U7Lvv74PTih4Ch63sk2xCIpSTkE3udFnaOcnzP2lQVymiL7yS9Cj2iClUXlR3EQ5sEw==}
@@ -6241,8 +6308,8 @@ packages:
     resolution: {integrity: sha512-Uo193NgQbPMz6lrrhtRQQFcMC6Re/ELLFbbuVL30WDlZxlpZf9/lMHTAVxPRLw1q1iu9OJmR1c2BLiENRstdBg==}
     engines: {node: '>=18'}
 
-  '@tokenizer/inflate@0.4.1':
-    resolution: {integrity: sha512-2mAv+8pkG6GIZiF1kNg1jAjh27IDxEPKwdGul3snfztFerfPGI1LjDezZp3i7BElXompqEtPmoPx6c2wgtWsOA==}
+  '@tokenizer/inflate@0.6.1':
+    resolution: {integrity: sha512-EuqSyHdOXN61cc5/rsW6uUn1TJZJGZr56jlkUbsLwVJ6uHgvwQyFkYfOCf+zzPFAYjftPk1WeJnEhpLVvzbm1A==}
     engines: {node: '>=18'}
 
   '@tokenizer/token@0.3.0':
@@ -6846,12 +6913,12 @@ packages:
     resolution: {integrity: sha512-4Dj6M28JB+oAH8kFkTLUo+a2jwOFkuqb3yucU0CANcRRUbxS0cP0nZYCGjcc3BNXwRIsUVmDGgzawme7zvJHvg==}
     engines: {node: '>=12'}
 
-  ansis@4.3.1:
-    resolution: {integrity: sha512-BJ8/l4R5LRE7hW9WdSuGYrLSHi2ynxeFpDFbH0K/CgNeY/tyhk+vO6TYxXC5r5CpUhNVX310xzPsN/H9lCdfOA==}
-    engines: {node: '>=14'}
-
   ansis@4.4.0:
     resolution: {integrity: sha512-9k3v7xcHwgdO/DruxGIg4HtjvlAZlcnsX/mzqUb1t3NkYnl9kK2UJ+Gq0io+vQf7iT//BD/HB/NBkUR1LWxoeA==}
+    engines: {node: '>=14'}
+
+  ansis@4.5.0:
+    resolution: {integrity: sha512-KwIVkfFfJSSzBmZhDGuTmkhWqTdyB5oNVzzznBJbBZ5bZtHiqSrcugRF0RKJKT4Ss3d7ZrcjnlFVDlQNmtWfWw==}
     engines: {node: '>=14'}
 
   append-field@1.0.0:
@@ -7352,6 +7419,10 @@ packages:
     resolution: {integrity: sha512-z67u4ZhzCL/Tydu1lJARtEZYWbWaN7oYLHbsuzocr6y4N6WZAagG3RQ4FW61V1/0+jImpj293XfrcYnd1qxtPg==}
     engines: {node: '>=22.12.0'}
 
+  commander@15.1.0:
+    resolution: {integrity: sha512-cgnQ88TRrWcC7pVq46RzJVRMktu3W2RcbnoidnfBsl1bmDCBwJS/udcIZpKoCrbAYYaCqsz1yZCVIgbIaU3ddQ==}
+    engines: {node: '>=22.12.0'}
+
   commander@2.20.3:
     resolution: {integrity: sha512-GpVkmM8vF2vQUkj2LvZmD35JxeJOLCwJ9cUkugyk2nuhbv3+mJvpLYYt+0+USMxE+oj+ey/lJEnhZw75x/OMcQ==}
 
@@ -7416,10 +7487,6 @@ packages:
   content-disposition@0.5.2:
     resolution: {integrity: sha512-kRGRZw3bLlFISDBgwTSA1TMBFN6J6GWDeubmDE3AF+3+yXL8hTWv8r5rkLbqYXY4RjPk/EzHnClI3zQf1cFmHA==}
     engines: {node: '>= 0.6'}
-
-  content-disposition@1.1.0:
-    resolution: {integrity: sha512-5jRCH9Z/+DRP7rkvY83B+yGIGX96OYdJmzngqnw2SBSxqCFPd0w2km3s5iawpGX8krnwSGmF0FW5Nhr0Hfai3g==}
-    engines: {node: '>=18'}
 
   content-disposition@2.0.1:
     resolution: {integrity: sha512-e+H0ZXHSWYrENhQzw1LPuP4oF5MzVKmDU6d3hxlvaPEYLLg62MxtQNPRx4SYSuYJSBUgnQIG4HIN2tEtNv7Dog==}
@@ -7801,6 +7868,11 @@ packages:
     resolution: {integrity: sha512-nI4U3TottKAcAD9LLud4Cb7b2QztQMUEfHbvhTH09bqXTxnSie8WnjPALV/WMCrJZ6UV/qHJ6L03OqO3LcdYZw==}
     engines: {node: '>=12'}
 
+  dotenv@18.0.3:
+    resolution: {integrity: sha512-/8CJTyL817qPnfbQrJgOEcrU3fDrJkRIoXBE566wHuvIXKOCHUZhPqGPbCPi9SogjdGnreF0TlvnTgK6J/8zpA==}
+    engines: {node: '>=12'}
+    hasBin: true
+
   dunder-proto@1.0.1:
     resolution: {integrity: sha512-KIN/nDJBQRcXw0MLVhZE9iQHmG68qAVIBg9CqmUYjmQIhgij9U5MFvrqkUL5FbtyyzZuOeOt0zdeRe4UY7ct+A==}
     engines: {node: '>= 0.4'}
@@ -7932,6 +8004,9 @@ packages:
 
   es-toolkit@1.52.0:
     resolution: {integrity: sha512-XTNEJQh1tY1ZJVcf6ayP/2n4ZPyaHlW2FWs7xvw5ddPuhUVjLD3olQVQS7kf58JbAB48iL0uL/jerTrjtV3lDA==}
+
+  es-toolkit@1.53.1:
+    resolution: {integrity: sha512-VhMc6IXmexu8iYFfL2aaAww6IvJTdHlqBLruLoEUs33YD4IcP5DdZcLOybMsMmmLsiy1c8PsiLsrM0DdIuuRUA==}
 
   esast-util-from-estree@2.0.0:
     resolution: {integrity: sha512-4CyanoAudUSBAn5K13H4JhsMH6L9ZP7XbLVe/dKybkxMO7eDyLsT8UHl9TRNrU2Gr9nz+FovfSIjuXWJ81uVwQ==}
@@ -8164,10 +8239,6 @@ packages:
     resolution: {integrity: sha512-2FXbqkygil3mZiXzEtM0IjE/UBmBNot0J1GEVrJT4JbrvwOSoEtqtO+wHbiMQELWe1eNvHoYRg2dkjOid+6JkA==}
     engines: {node: '>= 16'}
 
-  express@5.2.1:
-    resolution: {integrity: sha512-hIS4idWWai69NezIdRt2xFVofaF4j+6INOpJlVOLDO8zXGpUVEVzIYk12UUi2JzjEzWL3IOAxcTubgz9Po0yXw==}
-    engines: {node: '>= 18'}
-
   express@5.3.0:
     resolution: {integrity: sha512-qCqy1xSoaugxOD4IVHb1ZWdkvCF2W3aE2okKouWj8VwJ+ztskSiXoBnCSJqfKT+cVPJhuJqe9YLbY425+Zh00g==}
     engines: {node: '>= 18'}
@@ -8258,8 +8329,8 @@ packages:
     resolution: {integrity: sha512-XXTUwCvisa5oacNGRP9SfNtYBNAMi+RPwBFmblZEF7N7swHYQS6/Zfk7SRwx4D5j3CH211YNRco1DEMNVfZCnQ==}
     engines: {node: '>=16.0.0'}
 
-  file-type@22.0.2:
-    resolution: {integrity: sha512-0H8TsCUGBLx+V5adH3EY52hTAcyLKbV1D4gq5cIOJ6DnQAHeV9Z2Hhuc5CoBX4YmvB2oL+JIC84z0qO7JsCoNw==}
+  file-type@22.3.0:
+    resolution: {integrity: sha512-PrPedgnnWl5bWz3JHgar0QSzRvzeyFh7dZ9JpYOgcPZu4KALS9zw4MMa6qXRYyjeBsAlpaWB2boLuG991+0HIQ==}
     engines: {node: '>=22'}
 
   fill-range@7.1.1:
@@ -8529,6 +8600,10 @@ packages:
 
   graphql-ws@6.3.0:
     resolution: {integrity: sha512-qBAXPtFjWHF3QypDyNcBp8Rycd+rmofxUSJsu3bGI9QMMq7pImKBSLSg9hZ2ojIMbJ54T/LPjKBIeOUoJbNBnQ==}
+    engines: {node: '>=20'}
+
+  graphql-ws@6.4.1:
+    resolution: {integrity: sha512-a3MzY5u+tCHHwuyimzxMAHZQ6TY7bOpkQURtKXE5kKIkBdsZ2axlb7sLzMpzGFO4guhws9FyMVB1onyX58pO4w==}
     engines: {node: '>=20'}
 
   graphql@16.12.0:
@@ -9554,11 +9629,11 @@ packages:
   magic-string@0.30.21:
     resolution: {integrity: sha512-vd2F4YUyEXKGcLHoq+TEyCjxueSeHnFxyyjNp80yg0XV4vUhnDer/lvvlqM/arB5bXQN5K2/3oinyCRyx8T2CQ==}
 
-  magic-string@1.0.0:
-    resolution: {integrity: sha512-CGvjzMN08iv6w1mm4/x3Gh1hLb4VnyRUA15FFpl6CsCIGGoe36k7kY5KNz9QDbSBN5I/fWHM6ZlIkUTa5xdUEA==}
-
   magic-string@1.2.3:
     resolution: {integrity: sha512-Bpb0W2TbLKOZ7vJnOUnVRGq3WL2p+ISV29M6hYPL1AFCpyKZpdr5ytiXoTSSxRVhg8YW7f65+6gbG8WG6PCa/g==}
+
+  magic-string@1.4.1:
+    resolution: {integrity: sha512-8lyCu36ErXR0J9uaGKlKQoiLZKmtI63YGLE8G2o9jyRPdr4X47LusSOwgOJOzcVtp81fTAAjxR7BwKz682Jhow==}
 
   magic-string@1.4.5:
     resolution: {integrity: sha512-oLLC2+YvQUfAa+vxoufE/yc1icb87M9iXIRqAoR/2EhE/8cb3SF/+Gi0c2By1B+5Vz2e2vQtUvHiu1+63Znh+w==}
@@ -9900,8 +9975,8 @@ packages:
   msgpackr@2.1.0:
     resolution: {integrity: sha512-p/pBCVO63CsvvpkomUnNNag6+n38rULuDA6HHe70o2gtC8ODI52foF/4ko2qQcp6OiErJXTmrZeXmsGGHsIQNQ==}
 
-  multer@2.4.0:
-    resolution: {integrity: sha512-7dqa0ZcFfzbefdTuIkzOSMvZWC0J7FLqBOjJUZvDCXShIURWKxAyTT1wHhnE5q19c7jOJf43IYYKjBmZVZmvhg==}
+  multer@2.5.0:
+    resolution: {integrity: sha512-BsqOzYGVq49JcW2IzoSAxeKYRevb+dGGPPWleOR8Lrlk4igwxu1/9pwSXlByhCb7MVZDrNJFC0IBP5/O5nLYRw==}
     engines: {node: '>= 10.16.0'}
 
   mute-stream@0.0.8:
@@ -10316,10 +10391,6 @@ packages:
   picomatch@2.3.2:
     resolution: {integrity: sha512-V7+vQEJ06Z+c5tSye8S+nHUfI51xoXIXjHQ99cQtKUkQqqO1kO/KCJUfZXuB47h/YBlDhah2H3hdUGXn8ie0oA==}
     engines: {node: '>=8.6'}
-
-  picomatch@4.0.5:
-    resolution: {integrity: sha512-RvwwcruNjI1ncT5xRakeyS9Lf8lcItv34KD+aif+VH9kduAyfYBipGh12274xtenIPZ119/R9BdTBa8gAwSh0A==}
-    engines: {node: '>=12'}
 
   picomatch@4.0.7:
     resolution: {integrity: sha512-qcJu88Q2IWqJsDD529JKMdwGm/dvInW4HvQnRwiH9JtihJvzGOscDtHE3x1pBKeUOTysQ8kVmLnJ2kJu7yhcGA==}
@@ -11085,6 +11156,10 @@ packages:
     resolution: {integrity: sha512-i5uvt8C3ikiWeNZSVZNWcfZPItFQOsYTUAOkcUPGd8DqDy1uOUikjt5dG+uRlwyvR108Fb9DOd4GvXfT0N2/uQ==}
     engines: {node: '>= 12'}
 
+  source-map@0.8.0:
+    resolution: {integrity: sha512-d8EqvL+k/SOXCreS/SUzg2ciyHqBBLcN/yuRjFsbvVhHTE2pgei7oAhmPM7kWFbkX6OSMQfUq4KbkF3au9lhYQ==}
+    engines: {node: '>= 12'}
+
   space-separated-tokens@2.0.2:
     resolution: {integrity: sha512-PEGlAwrG8yXGXRjW32fGbg66JAlOAwbObuqVoJpv/mRgoWDQfgH1wDPvtzWyUSNAXBGSk8h755YDbbcEy3SH2Q==}
 
@@ -11259,8 +11334,8 @@ packages:
     resolution: {integrity: sha512-1tB5mhVo7U+ETBKNf92xT4hrQa3pm0MZ0PQvuDnWgAAGHDsfp4lPSpiS6psrSiet87wyGPh9ft6wmhOMQ0hDiw==}
     engines: {node: '>=14.16'}
 
-  strtok3@10.3.5:
-    resolution: {integrity: sha512-ki4hZQfh5rX0QDLLkOCj+h+CVNkqmp/CMf8v8kZpkNVK6jGQooMytqzLZYUVYIZcFZ6yDB70EfD8POcFXiF5oA==}
+  strtok3@10.8.0:
+    resolution: {integrity: sha512-e6bW3fD6V01DPmcbLfNtn0cjsiHvTKS/hivgbzqYMfHb/nLes4QQ0H5QBxlkPQayF4xv08AvlSgptGwN86Eemw==}
     engines: {node: '>=18'}
 
   style-to-js@1.1.21:
@@ -11447,6 +11522,10 @@ packages:
     resolution: {integrity: sha512-dRXchy+C0IgK8WPC6xvCHFRIWYUbqqdEIKPaKo/AcTUNzwLTK6AH7RjdLWsEZcAN/TBdtfUw3PYEgPr5VPr6ww==}
     engines: {node: '>=14.16'}
 
+  token-types@6.2.0:
+    resolution: {integrity: sha512-s9euYHM//T3loJtbNUYdbAzsMlvKBeRS+XCLFy+UGosMQH19Hwjap5k19i4PPAEJJBsVIpMpVTxl4fIqCuNfUg==}
+    engines: {node: '>=14.16'}
+
   totalist@3.0.1:
     resolution: {integrity: sha512-sf4i37nQ2LBx4m3wB74y+ubopq6W/dIzXg0FDGjsYnZHVa1Da8FH853wlL2gtUhg+xJXjfk3kUZS3BRoQeoQBQ==}
     engines: {node: '>=6'}
@@ -11504,6 +11583,9 @@ packages:
 
   tslib@2.8.1:
     resolution: {integrity: sha512-oJFu94HQb+KVduSUQL7wnpmqnfmLsOA/nAh6b6EH0wCEoK0/mPeXU6c3wKDV83MkOuHPRHtSXKKU99IBazS/2w==}
+
+  tslib@2.9.1:
+    resolution: {integrity: sha512-a4Ux9VKuIMHsOS7ENbEq6hK2ZGYIT27Rtl0E4eD9KqwxhKiQeMZE/9xb3IdYwWaSOyIBQLExhQgXDTYoiCxnWA==}
 
   turbo@2.11.7:
     resolution: {integrity: sha512-RhXHbqfvY6o3xt/zSHCwSNwLrZlXiqHzewi4eAj9PtZ1T1CqgMJ2yIDb7SKPTG9IikTm925mfzL6hldQVdyNWw==}
@@ -11571,8 +11653,8 @@ packages:
     resolution: {integrity: sha512-u3xV3X7uzvi5b1MncmZo3i2Aw222Zk1keqLA1YkHldREkAhAqi65wuPfe7lHx8H/Wzy+8CE7S7uS3jekIM5s8g==}
     engines: {node: '>=8'}
 
-  uint8array-extras@1.5.0:
-    resolution: {integrity: sha512-rvKSBiC5zqCCiDZ9kAOszZcDvdAHwwIKJG33Ykj43OKcWsnmcBRL09YTU4nOeHZ8Y2a7l1MgTd08SBe9A8Qj6A==}
+  uint8array-extras@1.6.0:
+    resolution: {integrity: sha512-8iAasVS4wUx0gPLjH8Xtz2PeDzTSiy8QiLGu2DT3X5GU+egFEQhpnbtkehbAwjvDcxIERmCYcysiODFmE3Ud0Q==}
     engines: {node: '>=18'}
 
   unbox-primitive@1.1.0:
@@ -11841,6 +11923,10 @@ packages:
     resolution: {integrity: sha512-Ydggc987+RO0AnWtZ/7Wq9FtNvcrL1b/RO0ud9mWjUPgDrsAAwQSF51sm2hm1XofbU/4jkpGEsLFsZZxU+1DOg==}
     engines: {node: '>=10.0.0'}
 
+  ws@8.22.1:
+    resolution: {integrity: sha512-oyL6OPYme/CmiFvNuGzeoxCJ4nOrZE2O1FwM9MWM1AsGri6nLXB2pg+lNA8aLeXMSav0J6eIVS1j6vUPzUtK9g==}
+    engines: {node: '>=10.0.0'}
+
   ws@8.23.0:
     resolution: {integrity: sha512-wCkmX8QMOrKjgO8HW2WyDbTSGeqkocxgDzS9iR79rEAexty6/2qzilx3Ag8Tqf9ykop3irLKle0MtVn5qjVnoQ==}
     engines: {node: '>=10.0.0'}
@@ -11993,26 +12079,26 @@ snapshots:
 
   '@alloc/quick-lru@5.2.0': {}
 
-  '@angular-devkit/core@22.1.5':
+  '@angular-devkit/core@22.2.7':
     dependencies:
       ajv: 8.20.0
       ajv-formats: 3.0.1
       jsonc-parser: 3.3.1
-      picomatch: 4.0.5
+      picomatch: 4.0.7
       rxjs: 7.8.2
-      source-map: 0.7.6
+      source-map: 0.8.0
 
-  '@angular-devkit/schematics-cli@22.1.5':
+  '@angular-devkit/schematics-cli@22.2.7':
     dependencies:
-      '@angular-devkit/core': 22.1.5
-      '@angular-devkit/schematics': 22.1.5
-      '@inquirer/prompts': 8.5.2
+      '@angular-devkit/core': 22.2.7
+      '@angular-devkit/schematics': 22.2.7
+      '@inquirer/prompts': 8.7.2
 
-  '@angular-devkit/schematics@22.1.5':
+  '@angular-devkit/schematics@22.2.7':
     dependencies:
-      '@angular-devkit/core': 22.1.5
+      '@angular-devkit/core': 22.2.7
       jsonc-parser: 3.3.1
-      magic-string: 1.0.0
+      magic-string: 1.4.1
       ora: 9.4.1
       rxjs: 7.8.2
 
@@ -12761,6 +12847,8 @@ snapshots:
   '@blazediff/core@1.10.0': {}
 
   '@borewit/text-codec@0.2.2': {}
+
+  '@borewit/text-codec@0.2.3': {}
 
   '@casl/ability@7.0.1':
     dependencies:
@@ -13617,14 +13705,14 @@ snapshots:
       '@graphql-tools/utils': 12.0.0
       tslib: 2.8.1
 
-  '@graphql-tools/merge@9.2.4':
+  '@graphql-tools/merge@9.2.6':
     dependencies:
       '@graphql-tools/utils': 12.0.3
       tslib: 2.8.1
 
-  '@graphql-tools/merge@9.2.6':
+  '@graphql-tools/merge@9.2.8':
     dependencies:
-      '@graphql-tools/utils': 12.0.3
+      '@graphql-tools/utils': 12.1.0
       tslib: 2.8.1
 
   '@graphql-tools/optimize@2.0.0':
@@ -13643,16 +13731,16 @@ snapshots:
       '@graphql-tools/utils': 12.0.3
       tslib: 2.8.1
 
-  '@graphql-tools/schema@10.1.1':
+  '@graphql-tools/schema@10.1.3':
     dependencies:
       '@graphql-tools/merge': 9.2.6
       '@graphql-tools/utils': 12.0.3
       tslib: 2.8.1
 
-  '@graphql-tools/schema@10.1.3':
+  '@graphql-tools/schema@10.1.5':
     dependencies:
-      '@graphql-tools/merge': 9.2.6
-      '@graphql-tools/utils': 12.0.3
+      '@graphql-tools/merge': 9.2.8
+      '@graphql-tools/utils': 12.1.0
       tslib: 2.8.1
 
   '@graphql-tools/url-loader@9.1.7':
@@ -13684,14 +13772,14 @@ snapshots:
       cross-inspect: 1.0.1
       tslib: 2.8.1
 
-  '@graphql-tools/utils@12.0.1':
+  '@graphql-tools/utils@12.0.3':
     dependencies:
       '@graphql-typed-document-node/core': 3.2.0
-      '@whatwg-node/promise-helpers': 1.3.2
+      '@whatwg-node/promise-helpers': 2.0.0
       cross-inspect: 1.0.1
       tslib: 2.8.1
 
-  '@graphql-tools/utils@12.0.3':
+  '@graphql-tools/utils@12.1.0':
     dependencies:
       '@graphql-typed-document-node/core': 3.2.0
       '@whatwg-node/promise-helpers': 2.0.0
@@ -13838,6 +13926,8 @@ snapshots:
 
   '@inquirer/ansi@2.0.7': {}
 
+  '@inquirer/ansi@2.1.1': {}
+
   '@inquirer/checkbox@4.3.2':
     dependencies:
       '@inquirer/ansi': 1.0.2
@@ -13853,6 +13943,13 @@ snapshots:
       '@inquirer/figures': 2.0.8
       '@inquirer/type': 4.1.0
 
+  '@inquirer/checkbox@5.3.1':
+    dependencies:
+      '@inquirer/ansi': 2.1.1
+      '@inquirer/core': 12.1.1
+      '@inquirer/figures': 2.1.1
+      '@inquirer/type': 4.3.1
+
   '@inquirer/confirm@5.1.21':
     dependencies:
       '@inquirer/core': 10.3.2
@@ -13862,6 +13959,11 @@ snapshots:
     dependencies:
       '@inquirer/core': 12.0.1
       '@inquirer/type': 4.1.0
+
+  '@inquirer/confirm@6.4.1':
+    dependencies:
+      '@inquirer/core': 12.1.1
+      '@inquirer/type': 4.3.1
 
   '@inquirer/core@10.3.2':
     dependencies:
@@ -13884,6 +13986,17 @@ snapshots:
       mute-stream: 3.0.0
       signal-exit: 4.1.0
 
+  '@inquirer/core@12.1.1':
+    dependencies:
+      '@inquirer/ansi': 2.1.1
+      '@inquirer/figures': 2.1.1
+      '@inquirer/type': 4.3.1
+      cli-width: 4.1.0
+      fast-string-width: 3.0.2
+      fast-wrap-ansi: 0.2.2
+      mute-stream: 3.0.0
+      signal-exit: 4.1.0
+
   '@inquirer/editor@4.2.23':
     dependencies:
       '@inquirer/core': 10.3.2
@@ -13896,6 +14009,12 @@ snapshots:
       '@inquirer/external-editor': 3.0.4
       '@inquirer/type': 4.1.0
 
+  '@inquirer/editor@5.5.0':
+    dependencies:
+      '@inquirer/core': 12.1.1
+      '@inquirer/external-editor': 3.1.1
+      '@inquirer/type': 4.3.1
+
   '@inquirer/expand@4.0.23':
     dependencies:
       '@inquirer/core': 10.3.2
@@ -13907,6 +14026,11 @@ snapshots:
       '@inquirer/core': 12.0.1
       '@inquirer/type': 4.1.0
 
+  '@inquirer/expand@5.2.1':
+    dependencies:
+      '@inquirer/core': 12.1.1
+      '@inquirer/type': 4.3.1
+
   '@inquirer/external-editor@1.0.3':
     dependencies:
       chardet: 2.2.0
@@ -13917,9 +14041,16 @@ snapshots:
       chardet: 2.2.0
       iconv-lite: 0.7.3
 
+  '@inquirer/external-editor@3.1.1':
+    dependencies:
+      chardet: 2.2.0
+      iconv-lite: 0.7.3
+
   '@inquirer/figures@1.0.15': {}
 
   '@inquirer/figures@2.0.8': {}
+
+  '@inquirer/figures@2.1.1': {}
 
   '@inquirer/input@4.3.1':
     dependencies:
@@ -13931,6 +14062,11 @@ snapshots:
       '@inquirer/core': 12.0.1
       '@inquirer/type': 4.1.0
 
+  '@inquirer/input@5.2.1':
+    dependencies:
+      '@inquirer/core': 12.1.1
+      '@inquirer/type': 4.3.1
+
   '@inquirer/number@3.0.23':
     dependencies:
       '@inquirer/core': 10.3.2
@@ -13940,6 +14076,11 @@ snapshots:
     dependencies:
       '@inquirer/core': 12.0.1
       '@inquirer/type': 4.1.0
+
+  '@inquirer/number@4.3.1':
+    dependencies:
+      '@inquirer/core': 12.1.1
+      '@inquirer/type': 4.3.1
 
   '@inquirer/password@4.0.23':
     dependencies:
@@ -13952,6 +14093,12 @@ snapshots:
       '@inquirer/ansi': 2.0.7
       '@inquirer/core': 12.0.1
       '@inquirer/type': 4.1.0
+
+  '@inquirer/password@5.3.1':
+    dependencies:
+      '@inquirer/ansi': 2.1.1
+      '@inquirer/core': 12.1.1
+      '@inquirer/type': 4.3.1
 
   '@inquirer/prompts@7.10.1':
     dependencies:
@@ -13966,19 +14113,6 @@ snapshots:
       '@inquirer/search': 3.2.2
       '@inquirer/select': 4.4.2
 
-  '@inquirer/prompts@8.5.2':
-    dependencies:
-      '@inquirer/checkbox': 5.2.3
-      '@inquirer/confirm': 6.3.0
-      '@inquirer/editor': 5.3.1
-      '@inquirer/expand': 5.1.3
-      '@inquirer/input': 5.1.4
-      '@inquirer/number': 4.2.1
-      '@inquirer/password': 5.2.0
-      '@inquirer/rawlist': 5.3.3
-      '@inquirer/search': 4.3.1
-      '@inquirer/select': 5.2.3
-
   '@inquirer/prompts@8.7.0':
     dependencies:
       '@inquirer/checkbox': 5.2.3
@@ -13992,6 +14126,32 @@ snapshots:
       '@inquirer/search': 4.3.1
       '@inquirer/select': 5.2.3
 
+  '@inquirer/prompts@8.7.2':
+    dependencies:
+      '@inquirer/checkbox': 5.3.1
+      '@inquirer/confirm': 6.4.1
+      '@inquirer/editor': 5.5.0
+      '@inquirer/expand': 5.2.1
+      '@inquirer/input': 5.2.1
+      '@inquirer/number': 4.3.1
+      '@inquirer/password': 5.3.1
+      '@inquirer/rawlist': 5.4.1
+      '@inquirer/search': 4.4.1
+      '@inquirer/select': 5.3.1
+
+  '@inquirer/prompts@8.7.5':
+    dependencies:
+      '@inquirer/checkbox': 5.3.1
+      '@inquirer/confirm': 6.4.1
+      '@inquirer/editor': 5.5.0
+      '@inquirer/expand': 5.2.1
+      '@inquirer/input': 5.2.1
+      '@inquirer/number': 4.3.1
+      '@inquirer/password': 5.3.1
+      '@inquirer/rawlist': 5.4.1
+      '@inquirer/search': 4.4.1
+      '@inquirer/select': 5.3.1
+
   '@inquirer/rawlist@4.1.11':
     dependencies:
       '@inquirer/core': 10.3.2
@@ -14002,6 +14162,11 @@ snapshots:
     dependencies:
       '@inquirer/core': 12.0.1
       '@inquirer/type': 4.1.0
+
+  '@inquirer/rawlist@5.4.1':
+    dependencies:
+      '@inquirer/core': 12.1.1
+      '@inquirer/type': 4.3.1
 
   '@inquirer/search@3.2.2':
     dependencies:
@@ -14015,6 +14180,12 @@ snapshots:
       '@inquirer/core': 12.0.1
       '@inquirer/figures': 2.0.8
       '@inquirer/type': 4.1.0
+
+  '@inquirer/search@4.4.1':
+    dependencies:
+      '@inquirer/core': 12.1.1
+      '@inquirer/figures': 2.1.1
+      '@inquirer/type': 4.3.1
 
   '@inquirer/select@4.4.2':
     dependencies:
@@ -14031,9 +14202,18 @@ snapshots:
       '@inquirer/figures': 2.0.8
       '@inquirer/type': 4.1.0
 
+  '@inquirer/select@5.3.1':
+    dependencies:
+      '@inquirer/ansi': 2.1.1
+      '@inquirer/core': 12.1.1
+      '@inquirer/figures': 2.1.1
+      '@inquirer/type': 4.3.1
+
   '@inquirer/type@3.0.10': {}
 
   '@inquirer/type@4.1.0': {}
+
+  '@inquirer/type@4.3.1': {}
 
   '@ioredis/commands@1.4.0': {}
 
@@ -14325,91 +14505,92 @@ snapshots:
 
   '@neodrag/core@3.0.0-next.11': {}
 
-  '@nestjs/apollo@14.0.0':
+  '@nestjs/apollo@14.2.1':
     dependencies:
       iterall: 1.3.0
       lodash.omit: 4.18.0
       tslib: 2.8.1
 
-  '@nestjs/cli@12.0.0':
+  '@nestjs/cli@12.0.15':
     dependencies:
-      '@angular-devkit/core': 22.1.5
-      '@angular-devkit/schematics': 22.1.5
-      '@angular-devkit/schematics-cli': 22.1.5
-      '@inquirer/prompts': 8.7.0
-      '@nestjs/schematics': 12.0.0
-      ansis: 4.3.1
+      '@angular-devkit/core': 22.2.7
+      '@angular-devkit/schematics': 22.2.7
+      '@angular-devkit/schematics-cli': 22.2.7
+      '@inquirer/prompts': 8.7.5
+      '@nestjs/schematics': 12.0.16
+      ansis: 4.5.0
       chokidar: 5.0.0
       cli-table3: 0.6.5
-      commander: 15.0.0
-      minimatch: 10.2.6
+      commander: 15.1.0
+      jsonc-parser: 3.3.1
+      minimatch: 11.0.9
       node-emoji: 2.2.0
       ora: 9.4.1
       tsconfig-paths: 4.2.0
       typescript: 6.0.3
 
-  '@nestjs/common@12.0.1':
+  '@nestjs/common@12.6.2':
     dependencies:
       '@standard-schema/spec': 1.1.0
-      file-type: 22.0.2
+      file-type: 22.3.0
       iterare: 1.2.1
       load-esm: 1.0.3
-      tslib: 2.8.1
+      tslib: 2.9.1
       uid: 2.0.2
 
-  '@nestjs/config@12.0.0':
+  '@nestjs/config@12.1.1':
     dependencies:
       '@standard-schema/spec': 1.1.0
-      dotenv: 17.4.2
+      dotenv: 18.0.3
       dotenv-expand: 13.0.0
-      es-toolkit: 1.51.0
+      es-toolkit: 1.53.1
 
-  '@nestjs/core@12.0.1':
+  '@nestjs/core@12.6.2':
     dependencies:
       fast-safe-stringify: 2.1.1
       iterare: 1.2.1
       path-to-regexp: 8.4.2
-      tslib: 2.8.1
+      tslib: 2.9.1
       uid: 2.0.2
 
-  '@nestjs/graphql@14.0.3':
+  '@nestjs/graphql@14.2.1':
     dependencies:
-      '@graphql-tools/merge': 9.2.4
-      '@graphql-tools/schema': 10.1.1
-      '@graphql-tools/utils': 12.0.1
-      '@nestjs/mapped-types': 12.0.0
+      '@graphql-tools/merge': 9.2.8
+      '@graphql-tools/schema': 10.1.5
+      '@graphql-tools/utils': 12.1.0
+      '@nestjs/mapped-types': 12.0.1
       chokidar: 4.0.3
-      es-toolkit: 1.52.0
+      es-toolkit: 1.53.1
       graphql-tag: 2.12.7
-      graphql-ws: 6.3.0
+      graphql-ws: 6.4.1
       normalize-path: 3.0.0
       tinyglobby: 0.2.17
       tslib: 2.8.1
-      ws: 8.22.0
+      ws: 8.22.1
 
-  '@nestjs/mapped-types@12.0.0': {}
+  '@nestjs/mapped-types@12.0.1': {}
 
-  '@nestjs/platform-express@12.1.2':
+  '@nestjs/platform-express@12.6.2':
     dependencies:
       cors: 2.8.6
-      express: 5.2.1
-      multer: 2.4.0
+      express: 5.3.0
+      multer: 2.5.0
       path-to-regexp: 8.4.2
-      tslib: 2.8.1
+      tslib: 2.9.1
 
-  '@nestjs/schematics@12.0.0':
+  '@nestjs/schematics@12.0.16':
     dependencies:
-      '@angular-devkit/core': 22.1.5
-      '@angular-devkit/schematics': 22.1.5
+      '@angular-devkit/core': 22.2.7
+      '@angular-devkit/schematics': 22.2.7
       comment-json: 5.0.0
       jsonc-parser: 3.3.1
       pluralize: 8.0.0
 
-  '@nestjs/terminus@12.1.0': {}
+  '@nestjs/terminus@12.2.0': {}
 
-  '@nestjs/testing@12.0.1':
+  '@nestjs/testing@12.6.2':
     dependencies:
-      tslib: 2.8.1
+      tslib: 2.9.1
 
   '@next/env@16.3.8': {}
 
@@ -16373,10 +16554,11 @@ snapshots:
     dependencies:
       '@babel/runtime': 7.28.4
 
-  '@tokenizer/inflate@0.4.1':
+  '@tokenizer/inflate@0.6.1':
     dependencies:
       debug: 4.4.3
-      token-types: 6.1.2
+      strtok3: 10.8.0
+      token-types: 6.2.0
 
   '@tokenizer/token@0.3.0': {}
 
@@ -16996,9 +17178,9 @@ snapshots:
 
   ansi-styles@6.2.3: {}
 
-  ansis@4.3.1: {}
-
   ansis@4.4.0: {}
+
+  ansis@4.5.0: {}
 
   append-field@1.0.0: {}
 
@@ -17551,6 +17733,8 @@ snapshots:
 
   commander@15.0.0: {}
 
+  commander@15.1.0: {}
+
   commander@2.20.3: {}
 
   comment-json@5.0.0:
@@ -17635,8 +17819,6 @@ snapshots:
       upper-case: 2.0.2
 
   content-disposition@0.5.2: {}
-
-  content-disposition@1.1.0: {}
 
   content-disposition@2.0.1: {}
 
@@ -17980,6 +18162,8 @@ snapshots:
 
   dotenv@17.4.2: {}
 
+  dotenv@18.0.3: {}
+
   dunder-proto@1.0.1:
     dependencies:
       call-bind-apply-helpers: 1.0.2
@@ -18175,6 +18359,8 @@ snapshots:
   es-toolkit@1.51.0: {}
 
   es-toolkit@1.52.0: {}
+
+  es-toolkit@1.53.1: {}
 
   esast-util-from-estree@2.0.0:
     dependencies:
@@ -18609,37 +18795,6 @@ snapshots:
       debug: 4.4.3
       ip-address: 10.7.3
 
-  express@5.2.1:
-    dependencies:
-      accepts: 2.0.0
-      body-parser: 2.3.0
-      content-disposition: 1.1.0
-      content-type: 1.0.5
-      cookie: 0.7.2
-      cookie-signature: 1.2.2
-      debug: 4.4.3
-      depd: 2.0.0
-      encodeurl: 2.0.0
-      escape-html: 1.0.3
-      etag: 1.8.1
-      finalhandler: 2.1.1
-      fresh: 2.0.0
-      http-errors: 2.0.1
-      merge-descriptors: 2.0.0
-      mime-types: 3.0.2
-      on-finished: 2.4.1
-      once: 1.4.0
-      parseurl: 1.3.3
-      proxy-addr: 2.0.8
-      qs: 6.16.0
-      range-parser: 1.3.0
-      router: 2.2.0
-      send: 1.2.1
-      serve-static: 2.2.1
-      statuses: 2.0.2
-      type-is: 2.1.0
-      vary: 1.1.2
-
   express@5.3.0:
     dependencies:
       accepts: 2.0.0
@@ -18756,12 +18911,12 @@ snapshots:
     dependencies:
       flat-cache: 4.0.1
 
-  file-type@22.0.2:
+  file-type@22.3.0:
     dependencies:
-      '@tokenizer/inflate': 0.4.1
-      strtok3: 10.3.5
+      '@tokenizer/inflate': 0.6.1
+      strtok3: 10.8.0
       token-types: 6.1.2
-      uint8array-extras: 1.5.0
+      uint8array-extras: 1.6.0
 
   fill-range@7.1.1:
     dependencies:
@@ -19111,6 +19266,8 @@ snapshots:
   graphql-type-json@0.3.2: {}
 
   graphql-ws@6.3.0: {}
+
+  graphql-ws@6.4.1: {}
 
   graphql@16.12.0: {}
 
@@ -20091,13 +20248,13 @@ snapshots:
     dependencies:
       '@jridgewell/sourcemap-codec': 1.5.5
 
-  magic-string@1.0.0:
-    dependencies:
-      '@jridgewell/sourcemap-codec': 1.5.5
-
   magic-string@1.2.3:
     dependencies:
       '@jridgewell/sourcemap-codec': 1.5.5
+
+  magic-string@1.4.1:
+    dependencies:
+      '@jridgewell/sourcemap-codec': 1.6.0
 
   magic-string@1.4.5:
     dependencies:
@@ -20702,7 +20859,7 @@ snapshots:
     optionalDependencies:
       msgpackr-extract: 3.0.4
 
-  multer@2.4.0:
+  multer@2.5.0:
     dependencies:
       append-field: 1.0.0
       busboy: 1.6.0
@@ -21211,8 +21368,6 @@ snapshots:
   picocolors@1.1.1: {}
 
   picomatch@2.3.2: {}
-
-  picomatch@4.0.5: {}
 
   picomatch@4.0.7: {}
 
@@ -22269,6 +22424,8 @@ snapshots:
 
   source-map@0.7.6: {}
 
+  source-map@0.8.0: {}
+
   space-separated-tokens@2.0.2: {}
 
   spdx-exceptions@2.5.0: {}
@@ -22459,7 +22616,7 @@ snapshots:
 
   strip-json-comments@5.0.3: {}
 
-  strtok3@10.3.5:
+  strtok3@10.8.0:
     dependencies:
       '@tokenizer/token': 0.3.0
 
@@ -22654,6 +22811,12 @@ snapshots:
       '@tokenizer/token': 0.3.0
       ieee754: 1.2.1
 
+  token-types@6.2.0:
+    dependencies:
+      '@borewit/text-codec': 0.2.3
+      '@tokenizer/token': 0.3.0
+      ieee754: 1.2.1
+
   totalist@3.0.1: {}
 
   tough-cookie@6.0.2:
@@ -22725,6 +22888,8 @@ snapshots:
       strip-bom: 3.0.0
 
   tslib@2.8.1: {}
+
+  tslib@2.9.1: {}
 
   turbo@2.11.7:
     optionalDependencies:
@@ -22809,7 +22974,7 @@ snapshots:
     dependencies:
       '@lukeed/csprng': 1.1.0
 
-  uint8array-extras@1.5.0: {}
+  uint8array-extras@1.6.0: {}
 
   unbox-primitive@1.1.0:
     dependencies:
@@ -23158,6 +23323,8 @@ snapshots:
   ws@8.21.3: {}
 
   ws@8.22.0: {}
+
+  ws@8.22.1: {}
 
   ws@8.23.0: {}
 

@@ -4,5 +4,10 @@ it("declares the app preset", () => {
     $schema: "https://json.schemastore.org/tsconfig",
     display: "App",
     extends: "./base.json",
+    compilerOptions: {
+      paths: {
+        "@/*": ["${configDir}/src/*"],
+      },
+    },
   });
 });
