@@ -9,7 +9,8 @@ import {
 import i18n from "i18next";
 import { ThemeProvider } from "next-themes";
 import { initReactI18next } from "react-i18next";
-import { render } from "vitest-browser-react";
+import { afterEach } from "vitest";
+import { cleanup, render } from "vitest-browser-react";
 import { AppProvider } from "@/components/thread-ui/app-provider";
 import enAdmin from "../../public/locales/en/admin.json";
 import enApiKey from "../../public/locales/en/api-key.json";
@@ -78,10 +79,15 @@ export async function ensureTestI18n(language: "en" | "zh" = "en") {
   return i18n;
 }
 
+afterEach(async () => {
+  await cleanup();
+});
+
 export async function renderWithRouter(
   renderContent: () => ReactNode,
   initialEntry = "/",
 ) {
+  await cleanup();
   await ensureTestI18n("en");
   const rootRoute = createRootRoute({
     component: () => (
@@ -107,5 +113,14 @@ export async function renderWithRouter(
   const router = createRouter({ routeTree, history });
   await router.load();
   const view = await render(<RouterProvider router={router} />);
-  return { ...view, router, history, i18n };
+  return {
+    ...view,
+    unmount: async () => {
+      await view.unmount();
+      view.container.remove();
+    },
+    router,
+    history,
+    i18n,
+  };
 }

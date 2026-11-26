@@ -132,7 +132,7 @@ test.describe("administrator impersonation", () => {
     const targetEmail = `${seed}@example.com`;
     const targetContext = await browser.newContext({
       locale: "en-US",
-      timezoneId: "Asia/Shanghai",
+      timezoneId: "UTC",
     });
     const targetPage = await targetContext.newPage();
 

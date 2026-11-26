@@ -41,7 +41,7 @@ const sampleKeys: Array<ApiKeyRow<UserApiKeyPermission>> = [
 ];
 
 afterEach(async () => {
-  cleanup();
+  await cleanup();
   await ensureTestI18n("en");
   await page.viewport(1280, 800);
 });
@@ -131,7 +131,7 @@ describe("ApiKeysPage browser integration", () => {
       .element(page.getByText("已撤销", { exact: true }))
       .toBeVisible();
 
-    readOnlyView.unmount();
+    await readOnlyView.unmount();
 
     const writableView = await renderWithRouter(
       () => <RoutedApiKeysPage canWrite={true} showOwner={false} />,

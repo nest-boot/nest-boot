@@ -36,7 +36,7 @@ export default defineConfig({
     baseURL: clientUrl,
     locale: "en-US",
     screenshot: "only-on-failure",
-    timezoneId: "Asia/Shanghai",
+    timezoneId: "UTC",
     trace: "retain-on-failure",
     video: "off",
   },

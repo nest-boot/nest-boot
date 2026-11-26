@@ -26,7 +26,7 @@ test.describe("workspace invitations", () => {
     const workspaceName = `过期邀请工作空间 ${seed}`;
     const inviteeContext = await browser.newContext({
       locale: "en-US",
-      timezoneId: "Asia/Shanghai",
+      timezoneId: "UTC",
     });
     const inviteePage = await inviteeContext.newPage();
 
@@ -119,7 +119,7 @@ test.describe("workspace invitations", () => {
     const workspaceName = `删除邀请工作空间 ${seed}`;
     const inviteeContext = await browser.newContext({
       locale: "en-US",
-      timezoneId: "Asia/Shanghai",
+      timezoneId: "UTC",
     });
     const inviteePage = await inviteeContext.newPage();
 
@@ -262,7 +262,7 @@ test.describe("workspace invitations", () => {
 
     const inviteeContext = await browser.newContext({
       locale: "en-US",
-      timezoneId: "Asia/Shanghai",
+      timezoneId: "UTC",
     });
     const inviteePage = await inviteeContext.newPage();
 
@@ -385,7 +385,7 @@ test.describe("workspace invitations", () => {
 
     const inviteeContext = await browser.newContext({
       locale: "en-US",
-      timezoneId: "Asia/Shanghai",
+      timezoneId: "UTC",
     });
     const inviteePage = await inviteeContext.newPage();
 
@@ -468,7 +468,7 @@ test.describe("workspace invitations", () => {
     const memberEmail = `${seed}-member@example.com`;
     const memberContext = await browser.newContext({
       locale: "en-US",
-      timezoneId: "Asia/Shanghai",
+      timezoneId: "UTC",
     });
     const memberPage = await memberContext.newPage();
     try {
@@ -667,7 +667,7 @@ test.describe("workspace invitations", () => {
     const renamedWorkspace = `成员已更新 ${seed}`;
     const memberContext = await browser.newContext({
       locale: "en-US",
-      timezoneId: "Asia/Shanghai",
+      timezoneId: "UTC",
     });
     const memberPage = await memberContext.newPage();
 

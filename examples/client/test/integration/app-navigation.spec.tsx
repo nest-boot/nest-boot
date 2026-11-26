@@ -63,7 +63,7 @@ const currentUser = {
 };
 
 afterEach(async () => {
-  cleanup();
+  await cleanup();
   localStorage.clear();
   document.documentElement.classList.remove("dark", "light");
   await ensureTestI18n("en");
@@ -118,7 +118,7 @@ describe("UserSidebar, AdminSidebar, AppAccountMenu, and WorkspaceMenu integrati
     expect(
       restricted.container.querySelector('a[href="/user/api-keys"]'),
     ).toBeNull();
-    restricted.unmount();
+    await restricted.unmount();
 
     await page.viewport(390, 700);
     const mobileView = await renderWithRouter(
@@ -142,7 +142,7 @@ describe("UserSidebar, AdminSidebar, AppAccountMenu, and WorkspaceMenu integrati
     await expect
       .poll(() => document.querySelectorAll('[role="dialog"]').length)
       .toBe(0);
-    mobileView.unmount();
+    await mobileView.unmount();
 
     await page.viewport(1280, 800);
     const adminView = await renderWithRouter(
@@ -196,7 +196,7 @@ describe("UserSidebar, AdminSidebar, AppAccountMenu, and WorkspaceMenu integrati
     expect(switcherCalls).toBe(0);
     expect(document.querySelectorAll('[role="menuitemradio"]')).toHaveLength(0);
     await userEvent.keyboard("{Escape}");
-    personalView.unmount();
+    await personalView.unmount();
 
     const workspaceMocks: Array<MockedResponse> = [
       {

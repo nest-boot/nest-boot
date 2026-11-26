@@ -39,10 +39,14 @@ export default defineConfig({
       {
         extends: true,
         plugins: [tailwindcss()],
+        optimizeDeps: {
+          include: ["vitest-browser-react"],
+        },
         test: {
           name: "integration",
           include: ["test/integration/**/*.spec.{ts,tsx}"],
           setupFiles: ["./test/integration/setup.ts"],
+          fileParallelism: false,
           testTimeout: 30_000,
           hookTimeout: 30_000,
           browser: {
@@ -61,7 +65,7 @@ export default defineConfig({
                 : {}),
               contextOptions: {
                 locale: "en-US",
-                timezoneId: "Asia/Shanghai",
+                timezoneId: "UTC",
               },
             }),
             instances: [{ browser: "chromium" }],

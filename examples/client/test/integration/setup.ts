@@ -1,2 +1,7 @@
+import { afterEach } from "vitest";
+import { cleanup } from "vitest-browser-react";
 import "@/styles.css";
-import "vitest-browser-react";
+
+afterEach(async () => {
+  await cleanup();
+});

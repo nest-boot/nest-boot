@@ -65,7 +65,7 @@ vi.mock("@/app/_authenticated/contexts/auth-user-context", () => ({
 }));
 
 afterEach(async () => {
-  cleanup();
+  await cleanup();
   await ensureTestI18n("en");
 });
 
@@ -108,7 +108,7 @@ describe("LoginForm, WorkspaceServiceAccountForm, ApiKeyFormPage, and SystemAcco
     await expect
       .element(page.getByText("Password must contain at most 10 characters."))
       .toBeVisible();
-    registerView.unmount();
+    await registerView.unmount();
 
     let loginAttempts = 0;
     const loginMocks: Array<MockedResponse> = [
@@ -421,7 +421,7 @@ describe("LoginForm, WorkspaceServiceAccountForm, ApiKeyFormPage, and SystemAcco
       .getByRole("button", { name: "Revoke", exact: true })
       .click();
     await expect.poll(() => onRevoke).toHaveBeenCalledOnce();
-    keyView.unmount();
+    await keyView.unmount();
 
     const onToggle = vi.fn().mockResolvedValue(undefined);
     const onSystemSave = vi.fn().mockResolvedValue(undefined);

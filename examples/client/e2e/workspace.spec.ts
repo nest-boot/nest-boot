@@ -120,7 +120,7 @@ test.describe("workspace management", () => {
     const memberName = `New Owner ${seed}`;
     const memberContext = await browser.newContext({
       locale: "en-US",
-      timezoneId: "Asia/Shanghai",
+      timezoneId: "UTC",
     });
     const memberPage = await memberContext.newPage();
 

@@ -405,7 +405,7 @@ test.describe("user pages", () => {
 
     const otherContext = await browser.newContext({
       locale: "en-US",
-      timezoneId: "Asia/Shanghai",
+      timezoneId: "UTC",
     });
     const otherPage = await otherContext.newPage();
 
@@ -466,7 +466,7 @@ test.describe("user pages", () => {
 
     const ownerContext = await browser.newContext({
       locale: "en-US",
-      timezoneId: "Asia/Shanghai",
+      timezoneId: "UTC",
     });
     const ownerPage = await ownerContext.newPage();
 
