@@ -481,7 +481,7 @@ Driver selection follows this order:
 
 The memory driver is convenient for local development and single-process applications, but its buckets are not shared across processes or replicas. Use Redis or a custom distributed driver when limits must be global.
 
-Use `forRoot()` when you need to change the bucket thresholds or provide an explicit driver. The current plugin rejects requested query costs of `1000` or more.
+Use `forRoot()` when you need to change the bucket thresholds or provide an explicit driver. By default, the bucket holds 2,000 points and restores 100 points per second. The plugin rejects requests whose estimated cost exceeds 1,000 points.
 
 ```typescript
 import {
@@ -496,8 +496,8 @@ const driver: GraphQLRateLimitDriver = new MemoryGraphQLRateLimitDriver();
   imports: [
     GraphQLRateLimitModule.forRoot({
       driver,
-      maximumAvailable: 1000, // Bucket capacity
-      restoreRate: 50, // Points restored per second
+      maximumAvailable: 2000, // Bucket capacity
+      restoreRate: 100, // Points restored per second
     }),
   ],
 })

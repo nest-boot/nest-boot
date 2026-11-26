@@ -294,7 +294,7 @@ describe("GraphQLRateLimitModule - e2e", () => {
       GraphQLRateLimitModule.forRootAsync({
         useFactory: () =>
           Promise.resolve({
-            maxComplexity: 7,
+            maxComplexity: 6,
             defaultComplexity: 7,
             getId: () => "client",
           }),
@@ -310,9 +310,37 @@ describe("GraphQLRateLimitModule - e2e", () => {
 
     expect(body.data).toBeUndefined();
     expect(body.errors?.[0]).toMatchObject({
-      message: "Query is too complex: 7. Maximum allowed complexity: 7",
+      message: "Query is too complex: 7. Maximum allowed complexity: 6",
       extensions: { code: "TOO_MANY_REQUESTS" },
     });
+  });
+
+  it("accepts the default maximum cost and rejects requests above it", async () => {
+    const app = await createApp(GraphQLRateLimitModule.forRoot({}));
+    apps.push(app);
+    const http = request(app.getHttpServer());
+
+    const allowed = await http
+      .post("/graphql")
+      .send({ query: "{ weighted(weight: 1000) }" })
+      .expect(200);
+    expect(allowed.body).toMatchObject({
+      data: { weighted: "1000" },
+      extensions: {
+        cost: {
+          requestedQueryCost: 1000,
+          throttleStatus: { maximumAvailable: 2000, restoreRate: 100 },
+        },
+      },
+    });
+
+    const rejected = await http
+      .post("/graphql")
+      .send({ query: "{ weighted(weight: 1001) }" })
+      .expect(429);
+    expect((rejected.body as GraphQLResponse).errors?.[0]?.message).toBe(
+      "Query is too complex: 1001. Maximum allowed complexity: 1000",
+    );
   });
 
   it("adds the default or configured base cost once per root mutation field", async () => {

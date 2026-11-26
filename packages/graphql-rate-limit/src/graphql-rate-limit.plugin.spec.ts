@@ -282,7 +282,7 @@ describe("GraphQLRateLimitPlugin", () => {
   });
 
   it("rejects overly complex requests before consuming driver points", async () => {
-    mockedGetComplexity.mockReturnValue(1000);
+    mockedGetComplexity.mockReturnValue(1001);
     const context = {
       request: { operationName: "TestQuery", variables: {} },
       document,
@@ -291,13 +291,13 @@ describe("GraphQLRateLimitPlugin", () => {
     const listener = (await plugin.requestDidStart()) as TestRequestListener;
 
     await expect(listener.didResolveOperation(context)).rejects.toThrow(
-      "Query is too complex: 1000. Maximum allowed complexity: 1000",
+      "Query is too complex: 1001. Maximum allowed complexity: 1000",
     );
     expect(subPoint).not.toHaveBeenCalled();
   });
 
   it("uses configured complexity options", async () => {
-    mockedGetComplexity.mockReturnValue(1);
+    mockedGetComplexity.mockReturnValue(2);
     const context = {
       request: { operationName: "TestQuery", variables: {} },
       document,
@@ -324,7 +324,7 @@ describe("GraphQLRateLimitPlugin", () => {
       defaultComplexity: 7,
     });
     await expect(listener.didResolveOperation(context)).rejects.toThrow(
-      "Query is too complex: 1. Maximum allowed complexity: 1",
+      "Query is too complex: 2. Maximum allowed complexity: 1",
     );
     expect(subPoint).not.toHaveBeenCalled();
     await moduleRef.close();

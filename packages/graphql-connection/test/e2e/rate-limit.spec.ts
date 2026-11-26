@@ -216,7 +216,7 @@ describe("Connection complexity over GraphQL HTTP", () => {
     update.mockClear();
     const rejected = await query(
       url,
-      "{ owner(present: true) { books(first: 21) { edges { cursor } } } }",
+      "{ owner(present: true) { books(first: 22) { edges { cursor } } } }",
     );
     expect(rejected.status).toBe(429);
     expect(update).not.toHaveBeenCalled();

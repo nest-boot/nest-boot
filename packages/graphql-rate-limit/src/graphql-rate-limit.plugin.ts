@@ -230,7 +230,7 @@ export class GraphQLRateLimitPlugin implements ApolloServerPlugin {
           ],
         });
 
-        if (cost.requestedQueryCost >= maxComplexity) {
+        if (cost.requestedQueryCost > maxComplexity) {
           throw new GraphQLTooManyRequestsError(
             `Query is too complex: ${String(cost.requestedQueryCost)}. Maximum allowed complexity: ${String(maxComplexity)}`,
           );

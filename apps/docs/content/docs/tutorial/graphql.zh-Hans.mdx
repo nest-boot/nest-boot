@@ -480,7 +480,7 @@ export class CommonModule {}
 
 Memory 驱动适合本地开发和单进程应用，但不同进程或副本之间不会共享限流桶。如果配额需要全局共享，请使用 Redis 或自定义分布式驱动。
 
-需要调整令牌桶阈值或显式指定驱动时，使用 `forRoot()`。当前插件会拒绝 requested query cost 大于等于 `1000` 的查询。
+需要调整令牌桶阈值或显式指定驱动时，使用 `forRoot()`。令牌桶默认容量为 2,000 点，每秒恢复 100 点。插件会拒绝预计成本超过 1,000 点的请求。
 
 ```typescript
 import {
@@ -495,8 +495,8 @@ const driver: GraphQLRateLimitDriver = new MemoryGraphQLRateLimitDriver();
   imports: [
     GraphQLRateLimitModule.forRoot({
       driver,
-      maximumAvailable: 1000, // 令牌桶容量
-      restoreRate: 50, // 每秒恢复的点数
+      maximumAvailable: 2000, // 令牌桶容量
+      restoreRate: 100, // 每秒恢复的点数
     }),
   ],
 })
