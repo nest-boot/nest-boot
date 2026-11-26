@@ -1,7 +1,7 @@
 import { mkdtemp, rm, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 
-import nestBoot from "@nest-boot/eslint";
+import nestBoot, { configs } from "@nest-boot/eslint";
 import app from "@nest-boot/eslint/app";
 import base from "@nest-boot/eslint/base";
 import library from "@nest-boot/eslint/library";
@@ -246,6 +246,11 @@ export function identity<T>(value: T): T {
   });
 
   it("applies only Nest Boot custom rules when using nestBoot.configs.recommended", async () => {
+    // @ts-expect-error -- public d.ts rejects removed `standard` preset
+    expect(configs.standard).toBeUndefined();
+    // @ts-expect-error -- public d.ts rejects removed `rules` preset
+    expect(nestBoot.configs.rules).toBeUndefined();
+
     const file = join(fixtureDirectory, "custom-only.ts");
     await writeFile(
       file,

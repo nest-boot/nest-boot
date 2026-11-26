@@ -8,9 +8,7 @@ const require = createRequire(import.meta.url);
 const { version } = require("../package.json") as { version: string };
 
 /** Flat configuration presets exported by the `@nest-boot/eslint` plugin. */
-export interface NestBootConfigs extends Record<string, Linter.Config[]> {
-  readonly recommended: Linter.Config[];
-}
+export type NestBootConfigs = Readonly<Record<"recommended", Linter.Config[]>>;
 
 /** Metadata identifying the Nest Boot ESLint plugin. */
 export const meta: NonNullable<ESLint.Plugin["meta"]> = {
@@ -22,15 +20,21 @@ export const meta: NonNullable<ESLint.Plugin["meta"]> = {
 /** Flat configuration presets (`recommended`) for the Nest Boot ESLint plugin. */
 export const configs = {} as NestBootConfigs;
 
-const plugin: ESLint.Plugin & {
+/** Standard ESLint v9 plugin exported by `@nest-boot/eslint`. */
+export interface NestBootPlugin extends Omit<
+  ESLint.Plugin,
+  "configs" | "meta" | "rules"
+> {
   readonly meta: typeof meta;
   readonly rules: NonNullable<ESLint.Plugin["rules"]>;
   readonly configs: NestBootConfigs;
-} = {
+}
+
+const plugin: NestBootPlugin = {
   meta,
   rules: rules as unknown as NonNullable<ESLint.Plugin["rules"]>,
   configs,
-};
+} satisfies ESLint.Plugin;
 
 Object.assign(configs, {
   recommended: [
