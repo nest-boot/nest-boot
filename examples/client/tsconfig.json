@@ -21,7 +21,8 @@
     "noFallthroughCasesInSwitch": true,
     "paths": {
       "@/*": ["./src/*"],
-      "i18next": ["./node_modules/i18next"]
+      "i18next": ["./node_modules/i18next"],
+      "i18next/*": ["./node_modules/i18next/*"]
     }
   }
 }

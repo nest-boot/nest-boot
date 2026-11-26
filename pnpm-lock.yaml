@@ -1561,7 +1561,7 @@ importers:
         version: 5.3.0
       i18next:
         specifier: ^26.4.0
-        version: 26.4.2
+        version: 26.4.0
       i18next-fs-backend:
         specifier: ^2.6.7
         version: 2.6.7
@@ -8688,6 +8688,9 @@ packages:
   i18next-resources-for-ts@2.1.0:
     resolution: {integrity: sha512-n5UexwEVt0OoIAhG2MWpSnAVJW1U8mQrQTmXyxc5DMAx+NLhcLZhSMJo/FnUsA5JQ3obTYqTgB7YIuZKWpDgow==}
     hasBin: true
+
+  i18next@26.4.0:
+    resolution: {integrity: sha512-rsmK5bFqsD1AetSFSIa43wtNR4WpvvH4p0tLEsTxkC7QTrfdFm06nbQ95bh8Og4wwaCnUEcm9DVYL2cgxitiQg==}
 
   i18next@26.4.2:
     resolution: {integrity: sha512-RX+R0VLg13IbvRuJSxnqykUFS9vQZTl8wYpWPCIUDWVrSGjsQywB5Y+pjzrkboxGAuYfJZVH1InFTdgBdxq6ug==}
@@ -19318,6 +19321,8 @@ snapshots:
       '@swc/core': 1.16.1
       chokidar: 5.0.0
       yaml: 2.9.0
+
+  i18next@26.4.0: {}
 
   i18next@26.4.2: {}
 
