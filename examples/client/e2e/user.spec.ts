@@ -1,6 +1,6 @@
 import { expect, test } from "@playwright/test";
 
-import { registerUser, testPassword } from "./utils/auth";
+import { registerUser, registerUserByApi, testPassword } from "./utils/auth";
 import { graphqlRequest } from "./utils/graphql";
 import { waitForEmailUrl } from "./utils/mailpit";
 import { uniqueSeed } from "./utils/unique";
@@ -127,7 +127,7 @@ test.describe("user pages", () => {
     page,
   }) => {
     await page.setViewportSize({ width: 390, height: 500 });
-    await registerUser(page, {
+    await registerUserByApi(page.request, {
       email: `${uniqueSeed("mobile-navigation")}@example.com`,
       name: "Mobile navigation",
     });
@@ -210,7 +210,7 @@ test.describe("user pages", () => {
   });
 
   test("loads subsequent pages of linked accounts", async ({ page }) => {
-    await registerUser(page, {
+    await registerUserByApi(page.request, {
       email: `${uniqueSeed("account-pages")}@example.com`,
       name: "Account pages",
     });
@@ -398,7 +398,7 @@ test.describe("user pages", () => {
     const seed = uniqueSeed("user-sessions");
     const email = `${seed}@example.com`;
 
-    await registerUser(page, {
+    await registerUserByApi(page.request, {
       email,
       name: `Session User ${seed}`,
     });
@@ -471,7 +471,7 @@ test.describe("user pages", () => {
     const ownerPage = await ownerContext.newPage();
 
     try {
-      await registerUser(ownerPage, {
+      await registerUserByApi(ownerPage.request, {
         email: ownerEmail,
         name: `Owner ${seed}`,
       });

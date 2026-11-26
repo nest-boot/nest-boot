@@ -4,6 +4,7 @@ import { clickPageAction } from "./utils/page-actions";
 import {
   completeEmailVerification,
   registerUser,
+  registerUserByApi,
   testPassword,
 } from "./utils/auth";
 import { waitForEmailUrl } from "./utils/mailpit";
@@ -471,7 +472,7 @@ test.describe("workspace invitations", () => {
     });
     const memberPage = await memberContext.newPage();
     try {
-      await registerUser(memberPage, {
+      await registerUserByApi(memberPage.request, {
         email: memberEmail,
         name: "Permission Editor",
       });
@@ -671,7 +672,7 @@ test.describe("workspace invitations", () => {
     const memberPage = await memberContext.newPage();
 
     try {
-      await registerUser(memberPage, {
+      await registerUserByApi(memberPage.request, {
         email: memberEmail,
         name: "Authorized Member",
       });

@@ -14,16 +14,8 @@ type TestUser = {
 };
 
 export async function registerUser(page: Page, user: TestUser) {
-  await page.goto("/auth/register");
-  await page.getByLabel("Name", { exact: true }).fill(user.name);
-  await page.getByLabel("Email", { exact: true }).fill(user.email);
-  await page.getByLabel("Password", { exact: true }).fill(testPassword);
-  await page
-    .getByRole("button", { name: /^(Loading )?(Sign in|Create account)$/ })
-    .click();
-
-  await completeEmailVerification(page, user.email);
-
+  await registerUserByApi(page.request, user);
+  await page.goto("/user/workspaces");
   await expect(page).toHaveURL(/\/user\/workspaces(?:\?.*)?$/);
   await expect(
     page.getByRole("heading", { name: "Workspaces", exact: true }),
@@ -54,7 +46,10 @@ export async function registerUserByApi(
     user.email,
     "Verify your email address",
   );
-  expect((await request.get(verificationUrl)).ok()).toBeTruthy();
+  const verificationResponse = await request.get(verificationUrl, {
+    maxRedirects: 0,
+  });
+  expect([200, 302]).toContain(verificationResponse.status());
   expect(
     (
       await request.post("/api/auth/sign-in/email", {

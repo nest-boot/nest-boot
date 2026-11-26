@@ -9,6 +9,15 @@ const serverPort = new URL(serverUrl).port || "80";
 const clientHealthUrl = `http://[::1]:${clientPort}`;
 const serverHealthUrl = `http://[::1]:${serverPort}`;
 const browserChannel = process.env.PLAYWRIGHT_BROWSER_CHANNEL;
+const parsedWorkers = Number(process.env.PLAYWRIGHT_WORKERS);
+const configuredWorkers =
+  Number.isInteger(parsedWorkers) && parsedWorkers > 0
+    ? parsedWorkers
+    : process.env.CI
+      ? 3
+      : undefined;
+const skipBuild =
+  process.env.E2E_SKIP_BUILD === "1" || process.env.E2E_SKIP_BUILD === "true";
 const clientDir = fileURLToPath(new URL(".", import.meta.url));
 const workspaceRoot = resolve(clientDir, "../..");
 
@@ -18,7 +27,7 @@ export default defineConfig({
   timeout: 60_000,
   forbidOnly: Boolean(process.env.CI),
   retries: process.env.CI ? 2 : 0,
-  workers: process.env.CI ? 1 : undefined,
+  workers: configuredWorkers,
   expect: {
     timeout: 15_000,
   },
@@ -42,8 +51,9 @@ export default defineConfig({
   ],
   webServer: [
     {
-      command:
-        "pnpm --filter @nest-boot/example-server build && pnpm --filter @nest-boot/example-server start:e2e",
+      command: skipBuild
+        ? "pnpm --filter @nest-boot/example-server start:e2e"
+        : "pnpm --filter @nest-boot/example-server build && pnpm --filter @nest-boot/example-server start:e2e",
       cwd: workspaceRoot,
       env: { PORT: serverPort, APP_URL: clientUrl, AUTH_URL: serverUrl },
       gracefulShutdown: {
@@ -55,7 +65,9 @@ export default defineConfig({
       url: `${serverHealthUrl}/api/auth/ok`,
     },
     {
-      command: `pnpm --filter @nest-boot/example-client codegen && pnpm --filter @nest-boot/example-client exec vite dev --mode e2e --host :: --port ${clientPort} --strictPort`,
+      command: skipBuild
+        ? `pnpm --filter @nest-boot/example-client exec vite preview --mode e2e --host :: --port ${clientPort} --strictPort`
+        : `pnpm --filter @nest-boot/example-client codegen && pnpm --filter @nest-boot/example-client exec vite build --mode e2e && pnpm --filter @nest-boot/example-client exec vite preview --mode e2e --host :: --port ${clientPort} --strictPort`,
       cwd: workspaceRoot,
       env: { APP_URL: clientUrl, API_URL: serverUrl },
       gracefulShutdown: {

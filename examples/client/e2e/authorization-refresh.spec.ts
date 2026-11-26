@@ -1,6 +1,6 @@
 import { expect, test } from "@playwright/test";
 
-import { registerUser, signInAsE2eAdministrator } from "./utils/auth";
+import { registerUserByApi, signInAsE2eAdministrator } from "./utils/auth";
 import { graphqlRequest } from "./utils/graphql";
 import { uniqueSeed } from "./utils/unique";
 import { createWorkspaceByApi } from "./utils/workspace";
@@ -14,7 +14,7 @@ for (const scope of ["user", "workspace"] as const) {
     page,
   }) => {
     const seed = uniqueSeed(`refresh-${scope}`);
-    await registerUser(page, {
+    await registerUserByApi(page.request, {
       email: `${seed}@example.com`,
       name: "Initial profile",
     });
@@ -109,7 +109,7 @@ test("leaves stale impersonation UI after the server revokes a failed restore", 
   const targetPage = await targetContext.newPage();
   let targetId: string;
   try {
-    await registerUser(targetPage, {
+    await registerUserByApi(targetPage.request, {
       email: `${seed}@example.com`,
       name: "Impersonation target",
     });

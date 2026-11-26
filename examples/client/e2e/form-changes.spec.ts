@@ -1,7 +1,7 @@
 import { randomUUID } from "node:crypto";
 import { expect, test } from "@playwright/test";
 import {
-  registerUser,
+  registerUserByApi,
   signInAsE2eAdministrator,
   testPassword,
 } from "./utils/auth";
@@ -28,7 +28,7 @@ for (const kind of ["profile", "workspace"] as const) {
   test(`${kind} preserves edits made while a name save is pending`, async ({
     page,
   }) => {
-    await registerUser(page, {
+    await registerUserByApi(page.request, {
       email: `${uniqueSeed(`pending-${kind}`)}@example.com`,
       name: "Original name",
     });
@@ -93,7 +93,7 @@ for (const kind of ["profile", "workspace"] as const) {
 test("changing a workspace slug preserves its externally updated name", async ({
   page,
 }) => {
-  await registerUser(page, {
+  await registerUserByApi(page.request, {
     email: `${uniqueSeed("workspace-diff")}@example.com`,
     name: "Workspace owner",
   });
@@ -184,7 +184,7 @@ test("administrator name edits preserve concurrent email and verification change
 test("member name edits preserve a concurrent contact email change", async ({
   page,
 }) => {
-  await registerUser(page, {
+  await registerUserByApi(page.request, {
     email: `${uniqueSeed("member-diff")}@example.com`,
     name: "Original member",
   });
@@ -232,7 +232,7 @@ test("member name edits preserve a concurrent contact email change", async ({
 test("TanStack validation blocks whitespace-only profile and workspace names", async ({
   page,
 }) => {
-  await registerUser(page, {
+  await registerUserByApi(page.request, {
     email: `${uniqueSeed("form-validation")}@example.com`,
     name: "Validation user",
   });

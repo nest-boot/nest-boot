@@ -1,6 +1,6 @@
 import { expect, test } from "@playwright/test";
 
-import { registerUser, signInAsE2eAdministrator } from "./utils/auth";
+import { registerUserByApi, signInAsE2eAdministrator } from "./utils/auth";
 import { graphqlRequest } from "./utils/graphql";
 import { uniqueSeed } from "./utils/unique";
 import {
@@ -16,7 +16,7 @@ test("limits user detail queries and actions to the administrator's abilities", 
   const adminContext = await browser.newContext();
   const adminPage = await adminContext.newPage();
   try {
-    await registerUser(page, {
+    await registerUserByApi(page.request, {
       email: `${seed}@example.com`,
       name: "Limited administrator",
     });
@@ -184,11 +184,11 @@ test("authorizes workspace API-key controls and deletion without an owner role",
   const ownerPage = await ownerContext.newPage();
   try {
     const memberEmail = `${seed}-member@example.com`;
-    await registerUser(page, {
+    await registerUserByApi(page.request, {
       email: memberEmail,
       name: "Custom permissions",
     });
-    await registerUser(ownerPage, {
+    await registerUserByApi(ownerPage.request, {
       email: `${seed}-owner@example.com`,
       name: "Workspace owner",
     });
@@ -289,7 +289,7 @@ test("uses personal API-key abilities for navigation and instance actions", asyn
   page,
 }) => {
   const seed = uniqueSeed("personal-key-abilities");
-  await registerUser(page, {
+  await registerUserByApi(page.request, {
     email: `${seed}@example.com`,
     name: "Key owner",
   });

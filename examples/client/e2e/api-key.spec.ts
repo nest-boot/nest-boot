@@ -2,7 +2,7 @@ import { expect, test } from "@playwright/test";
 import { clickPageAction } from "./utils/page-actions";
 import { getPermissionCheckbox } from "./utils/permissions";
 
-import { registerUser } from "./utils/auth";
+import { registerUser, registerUserByApi } from "./utils/auth";
 import { graphqlRequest } from "./utils/graphql";
 import { uniqueSeed } from "./utils/unique";
 import {
@@ -27,7 +27,7 @@ test.describe("API keys", () => {
     try {
       const issuer = await context.newPage();
       const email = `${seed}-issuer@example.com`;
-      await registerUser(issuer, { email, name: "Key Issuer" });
+      await registerUserByApi(issuer.request, { email, name: "Key Issuer" });
       const memberId = await addWorkspaceMemberByApi(page, workspaceId, email);
       const headers = { "x-workspace": workspaceId };
       await graphqlRequest(
@@ -119,7 +119,10 @@ test.describe("API keys", () => {
     try {
       const issuerPage = await issuerContext.newPage();
       const email = `${seed}-issuer@example.com`;
-      await registerUser(issuerPage, { email, name: "Limited Key Issuer" });
+      await registerUserByApi(issuerPage.request, {
+        email,
+        name: "Limited Key Issuer",
+      });
       const id = await addWorkspaceMemberByApi(page, workspaceId, email);
       await graphqlRequest(
         page.request,
@@ -465,7 +468,7 @@ test.describe("API keys", () => {
     const otherContext = await browser.newContext();
     try {
       const otherPage = await otherContext.newPage();
-      await registerUser(otherPage, {
+      await registerUserByApi(otherPage.request, {
         email: `${seed}-other@example.com`,
         name: "Other key owner",
       });

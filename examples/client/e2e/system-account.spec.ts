@@ -1,5 +1,5 @@
 import { expect, test } from "@playwright/test";
-import { registerUser, signInAsE2eAdministrator } from "./utils/auth";
+import { registerUserByApi, signInAsE2eAdministrator } from "./utils/auth";
 import { graphqlRequest } from "./utils/graphql";
 import { getPermissionCheckbox } from "./utils/permissions";
 import { clickPageAction } from "./utils/page-actions";
@@ -271,7 +271,7 @@ test("manages system identities and credentials under admin, with one-time secre
 test("ordinary users cannot enter the system-account administrator routes", async ({
   page,
 }) => {
-  await registerUser(page, {
+  await registerUserByApi(page.request, {
     name: "Ordinary",
     email: `${uniqueSeed("system-denied")}@example.com`,
   });

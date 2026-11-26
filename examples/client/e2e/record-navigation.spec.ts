@@ -1,6 +1,6 @@
 import { expect, test } from "@playwright/test";
 import {
-  registerUser,
+  registerUserByApi,
   signInAsE2eAdministrator,
   testPassword,
 } from "./utils/auth";
@@ -216,7 +216,7 @@ test("workspace overview and settings use browser history to restore list search
   page,
 }) => {
   const seed = uniqueSeed("workspace-navigation");
-  await registerUser(page, {
+  await registerUserByApi(page.request, {
     name: "Workspace navigator",
     email: `${seed}@example.com`,
   });
