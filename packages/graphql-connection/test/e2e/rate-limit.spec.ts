@@ -201,10 +201,14 @@ describe("Connection complexity over GraphQL HTTP", () => {
         actual: 7,
       },
       {
-        selection: "books(first: 1) { edges { node { owner { present } } } }",
-        books: { edges: [{ node: { owner: { present: true } } }] },
-        requested: 5,
-        actual: 5,
+        selection: "books(first: 5) { edges { node { owner { present } } } }",
+        books: {
+          edges: Array.from({ length: 3 }, () => ({
+            node: { owner: { present: true } },
+          })),
+        },
+        requested: 13,
+        actual: 9,
       },
       {
         selection: "books(first: 1) { pageInfo { hasNextPage } }",
