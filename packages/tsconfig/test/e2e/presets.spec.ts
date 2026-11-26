@@ -87,6 +87,18 @@ describe("Nest CLI 12 ESM presets", () => {
     expect(parsed.options.strict).toBe(true);
     expect(parsed.options.strictPropertyInitialization).toBe(false);
     expect(parsed.options.removeComments).toBe(true);
+    expect(parsed.options.paths).toEqual({
+      "@/*": [join(projectRoot, "src/*")],
+    });
+    const resolvedAlias = ts.resolveModuleName(
+      "@/index.js",
+      join(projectRoot, "src", "main.ts"),
+      parsed.options,
+      ts.sys,
+    );
+    expect(resolvedAlias.resolvedModule?.resolvedFileName).toBe(
+      join(projectRoot, "src", "index.ts"),
+    );
   });
   it("uses separate default build info for library checks and builds", () => {
     resolveConfig("library.json", "tsconfig.build.json");

@@ -176,6 +176,41 @@ it("prefers relative TypeScript sources over adjacent JavaScript during source e
   expect(result.stdout).toContain("SOURCE:Alice!");
   expect(result.stdout).not.toContain("STALE");
 });
+it("resolves tsconfig paths aliases (@/*) for static and dynamic source imports", () => {
+  writeSource();
+  write(
+    "tsconfig.json",
+    JSON.stringify({
+      ...sourceConfig,
+      compilerOptions: {
+        ...sourceConfig.compilerOptions,
+        paths: {
+          "@/*": ["${configDir}/src/*"],
+        },
+      },
+    }),
+  );
+  write(
+    "src/cli.ts",
+    readFileSync(join(testApplication, "src/cli.ts"), "utf8").replace(
+      "./app/app.module.js",
+      "@/app/app.module.js",
+    ),
+  );
+  write(
+    "src/app/hello.command.ts",
+    commands
+      .replace("./greeting.service.js", "@/app/greeting.service.js")
+      .replace("./punctuation.js", "@/app/punctuation.js"),
+  );
+  write("src/app/punctuation.js", "export const punctuation = 'STALE';");
+  const result = run(["hello", "Alice", "--loud"]);
+  expect(result.stderr).not.toMatch(/Error|SyntaxError|TSError/);
+  expect(result.status).toBe(0);
+  expect(result.stdout).toContain("SOURCE:ALICE!");
+  expect(result.stdout).toContain("CLOSED");
+  expect(result.stdout).not.toContain("STALE");
+});
 it("loads JavaScript implementations when relative declarations exist without TypeScript source", () => {
   write(
     "src/cli.ts",
