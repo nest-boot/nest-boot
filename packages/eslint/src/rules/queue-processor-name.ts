@@ -1,21 +1,24 @@
 import {
   AST_NODE_TYPES,
   ASTUtils,
+  ESLintUtils,
   type TSESTree,
 } from "@typescript-eslint/utils";
 import { Scope } from "@typescript-eslint/utils/ts-eslint";
 import * as ts from "typescript";
 
-import { createRule } from "../../utils/createRule.js";
-import { importedBindingName } from "../../utils/named-imports.js";
+import { createRule } from "../utils/createRule.js";
+import { getImportedName } from "../utils/imports.js";
 
 export default createRule<[], "processorName">({
-  name: "queue/processor-name",
+  name: "queue-processor-name",
   meta: {
     type: "suggestion",
     docs: {
       description:
-        "Requires a processor class name to match its declared queue class.",
+        "require a processor class name to match its declared queue class",
+      recommended: true,
+      requiresTypeChecking: true,
     },
     schema: [],
     messages: {
@@ -23,16 +26,18 @@ export default createRule<[], "processorName">({
         'Processor for "{{queueName}}" must be named "{{expectedName}}".',
     },
   },
-  defaultOptions: [],
   create(context) {
     const source = context.sourceCode;
 
+    const parserServices = source.parserServices?.esTreeNodeToTSNodeMap
+      ? ESLintUtils.getParserServices(context, true)
+      : null;
+
     const queueClassName = (node: TSESTree.Node): string | null => {
-      const { program, esTreeNodeToTSNodeMap } = source.parserServices ?? {};
-      if (program && esTreeNodeToTSNodeMap) {
-        const symbol = program
+      if (parserServices?.program) {
+        const symbol = parserServices.program
           .getTypeChecker()
-          .getTypeAtLocation(esTreeNodeToTSNodeMap.get(node))
+          .getTypeAtLocation(parserServices.esTreeNodeToTSNodeMap.get(node))
           .getSymbol();
         const declaration = symbol
           ?.getDeclarations()
@@ -80,31 +85,24 @@ export default createRule<[], "processorName">({
         ) {
           return null;
         }
-        if (
-          !node.computed &&
-          node.property.type === AST_NODE_TYPES.Identifier
-        ) {
-          return node.property.name;
-        }
-        if (
-          node.computed &&
-          node.property.type === AST_NODE_TYPES.Literal &&
-          typeof node.property.value === "string"
-        ) {
-          return node.property.value;
-        }
+        return ASTUtils.getPropertyName(node);
       }
       return null;
     };
 
     return {
       ClassDeclaration(node) {
-        for (const decorator of node.decorators) {
+        for (const decorator of (node as Partial<TSESTree.ClassDeclaration>)
+          .decorators ?? []) {
           const call = decorator.expression;
           if (
             call.type !== AST_NODE_TYPES.CallExpression ||
-            importedBindingName(source, "@nest-boot/queue", call.callee) !==
-              "Processor"
+            getImportedName(
+              source,
+              "@nest-boot/queue",
+              call.callee,
+              context.filename,
+            ) !== "Processor"
           ) {
             continue;
           }
@@ -117,6 +115,13 @@ export default createRule<[], "processorName">({
             continue;
           }
           const expectedName = `${queueName.replace(/Queue$/, "")}Processor`;
+          if (
+            !/^[$_\p{ID_Start}][$\u200c\u200d\p{ID_Continue}]*$/u.test(
+              expectedName,
+            )
+          ) {
+            continue;
+          }
           if (node.id?.name !== expectedName) {
             context.report({
               node: node.id ?? node,

@@ -62,7 +62,7 @@ class FreeReport {
 
 @ObjectType()
 class ReportOwner {
-  // eslint-disable-next-line nest-boot/graphql/field-config-from-types -- Exercise Nest's reflected return type.
+  // eslint-disable-next-line nest-boot/graphql-field-config-from-types -- Exercise Nest's reflected return type.
   @Field()
   report!: PublishedReport;
 

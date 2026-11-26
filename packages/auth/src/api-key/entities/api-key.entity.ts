@@ -142,7 +142,6 @@ export class ApiKey extends BaseApiKey {
   }
 
   /** Primary key (Sonyflake ID, auto-generated). */
-  // eslint-disable-next-line nest-boot/database/entity-property-config-from-types -- Preserve bigint storage and string hydration without inferred runtime types.
   @PrimaryKey({ type: new t.bigint("string"), autoincrement: true })
   id: Opt<string> = Sonyflake.next().toString();
 

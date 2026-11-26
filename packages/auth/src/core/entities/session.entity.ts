@@ -1,4 +1,3 @@
-/* eslint-disable nest-boot/graphql/field-config-from-types -- MikroORM Opt/Ref markers require explicit GraphQL metadata. */
 import { BaseEntity, type Opt, type Ref, t } from "@mikro-orm/core";
 import {
   Entity,
@@ -35,6 +34,7 @@ export class Session extends BaseEntity {
   /** Unique session token used for authentication. */
   @Property({ type: t.text })
   @Unique()
+  @HideField()
   token!: string;
 
   /** User that owns this record. */

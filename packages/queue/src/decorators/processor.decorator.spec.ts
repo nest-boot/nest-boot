@@ -31,7 +31,7 @@ it("checks every named method, exact job parameters and per-job results during c
       await Promise.resolve();
     }
   }
-  /* eslint-disable nest-boot/queue/processor-name -- Distinct fixture names identify intentional processor type errors. */
+  /* eslint-disable nest-boot/queue-processor-name -- Distinct fixture names identify intentional processor type errors. */
   // @ts-expect-error Missing processWelcome.
   @Processor(TypedQueue)
   class Missing extends SendMethod {}
@@ -159,7 +159,7 @@ it("checks every named method, exact job parameters and per-job results during c
   @Processor(NoSchemasQueue)
   class NoSchemasProcessor extends BaseProcessor {}
 
-  /* eslint-enable nest-boot/queue/processor-name */
+  /* eslint-enable nest-boot/queue-processor-name */
 
   // eslint-disable-next-line no-constant-condition -- Verify read-only accessors without mutating runtime instances.
   if (false) {

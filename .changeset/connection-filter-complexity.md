@@ -17,4 +17,4 @@ The `connectionComplexity` export has been removed from `@nest-boot/graphql-rate
 
 Complexity callbacks receive `resolved.result` during settlement. The Nest Boot GraphQL decorators and `defineComplexity` infer the result using the same rule as NestJS's `@Field` default value.
 
-The shared ESLint config enables `nest-boot/graphql/no-direct-nestjs-import`. Import public GraphQL APIs from `@nest-boot/graphql` to use the field decorators that register default complexity.
+The shared ESLint config enables `nest-boot/graphql-no-direct-nestjs-import`. Import public GraphQL APIs from `@nest-boot/graphql` to use the field decorators that register default complexity.

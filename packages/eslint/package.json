@@ -21,7 +21,8 @@
   },
   "files": [
     "dist",
-    "!dist/**/*.tsbuildinfo"
+    "!dist/**/*.tsbuildinfo",
+    "docs"
   ],
   "exports": {
     ".": {
@@ -35,7 +36,9 @@
     "build": "tsc -p tsconfig.build.json",
     "clean": "tsc -b --clean tsconfig.build.json && rm -rf dist",
     "dev": "tsc -p tsconfig.build.json --watch",
-    "lint": "eslint \"{src,test}/**/*.ts\"",
+    "docs:update": "pnpm run build && eslint-doc-generator",
+    "docs:check": "eslint-doc-generator --check",
+    "lint": "eslint \"{src,test}/**/*.ts\" && eslint-doc-generator --check",
     "lint:fix": "eslint \"{src,test}/**/*.ts\" --fix",
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
@@ -48,12 +51,13 @@
   },
   "dependencies": {
     "@eslint/js": "^9.39.2",
-    "@typescript-eslint/parser": "^8.71.1",
-    "@typescript-eslint/utils": "^8.71.1",
+    "@typescript-eslint/parser": "^8.74.0",
+    "@typescript-eslint/utils": "^8.74.0",
     "eslint-config-prettier": "^10.1.8",
     "eslint-plugin-jsdoc": "^63.3.3",
     "eslint-plugin-simple-import-sort": "^12.1.1",
-    "typescript-eslint": "^8.71.1"
+    "ts-api-utils": "^2.5.0",
+    "typescript-eslint": "^8.74.0"
   },
   "peerDependencies": {
     "eslint": "^9.0.0",
@@ -66,10 +70,13 @@
     "@mikro-orm/sql": "7.2.0",
     "@nest-boot/tsconfig": "workspace:^",
     "@types/node": "^24.0.0",
-    "@typescript-eslint/rule-tester": "^8.71.1",
+    "@typescript-eslint/rule-tester": "^8.74.0",
     "@vitest/coverage-v8": "^5.1.1",
     "eslint": "^9.39.3",
+    "eslint-doc-generator": "^3.7.1",
+    "eslint-plugin-eslint-plugin": "^7.6.2",
     "graphql-type-json": "0.3.2",
+    "prettier": "^3.8.1",
     "typescript": "^6.0.3",
     "vite": "^8.3.8",
     "vitest": "^5.1.1"

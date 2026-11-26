@@ -1,21 +1,34 @@
-import type { ESLint, Linter } from "eslint";
+import { createRequire } from "node:module";
 
-import { configs } from "./config.js";
-import { plugin } from "./plugin.js";
+import type { ESLint } from "eslint";
 
-export { configs } from "./config.js";
-export { plugin } from "./plugin.js";
+import { createConfigs, type NestBootConfigs } from "./config.js";
+import { rules } from "./rules/index.js";
 
-const nestBoot: {
-  readonly configs: {
-    readonly standard: Linter.Config[];
-    readonly rules: Linter.Config[];
-    readonly recommended: Linter.Config[];
-  };
-  readonly plugin: ESLint.Plugin;
-} = {
-  configs,
-  plugin,
+const require = createRequire(import.meta.url);
+const { version } = require("../package.json") as { version: string };
+
+/** Metadata identifying the Nest Boot ESLint plugin. */
+export const meta: NonNullable<ESLint.Plugin["meta"]> = {
+  name: "eslint-plugin-nest-boot",
+  namespace: "nest-boot",
+  version,
 };
 
-export default nestBoot;
+/** Flat configuration presets (`recommended`, `standard`, and `rules`). */
+export const configs = {} as NestBootConfigs;
+
+const plugin: ESLint.Plugin & {
+  readonly meta: typeof meta;
+  readonly rules: NonNullable<ESLint.Plugin["rules"]>;
+  readonly configs: NestBootConfigs;
+} = {
+  meta,
+  rules: rules as unknown as NonNullable<ESLint.Plugin["rules"]>,
+  configs,
+};
+
+Object.assign(configs, createConfigs(plugin));
+
+export { rules };
+export default plugin;
