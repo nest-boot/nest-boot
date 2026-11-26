@@ -95,15 +95,18 @@
     "@types/react": "^19.3.0",
     "@types/react-dom": "^19.3.0",
     "@vitejs/plugin-react": "^6.3.0",
-    "@vitest/coverage-v8": "^5.1.1",
+    "@vitest/browser-playwright": "^5.1.2",
+    "@vitest/coverage-v8": "^5.1.2",
     "concurrently": "^9.2.1",
     "eslint": "^9.39.3",
     "i18next-cli": "^1.30.4",
     "jsdom": "^27.2.0",
+    "playwright": "^1.62.1",
     "prettier": "^3.7.4",
     "prettier-plugin-tailwindcss": "^0.7.2",
     "typescript": "^6.0.3",
     "vite": "^8.3.8",
-    "vitest": "^5.1.1"
+    "vitest": "^5.1.2",
+    "vitest-browser-react": "^2.3.0"
   }
 }

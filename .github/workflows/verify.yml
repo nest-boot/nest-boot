@@ -11,10 +11,124 @@ on:
         required: false
 
 jobs:
-  verify:
-    name: Verify
+  checks:
+    name: Static checks
     runs-on: ubuntu-latest
-    timeout-minutes: 45
+    timeout-minutes: 20
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+        with:
+          fetch-depth: ${{ inputs.fetch-depth }}
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v6
+        with:
+          run_install: false
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v6
+        with:
+          node-version-file: .nvmrc
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Cache Turborepo build outputs
+        uses: actions/cache@v6
+        with:
+          path: .turbo
+          key: turbo-${{ runner.os }}-${{ github.sha }}
+          restore-keys: |
+            turbo-${{ runner.os }}-
+
+      # Always run one clean --force build in static checks to catch uncached build issues
+      # while refreshing .turbo for downstream jobs and subsequent runs.
+      - name: Build packages
+        run: pnpm build:packages --force
+
+      - name: Build examples
+        run: pnpm build:examples
+
+      - name: Typecheck package source and tests
+        run: pnpm typecheck
+
+      - name: Typecheck example server
+        run: pnpm --filter @nest-boot/example-server exec tsc --noEmit -p tsconfig.json
+
+      - name: Format
+        run: pnpm format:check
+
+      - name: Lint
+        run: pnpm lint
+
+      - name: Test layout
+        run: pnpm test:layout
+
+      - name: Verify client E2E coverage matrix
+        run: pnpm --filter @nest-boot/example-client test:e2e:coverage
+
+  client-tests:
+    name: Client tests (unit & browser)
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+        with:
+          fetch-depth: ${{ inputs.fetch-depth }}
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v6
+        with:
+          run_install: false
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v6
+        with:
+          node-version-file: .nvmrc
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Cache Playwright headless shell
+        id: playwright-cache
+        uses: actions/cache@v6
+        with:
+          path: ~/.cache/ms-playwright
+          key: playwright-shell-${{ runner.os }}-${{ hashFiles('pnpm-lock.yaml') }}
+
+      - name: Install Chromium headless shell for Vitest Browser
+        run: |
+          if [ "${{ steps.playwright-cache.outputs.cache-hit }}" = "true" ]; then
+            pnpm --filter @nest-boot/example-client exec playwright install-deps chromium
+          else
+            pnpm --filter @nest-boot/example-client exec playwright install --with-deps --only-shell chromium
+          fi
+
+      - name: Test example client with coverage
+        run: pnpm --filter @nest-boot/example-client test:cov
+
+      - name: Upload client coverage to Codecov
+        uses: codecov/codecov-action@v7
+        with:
+          directory: examples/client/coverage
+          flags: examples
+        env:
+          CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
+
+  package-tests:
+    name: Package tests (${{ matrix.shard }})
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    strategy:
+      fail-fast: false
+      matrix:
+        shard: [1/4, 2/4, 3/4, 4/4]
 
     services:
       postgres:
@@ -38,17 +152,6 @@ jobs:
           --health-retries 5
         ports:
           - 6379:6379
-
-      mailpit:
-        image: axllent/mailpit:v1.31.4
-        options: >-
-          --health-cmd "wget --quiet --spider http://localhost:8025/livez"
-          --health-interval 5s
-          --health-timeout 5s
-          --health-retries 10
-        ports:
-          - 31025:1025
-          - 38025:8025
 
       rustfs:
         image: rustfs/rustfs:1.0.0-rc.4
@@ -87,30 +190,32 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
-      - name: Typecheck package source and tests
-        run: pnpm typecheck
+      - name: Cache Turborepo build outputs
+        uses: actions/cache@v6
+        with:
+          path: .turbo
+          key: turbo-${{ runner.os }}-${{ github.sha }}-pkg-${{ strategy.job-index }}
+          restore-keys: |
+            turbo-${{ runner.os }}-${{ github.sha }}-
+            turbo-${{ runner.os }}-
 
       - name: Build packages
-        run: pnpm build:packages --force
-
-      - name: Build examples
-        run: pnpm build:examples --force
-
-      - name: Format
-        run: pnpm format:check
-
-      - name: Lint
-        run: pnpm lint
-
-      - name: Test layout
-        run: pnpm test:layout
-
-      - name: Test example client units
-        run: pnpm --filter @nest-boot/example-client test:unit
+        run: pnpm build:packages
 
       # Storage e2e suites create their buckets through the AWS SDK.
-      - name: Test
-        run: pnpm test:cov
+      - name: Test packages (${{ matrix.shard }})
+        shell: bash
+        run: |
+          mapfile -t pkgs < <(find packages -mindepth 1 -maxdepth 1 -type d | sort)
+          shard_index=$(( ${{ strategy.job-index }} ))
+          filters=()
+          for i in "${!pkgs[@]}"; do
+            slot=$(( (i / 4) % 2 == 0 ? i % 4 : 3 - (i % 4) ))
+            if (( slot == shard_index )); then
+              filters+=(--filter "./${pkgs[$i]}")
+            fi
+          done
+          pnpm -r "${filters[@]}" --if-present test:cov
         env:
           DATABASE_URL: postgres://postgres:postgres@localhost:5432/postgres
           REDIS_URL: redis://localhost:6379
@@ -122,25 +227,196 @@ jobs:
           STORAGE_ACCESS_KEY_ID: rustfs
           STORAGE_SECRET_ACCESS_KEY: secretsecret
 
-      - name: Verify full example server integration
-        run: |
-          pnpm --filter @nest-boot/example-server exec tsc --noEmit -p tsconfig.json
-          pnpm --filter @nest-boot/example-server test:unit
-          pnpm --filter @nest-boot/example-server test:integration
-          pnpm --filter @nest-boot/example-server test:e2e
+      - name: Upload package coverage to Codecov
+        uses: codecov/codecov-action@v7
+        with:
+          directory: packages
+          flags: packages
+        env:
+          CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
+
+  server-tests:
+    name: Example server tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+
+    services:
+      postgres:
+        image: postgres
+        env:
+          POSTGRES_PASSWORD: postgres
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+        ports:
+          - 5432:5432
+
+      redis:
+        image: redis
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+        ports:
+          - 6379:6379
+
+      mailpit:
+        image: axllent/mailpit:v1.31.4
+        options: >-
+          --health-cmd "wget --quiet --spider http://localhost:8025/livez"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+        ports:
+          - 31025:1025
+          - 38025:8025
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+        with:
+          fetch-depth: ${{ inputs.fetch-depth }}
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v6
+        with:
+          run_install: false
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v6
+        with:
+          node-version-file: .nvmrc
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Cache Turborepo build outputs
+        uses: actions/cache@v6
+        with:
+          path: .turbo
+          key: turbo-${{ runner.os }}-${{ github.sha }}-server
+          restore-keys: |
+            turbo-${{ runner.os }}-${{ github.sha }}-
+            turbo-${{ runner.os }}-
+
+      - name: Build example server and dependencies
+        run: pnpm turbo run build --filter=@nest-boot/example-server...
+
+      - name: Verify full example server integration with coverage
+        run: pnpm --filter @nest-boot/example-server test:cov
         env:
           SERVER_E2E_DATABASE_URL: postgres://postgres:postgres@localhost:5432/postgres
           SERVER_E2E_REDIS_URL: redis://localhost:6379
           SERVER_E2E_MAILPIT_URL: http://127.0.0.1:38025
           SERVER_E2E_SMTP_URL: smtp://127.0.0.1:31025
 
-      - name: Install Chromium for Playwright
-        run: pnpm --filter @nest-boot/example-client exec playwright install --with-deps chromium
-
-      - name: Verify browser flows
-        id: browser-e2e
-        run: pnpm --filter @nest-boot/example-client test:e2e
+      - name: Upload server coverage to Codecov
+        uses: codecov/codecov-action@v7
+        with:
+          directory: examples/server/coverage
+          flags: examples
         env:
+          CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
+
+  browser-e2e:
+    name: Browser E2E (${{ matrix.shard }})
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    strategy:
+      fail-fast: false
+      matrix:
+        shard: [1/2, 2/2]
+
+    services:
+      postgres:
+        image: postgres
+        env:
+          POSTGRES_PASSWORD: postgres
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+        ports:
+          - 5432:5432
+
+      redis:
+        image: redis
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+        ports:
+          - 6379:6379
+
+      mailpit:
+        image: axllent/mailpit:v1.31.4
+        options: >-
+          --health-cmd "wget --quiet --spider http://localhost:8025/livez"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+        ports:
+          - 31025:1025
+          - 38025:8025
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+        with:
+          fetch-depth: ${{ inputs.fetch-depth }}
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v6
+        with:
+          run_install: false
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v6
+        with:
+          node-version-file: .nvmrc
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Cache Turborepo build outputs
+        uses: actions/cache@v6
+        with:
+          path: .turbo
+          key: turbo-${{ runner.os }}-${{ github.sha }}-e2e-${{ strategy.job-index }}
+          restore-keys: |
+            turbo-${{ runner.os }}-${{ github.sha }}-
+            turbo-${{ runner.os }}-
+
+      - name: Build example server and client
+        run: pnpm turbo run build --filter=@nest-boot/example-server... --filter=@nest-boot/example-client...
+
+      - name: Cache Playwright headless shell
+        id: playwright-cache
+        uses: actions/cache@v6
+        with:
+          path: ~/.cache/ms-playwright
+          key: playwright-shell-${{ runner.os }}-${{ hashFiles('pnpm-lock.yaml') }}
+
+      - name: Install Chromium headless shell for Playwright
+        run: |
+          if [ "${{ steps.playwright-cache.outputs.cache-hit }}" = "true" ]; then
+            pnpm --filter @nest-boot/example-client exec playwright install-deps chromium
+          else
+            pnpm --filter @nest-boot/example-client exec playwright install --with-deps --only-shell chromium
+          fi
+
+      - name: Verify browser flows (${{ matrix.shard }})
+        id: browser-e2e
+        run: pnpm --filter @nest-boot/example-client test:e2e -- --shard=${{ matrix.shard }}
+        env:
+          E2E_SKIP_BUILD: "1"
           SERVER_E2E_DATABASE_URL: postgres://postgres:postgres@localhost:5432/postgres
           SERVER_E2E_REDIS_URL: redis://localhost:6379
           SERVER_E2E_SMTP_URL: smtp://127.0.0.1:31025
@@ -150,14 +426,9 @@ jobs:
         if: ${{ !cancelled() && steps.browser-e2e.outcome == 'failure' }}
         uses: actions/upload-artifact@v7
         with:
-          name: playwright-failure
+          name: playwright-failure-${{ strategy.job-index }}
           path: |
             examples/client/playwright-report/
             examples/client/test-results/
           if-no-files-found: ignore
           retention-days: 7
-
-      - name: Upload coverage reports to Codecov
-        uses: codecov/codecov-action@v7
-        env:
-          CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}

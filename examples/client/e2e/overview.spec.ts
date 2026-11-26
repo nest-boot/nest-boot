@@ -1,5 +1,5 @@
 import { expect, test } from "@playwright/test";
-import { registerUser, signInAsE2eAdministrator } from "./utils/auth";
+import { registerUserByApi, signInAsE2eAdministrator } from "./utils/auth";
 import { graphqlRequest } from "./utils/graphql";
 import { uniqueSeed } from "./utils/unique";
 import {
@@ -17,7 +17,7 @@ function sidebarOverview(page: Page) {
 test("user overview keeps profile and security separate with exact navigation", async ({
   page,
 }) => {
-  await registerUser(page, {
+  await registerUserByApi(page.request, {
     email: `${uniqueSeed("user-overview")}@example.com`,
     name: "Overview user",
   });
@@ -75,7 +75,7 @@ test("workspace overviews switch workspaces and respect read permissions", async
   browser,
 }) => {
   const seed = uniqueSeed("workspace-overview");
-  await registerUser(page, {
+  await registerUserByApi(page.request, {
     email: `${seed}@example.com`,
     name: "Overview owner",
   });
@@ -85,7 +85,10 @@ test("workspace overviews switch workspaces and respect read permissions", async
   const memberPage = await context.newPage();
   try {
     const email = `${seed}-member@example.com`;
-    await registerUser(memberPage, { email, name: "Overview member" });
+    await registerUserByApi(memberPage.request, {
+      email,
+      name: "Overview member",
+    });
     const memberId = await addWorkspaceMemberByApi(page, first.id, email);
     await graphqlRequest(
       page.request,

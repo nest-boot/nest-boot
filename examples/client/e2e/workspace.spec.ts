@@ -1,6 +1,6 @@
 import { expect, test } from "@playwright/test";
 
-import { registerUser } from "./utils/auth";
+import { registerUser, registerUserByApi } from "./utils/auth";
 import { graphqlRequest } from "./utils/graphql";
 import {
   addWorkspaceMemberByApi,
@@ -51,7 +51,7 @@ test.describe("workspace management", () => {
     page,
   }) => {
     const seed = uniqueSeed("self-disable-member");
-    await registerUser(page, {
+    await registerUserByApi(page.request, {
       email: `${seed}@example.com`,
       name: "Workspace owner",
     });
@@ -120,12 +120,12 @@ test.describe("workspace management", () => {
     const memberName = `New Owner ${seed}`;
     const memberContext = await browser.newContext({
       locale: "en-US",
-      timezoneId: "Asia/Shanghai",
+      timezoneId: "UTC",
     });
     const memberPage = await memberContext.newPage();
 
     try {
-      await registerUser(memberPage, {
+      await registerUserByApi(memberPage.request, {
         email: memberEmail,
         name: memberName,
       });

@@ -6,6 +6,12 @@ import tailwindcss from "@tailwindcss/vite";
 
 const config = defineConfig(({ mode }) => {
   const env = loadEnv(mode, process.cwd(), "");
+  const proxy = {
+    "/api": {
+      target: env.API_URL,
+      changeOrigin: true,
+    },
+  };
 
   return {
     // Local development and E2E servers run concurrently in this worktree.
@@ -31,12 +37,10 @@ const config = defineConfig(({ mode }) => {
       viteReact(),
     ],
     server: {
-      proxy: {
-        "/api": {
-          target: env.API_URL,
-          changeOrigin: true,
-        },
-      },
+      proxy,
+    },
+    preview: {
+      proxy,
     },
   };
 });

@@ -1,7 +1,7 @@
 import { expect, test } from "@playwright/test";
 
 import {
-  registerUser,
+  registerUserByApi,
   signInAsE2eAdministrator,
   testPassword,
 } from "./utils/auth";
@@ -197,7 +197,7 @@ test("submits administrator forms with Enter and preserves drafts in other cards
 test("cancels account deletion without losing input and retries after a failed password", async ({
   page,
 }) => {
-  await registerUser(page, {
+  await registerUserByApi(page.request, {
     email: `${uniqueSeed("delete-form")}@example.com`,
     name: "Delete form user",
   });

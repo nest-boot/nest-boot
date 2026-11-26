@@ -1,6 +1,6 @@
 import { expect, test } from "@playwright/test";
 
-import { registerUser } from "./utils/auth";
+import { registerUserByApi } from "./utils/auth";
 import { uniqueSeed } from "./utils/unique";
 import { createWorkspaceByApi } from "./utils/workspace";
 
@@ -10,7 +10,7 @@ test("filters workspaces, preserves pagination state, and opens rows without an 
   const seed = uniqueSeed("workspace-filter");
   const name = `${seed} Deployment`;
   const query = "deployment";
-  await registerUser(page, {
+  await registerUserByApi(page.request, {
     email: `${seed}@example.com`,
     name: "Workspace filter owner",
   });

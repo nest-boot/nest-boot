@@ -18,10 +18,11 @@ export async function waitForEmailUrl(
   const timeoutAt = Date.now() + 10_000;
 
   while (Date.now() < timeoutAt) {
-    const messagesResponse = await request.get(`${mailpitUrl}/api/v1/messages`);
+    const searchUrl = `${mailpitUrl}/api/v1/search?query=${encodeURIComponent(`to:${email}`)}`;
+    const messagesResponse = await request.get(searchUrl);
     expect(messagesResponse.ok()).toBeTruthy();
-    const { messages } = (await messagesResponse.json()) as {
-      messages: Array<MailpitMessageSummary>;
+    const { messages = [] } = (await messagesResponse.json()) as {
+      messages?: Array<MailpitMessageSummary>;
     };
     const message = messages.find(
       (candidate) =>

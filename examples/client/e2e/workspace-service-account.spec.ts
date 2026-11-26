@@ -1,5 +1,5 @@
 import { expect, test } from "@playwright/test";
-import { registerUser } from "./utils/auth";
+import { registerUser, registerUserByApi } from "./utils/auth";
 import { graphqlRequest } from "./utils/graphql";
 import { clickPageAction } from "./utils/page-actions";
 import { getPermissionCheckbox } from "./utils/permissions";
@@ -12,7 +12,7 @@ import {
 test("validates service account names and preserves grants when creation is retried", async ({
   page,
 }) => {
-  await registerUser(page, {
+  await registerUserByApi(page.request, {
     email: `${uniqueSeed("service-form")}@example.com`,
     name: "Service account owner",
   });
@@ -112,7 +112,7 @@ test("creates service accounts with default, role and direct permission grants",
   page,
 }) => {
   const seed = uniqueSeed("service-account");
-  await registerUser(page, {
+  await registerUserByApi(page.request, {
     email: `${seed}@example.com`,
     name: "Service account owner",
   });
@@ -185,7 +185,7 @@ test("guards service account creation and limits available grants", async ({
   browser,
 }) => {
   const seed = uniqueSeed("service-account-grants");
-  await registerUser(page, {
+  await registerUserByApi(page.request, {
     email: `${seed}-owner@example.com`,
     name: "Owner",
   });
@@ -194,7 +194,7 @@ test("guards service account creation and limits available grants", async ({
   try {
     const issuer = await context.newPage();
     const email = `${seed}-issuer@example.com`;
-    await registerUser(issuer, { email, name: "Issuer" });
+    await registerUserByApi(issuer.request, { email, name: "Issuer" });
     const memberId = await addWorkspaceMemberByApi(page, workspace.id, email);
     const path = `/workspaces/${workspace.id}/members`;
     await issuer.goto(`${path}/create-service-account`);

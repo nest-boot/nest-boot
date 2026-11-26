@@ -1,5 +1,5 @@
 import { expect, test } from "@playwright/test";
-import { registerUser } from "./utils/auth";
+import { registerUserByApi } from "./utils/auth";
 import { graphqlRequest } from "./utils/graphql";
 import { uniqueSeed } from "./utils/unique";
 import { createWorkspaceByApi } from "./utils/workspace";
@@ -8,7 +8,7 @@ test("refreshes the workspace menu after changes outside its Apollo cache", asyn
   page,
 }) => {
   const seed = uniqueSeed("workspace-menu-refresh");
-  await registerUser(page, {
+  await registerUserByApi(page.request, {
     email: `${seed}@example.com`,
     name: "Workspace menu owner",
   });
@@ -78,7 +78,7 @@ test("refreshes the workspace menu after changes outside its Apollo cache", asyn
 test("retries menu requests and keeps pagination within the current opening", async ({
   page,
 }) => {
-  await registerUser(page, {
+  await registerUserByApi(page.request, {
     email: `${uniqueSeed("workspace-menu-retry")}@example.com`,
     name: "Workspace menu retries",
   });
@@ -152,7 +152,7 @@ test("retries menu requests and keeps pagination within the current opening", as
 });
 
 test("ignores a late page from a closed workspace menu", async ({ page }) => {
-  await registerUser(page, {
+  await registerUserByApi(page.request, {
     email: `${uniqueSeed("workspace-menu-late-page")}@example.com`,
     name: "Workspace menu race",
   });

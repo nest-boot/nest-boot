@@ -3,7 +3,7 @@ import { getPermissionCheckbox } from "./utils/permissions";
 
 import {
   e2eAdministratorEmail,
-  registerUser,
+  registerUserByApi,
   signInAsE2eAdministrator,
   testPassword,
 } from "./utils/auth";
@@ -25,7 +25,7 @@ for (const change of [
     const adminContext = await browser.newContext();
     const adminPage = await adminContext.newPage();
     try {
-      await registerUser(page, {
+      await registerUserByApi(page.request, {
         email: `${seed}@example.com`,
         name: "Self-editing administrator",
       });
@@ -132,13 +132,13 @@ test.describe("administrator impersonation", () => {
     const targetEmail = `${seed}@example.com`;
     const targetContext = await browser.newContext({
       locale: "en-US",
-      timezoneId: "Asia/Shanghai",
+      timezoneId: "UTC",
     });
     const targetPage = await targetContext.newPage();
 
     let targetId: string;
     try {
-      await registerUser(targetPage, {
+      await registerUserByApi(targetPage.request, {
         email: targetEmail,
         name: `Impersonation Target ${seed}`,
       });

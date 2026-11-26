@@ -20,7 +20,9 @@
     "noUnusedParameters": true,
     "noFallthroughCasesInSwitch": true,
     "paths": {
-      "@/*": ["./src/*"]
+      "@/*": ["./src/*"],
+      "i18next": ["./node_modules/i18next"],
+      "i18next/*": ["./node_modules/i18next/*"]
     }
   }
 }

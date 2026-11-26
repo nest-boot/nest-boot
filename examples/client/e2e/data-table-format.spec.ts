@@ -1,6 +1,6 @@
 import { expect, test } from "@playwright/test";
 
-import { registerUser } from "./utils/auth";
+import { registerUserByApi } from "./utils/auth";
 import { uniqueSeed } from "./utils/unique";
 import { createWorkspaceByApi } from "./utils/workspace";
 
@@ -10,7 +10,7 @@ test("formats table dates in the browser time zone and updates them with the UI 
   page,
 }) => {
   const name = uniqueSeed("table-format");
-  await registerUser(page, {
+  await registerUserByApi(page.request, {
     email: `${name}@example.com`,
     name: "Table format owner",
   });

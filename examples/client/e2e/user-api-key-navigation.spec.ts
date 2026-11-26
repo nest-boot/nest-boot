@@ -1,12 +1,12 @@
 import { expect, test } from "@playwright/test";
-import { registerUser } from "./utils/auth";
+import { registerUserByApi } from "./utils/auth";
 import { graphqlRequest } from "./utils/graphql";
 import { uniqueSeed } from "./utils/unique";
 import type { Page } from "@playwright/test";
 
 async function prepareKeys(page: Page) {
   const seed = uniqueSeed("key-navigation");
-  await registerUser(page, {
+  await registerUserByApi(page.request, {
     email: `${seed}@example.com`,
     name: "Navigation tester",
   });

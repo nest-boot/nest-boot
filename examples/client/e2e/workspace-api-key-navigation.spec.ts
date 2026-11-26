@@ -1,5 +1,5 @@
 import { expect, test } from "@playwright/test";
-import { registerUser } from "./utils/auth";
+import { registerUserByApi } from "./utils/auth";
 import { graphqlRequest } from "./utils/graphql";
 import { uniqueSeed } from "./utils/unique";
 import { createWorkspaceByApi } from "./utils/workspace";
@@ -45,7 +45,7 @@ async function prepareWorkspace(
 test("isolates two workspaces' list search, creation returns and detail navigation in the same browser session", async ({
   page,
 }) => {
-  await registerUser(page, {
+  await registerUserByApi(page.request, {
     email: `${uniqueSeed("workspace-navigation")}@example.com`,
     name: "Workspace navigation",
   });
@@ -191,7 +191,7 @@ test("isolates two workspaces' list search, creation returns and detail navigati
 test("retains custom page size and the latest list position after returning from details", async ({
   page,
 }) => {
-  await registerUser(page, {
+  await registerUserByApi(page.request, {
     email: `${uniqueSeed("workspace-pagination")}@example.com`,
     name: "Workspace pagination",
   });
