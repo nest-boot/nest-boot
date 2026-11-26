@@ -21,25 +21,14 @@ function matchesPathsPattern(
   if (!paths) {
     return false;
   }
-  for (const pattern of Object.keys(paths)) {
-    const starIndex = pattern.indexOf("*");
-    if (starIndex === -1) {
-      if (specifier === pattern) {
-        return true;
-      }
-      continue;
-    }
-    const prefix = pattern.slice(0, starIndex);
-    const suffix = pattern.slice(starIndex + 1);
-    if (
-      specifier.length >= prefix.length + suffix.length &&
-      specifier.startsWith(prefix) &&
-      specifier.endsWith(suffix)
-    ) {
-      return true;
-    }
-  }
-  return false;
+  return Object.keys(paths).some((pattern) => {
+    const [prefix, suffix] = pattern.split("*");
+    return suffix === undefined
+      ? specifier === prefix
+      : specifier.length >= prefix.length + suffix.length &&
+          specifier.startsWith(prefix) &&
+          specifier.endsWith(suffix);
+  });
 }
 
 /**
@@ -65,11 +54,8 @@ function resolvePathAlias(
     return undefined;
   }
   const { resolvedFileName } = resolvedModule;
-  if (/\.d\.(?:m|c)?ts$/.test(resolvedFileName)) {
-    const runtimePath = resolvedFileName.replace(
-      /\.d\.(m|c)?ts$/,
-      (_, kind: string | undefined) => `.${kind ?? ""}js`,
-    );
+  if (resolvedFileName.endsWith(".d.ts")) {
+    const runtimePath = `${resolvedFileName.slice(0, -5)}.js`;
     return existsSync(runtimePath)
       ? pathToFileURL(runtimePath).href
       : undefined;
