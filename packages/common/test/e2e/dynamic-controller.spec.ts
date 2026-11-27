@@ -1,3 +1,5 @@
+import { request as httpRequest } from "node:http";
+
 import {
   type CanActivate,
   type ConfigurableModuleAsyncOptions,
@@ -66,6 +68,21 @@ class WebhookController {
   }
 }
 
+@Controller({ host: "hooks.example.test", path: "/default-host" })
+class HostRestrictedController {
+  @Get("ping")
+  ping(): { hostRestricted: boolean } {
+    return { hostRestricted: true };
+  }
+}
+
+class UndecoratedController {
+  @Get("bare")
+  bare(): { bare: boolean } {
+    return { bare: true };
+  }
+}
+
 const { ConfigurableModuleClass, MODULE_OPTIONS_TOKEN } =
   new ConfigurableModuleBuilder<WebhookOptions>().build();
 
@@ -115,15 +132,30 @@ describe("dynamic controller helpers", () => {
     app = undefined;
   });
 
-  it("isolates multiple registrations of the same controller across sync and async modules", async () => {
+  it("isolates multiple registrations, preserves base host metadata, and supports undecorated base classes", async () => {
     const { controller: rootController, provider: rootProvider } =
       createDynamicController(WebhookController, {
         useFactory: () => ({ decorators: [Public()] }),
       });
 
+    const { controller: hostController, provider: hostProvider } =
+      createDynamicController(HostRestrictedController, {
+        useFactory: () => ({ path: "/custom-host", decorators: [Public()] }),
+      });
+
+    const { controller: bareController, provider: bareProvider } =
+      createDynamicController(UndecoratedController, {
+        useFactory: () => ({ decorators: [Public()] }),
+      });
+
     @Module({
-      controllers: [rootController],
-      providers: [{ provide: TENANT_NAME, useValue: "root" }, rootProvider],
+      controllers: [rootController, hostController, bareController],
+      providers: [
+        { provide: TENANT_NAME, useValue: "root" },
+        rootProvider,
+        hostProvider,
+        bareProvider,
+      ],
     })
     class RootWebhookModule {}
 
@@ -156,6 +188,35 @@ describe("dynamic controller helpers", () => {
     expect(rootRes.status).toBe(200);
     expect(await rootRes.json()).toEqual({ tenant: "root" });
 
+    const bareRes = await fetch(`${url}/bare`);
+    expect(bareRes.status).toBe(200);
+    expect(await bareRes.json()).toEqual({ bare: true });
+
+    // Host restriction from HostRestrictedController must still be enforced.
+    expect((await fetch(`${url}/custom-host/ping`)).status).toBe(404);
+    const matchingHostRes = await new Promise<{ status: number; body: string }>(
+      (resolve, reject) => {
+        const req = httpRequest(
+          `${url}/custom-host/ping`,
+          { headers: { host: "hooks.example.test" } },
+          (res) => {
+            let body = "";
+            res.setEncoding("utf8");
+            res.on("data", (chunk: string) => {
+              body += chunk;
+            });
+            res.on("end", () => {
+              resolve({ status: res.statusCode ?? 0, body });
+            });
+          },
+        );
+        req.on("error", reject);
+        req.end();
+      },
+    );
+    expect(matchingHostRes.status).toBe(200);
+    expect(JSON.parse(matchingHostRes.body)).toEqual({ hostRestricted: true });
+
     expect((await fetch(`${url}/webhooks/alpha/ping`)).status).toBe(403);
     const alphaRes = await fetch(`${url}/webhooks/alpha/ping`, {
       headers: { "x-tenant": "alpha" },
@@ -166,5 +227,31 @@ describe("dynamic controller helpers", () => {
     const betaRes = await fetch(`${url}/webhooks/beta/ping`);
     expect(betaRes.status).toBe(200);
     expect(await betaRes.json()).toEqual({ tenant: "beta" });
+  });
+
+  it("rejects class decorators that return a replacement constructor", async () => {
+    const replacingDecorator = ((target: new () => object) =>
+      class extends target {}) as unknown as ClassDecorator;
+
+    const { controller, provider } = createDynamicController(
+      UndecoratedController,
+      {
+        useFactory: () => ({ decorators: [replacingDecorator] }),
+      },
+    );
+
+    @Module({
+      controllers: [controller],
+      providers: [provider],
+    })
+    class InvalidDecoratorModule {}
+
+    await expect(
+      Test.createTestingModule({
+        imports: [InvalidDecoratorModule],
+      }).compile(),
+    ).rejects.toThrow(
+      "Dynamic controller decorators cannot replace the controller class",
+    );
   });
 });

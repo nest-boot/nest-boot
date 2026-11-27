@@ -1,11 +1,8 @@
-import {
-  EntityManager,
-  type ObjectQuery,
-  type RequiredEntityData,
-} from "@mikro-orm/core";
+import { EntityManager, type RequiredEntityData } from "@mikro-orm/core";
 import { CryptService } from "@nest-boot/crypt";
 import { Inject, Injectable, UnauthorizedException } from "@nestjs/common";
 import {
+  type CryptoKey,
   errors,
   exportJWK,
   exportPKCS8,
@@ -91,32 +88,34 @@ export class JwtService {
     if (!Number.isSafeInteger(options.expiresIn) || options.expiresIn < 1) {
       throw new Error("JWT expiry must be a positive number of seconds");
     }
-    if (
-      options.expiresIn >
-      this.jwks.rotationInterval + this.jwks.gracePeriod
-    ) {
-      throw new Error(
-        "JWT expiry cannot exceed JWKS rotationInterval plus gracePeriod",
-      );
+    if (options.expiresIn > this.jwks.gracePeriod) {
+      throw new Error("JWT expiry cannot exceed JWKS gracePeriod");
     }
 
-    const nowMs = Date.now();
-    const key = await this.findOrCreateSigningKey(nowMs, options.expiresIn);
-    const { alg } = key.publicKey;
-    const privateKey = await importPKCS8(
-      await this.crypt.decrypt(key.privateKey),
-      alg,
-    );
-    const now = Math.floor(nowMs / 1000);
+    let prepared = await this.prepareSigningKey();
+    let now = Math.floor(Date.now() / 1000);
+    let exp = now + options.expiresIn;
+    if (
+      prepared.key.expiresAt.getTime() + this.jwks.gracePeriod * 1000 <
+      exp * 1000
+    ) {
+      prepared = await this.prepareSigningKey();
+      now = Math.floor(Date.now() / 1000);
+      exp = now + options.expiresIn;
+    }
 
     return await new SignJWT(payload)
-      .setProtectedHeader({ alg, kid: key.id, typ: options.type })
+      .setProtectedHeader({
+        alg: prepared.key.publicKey.alg,
+        kid: prepared.key.id,
+        typ: options.type,
+      })
       .setIssuer(this.issuer)
       .setAudience(options.audience)
       .setSubject(options.subject)
       .setIssuedAt(now)
-      .setExpirationTime(now + options.expiresIn)
-      .sign(privateKey);
+      .setExpirationTime(exp)
+      .sign(prepared.privateKey);
   }
 
   async verify(token: string, options: JwtVerifyOptions): Promise<JWTPayload> {
@@ -195,19 +194,6 @@ export class JwtService {
     return new Date(Date.now() - this.jwks.gracePeriod * 1000);
   }
 
-  private signingExpiryCondition(
-    nowMs: number,
-    expiresIn: number,
-  ): ObjectQuery<Jwk>["expiresAt"] {
-    const minRemainingMs = Math.max(
-      0,
-      (expiresIn - this.jwks.gracePeriod) * 1000,
-    );
-    return minRemainingMs > 0
-      ? { $gte: new Date(nowMs + minRemainingMs) }
-      : { $gt: new Date(nowMs) };
-  }
-
   private keyManager(): EntityManager {
     const current = this.em.getContext(false);
     if (!current.getSessionContext() && !current.global) {
@@ -223,14 +209,23 @@ export class JwtService {
     return fork;
   }
 
-  private async findOrCreateSigningKey(
-    nowMs: number,
-    expiresIn: number,
-  ): Promise<Jwk> {
+  private async prepareSigningKey(): Promise<{
+    key: Jwk;
+    privateKey: CryptoKey;
+  }> {
+    const key = await this.findOrCreateSigningKey();
+    const privateKey = await importPKCS8(
+      await this.crypt.decrypt(key.privateKey),
+      key.publicKey.alg,
+    );
+    return { key, privateKey };
+  }
+
+  private async findOrCreateSigningKey(): Promise<Jwk> {
     const em = this.keyManager();
     const existing = await em.findOne(
       Jwk,
-      { expiresAt: this.signingExpiryCondition(nowMs, expiresIn) },
+      { expiresAt: { $gt: new Date() } },
       { orderBy: { createdAt: "desc" }, connectionType: "write" },
     );
     if (existing) {
@@ -238,7 +233,9 @@ export class JwtService {
     }
 
     if (em.isInTransaction()) {
-      return await this.createAndPersistKey(em);
+      throw new Error(
+        "JWT signing key creation requires a committed context outside an active transaction",
+      );
     }
 
     return await (this.inflightKeyCreation ??= this.createAndPersistKey(

@@ -270,3 +270,4 @@ export * from "./workspace/services/workspace-invitation.service.js";
 export * from "./workspace/services/workspace-member.service.js";
 export * from "./workspace/types/auth-send-workspace-invitation-email.type.js";
 export * from "./workspace/types/auth-workspace-invitation-email-inviter.type.js";
+export { IS_PUBLIC_KEY, Public } from "@nest-boot/common";

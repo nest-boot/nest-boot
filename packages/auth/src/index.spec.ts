@@ -1,3 +1,4 @@
+import { IS_PUBLIC_KEY, Public } from "@nest-boot/common";
 import { toZodSchema, type ZodClass } from "@nest-boot/validator";
 
 import { AuthApiKey } from "./api-key/decorators/auth-api-key.decorator.js";
@@ -257,6 +258,7 @@ describe("public API", () => {
   });
   it("should export auth modules, services, decorators, and entities", () => {
     expect(publicApi.UserService).toBe(UserService);
+    expect(publicApi.IS_PUBLIC_KEY).toBe(IS_PUBLIC_KEY);
     expect(publicApi.WorkspaceApiKeyService).toBe(WorkspaceApiKeyService);
     expect(publicApi.AuthGuard).toBe(AuthGuard);
     expect(publicApi.AuthMiddleware).toBe(AuthMiddleware);
@@ -266,6 +268,7 @@ describe("public API", () => {
     expect(publicApi.AuthApiKey).toBe(AuthApiKey);
     expect(publicApi.SelectedWorkspace).toBe(SelectedWorkspace);
     expect(publicApi.AuthWorkspaceMember).toBe(AuthWorkspaceMember);
+    expect(publicApi.Public).toBe(Public);
     expect(publicApi.Account).toBe(Account);
     expect(publicApi.WorkspaceApiKey).toBe(WorkspaceApiKey);
     expect(publicApi.Session).toBe(Session);
@@ -681,8 +684,9 @@ describe("exported input contracts", () => {
   });
 });
 
-describe("current-identity decorator exports", () => {
-  it("exports the current-identity decorators", () => {
+describe("public decorator exports", () => {
+  it("exports the public and current-identity decorators", () => {
+    expect(publicApi.Public).toBe(Public);
     for (const name of [
       "AuthSession",
       "AuthUser",

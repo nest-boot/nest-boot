@@ -1,6 +1,7 @@
 import { MikroORM } from "@mikro-orm/core";
 import { type MikroORM as PgliteORM, PgliteDriver } from "@mikro-orm/pglite";
 import { IS_PUBLIC_KEY, Public } from "@nest-boot/common";
+import { CryptService } from "@nest-boot/crypt";
 import { DatabaseModule } from "@nest-boot/database";
 import {
   type ArgumentsHost,
@@ -21,6 +22,7 @@ import {
   UseGuards,
   UseInterceptors,
   UsePipes,
+  VersioningType,
 } from "@nestjs/common";
 import { APP_GUARD, HttpAdapterHost, Reflector } from "@nestjs/core";
 import { Test } from "@nestjs/testing";
@@ -147,7 +149,7 @@ describe("standalone JWT module", () => {
   });
 
   it.each([false, true])(
-    "marks the JWKS controller with @Public() by default and supports custom decorators (async options: %s)",
+    "marks the JWKS controller with @Public() and VERSION_NEUTRAL by default (async options: %s)",
     async (asyncOptions) => {
       const path = "/keys/public.json";
       let skipThrottleMetadata: unknown;
@@ -176,6 +178,10 @@ describe("standalone JWT module", () => {
         asyncOptions,
         [path],
         (createdApp) => {
+          createdApp.enableVersioning({
+            type: VersioningType.URI,
+            defaultVersion: "1",
+          });
           const jwt = createdApp.get(JwtService);
           expect(jwt.jwksPath).toBe(path);
           vi.spyOn(jwt, "getJwks").mockResolvedValue({ keys: [] });
@@ -189,8 +195,9 @@ describe("standalone JWT module", () => {
       const jwks = await fetch(`${url}${path}`);
       expect(jwks.status).toBe(200);
       expect(await jwks.json()).toEqual({ keys: [] });
-      expect((await fetch(`${url}/api/protected`)).status).toBe(401);
+      expect((await fetch(`${url}/api/v1/protected`)).status).toBe(401);
       expect((await fetch(`${url}/api${path}`)).status).toBe(404);
+      expect((await fetch(`${url}/v1${path}`)).status).toBe(404);
       expect((await fetch(`${url}/.well-known/jwks.json`)).status).toBe(404);
     },
   );
@@ -246,7 +253,7 @@ describe("standalone JWT module", () => {
     },
   );
 
-  it("uses 30-day Ed25519 rotation by default and works inside PGlite transactions", async () => {
+  it("uses 30-day Ed25519 rotation by default and handles PGlite transactions safely", async () => {
     const url = await createApp({ issuer: "http://auth.example" });
     const orm = app.get<PgliteORM>(MikroORM);
     await orm.schema.create();
@@ -267,6 +274,16 @@ describe("standalone JWT module", () => {
       expect(await initial.json()).toEqual({ keys: [] });
       expect(await orm.em.fork().count(Jwk)).toBe(0);
 
+      // Creating a brand-new key inside an uncommitted transaction is rejected so tokens never reference rollback-able keys.
+      await expect(
+        orm.em.transactional(async () => {
+          await signer.sign({}, claims);
+        }),
+      ).rejects.toThrow(
+        "JWT signing key creation requires a committed context outside an active transaction",
+      );
+      expect(await orm.em.fork().count(Jwk)).toBe(0);
+
       const [first, second] = await Promise.all([
         signer.sign({}, claims),
         signer.sign({}, { ...claims, subject: "user:2" }),
@@ -274,6 +291,12 @@ describe("standalone JWT module", () => {
       const header = decodeProtectedHeader(first);
       expect(header.alg).toBe("Ed25519");
       expect(decodeProtectedHeader(second).kid).toBe(header.kid);
+      expect(await orm.em.fork().count(Jwk)).toBe(1);
+
+      // Even at maximum allowed lifetime (gracePeriod = 30d), subsequent requests after time advances reuse the active key.
+      vi.setSystemTime(start + 5_000);
+      const third = await signer.sign({}, claims);
+      expect(decodeProtectedHeader(third).kid).toBe(header.kid);
       expect(await orm.em.fork().count(Jwk)).toBe(1);
 
       const [storedKey] = await orm.em.fork().find(Jwk, {});
@@ -300,7 +323,7 @@ describe("standalone JWT module", () => {
     }
   });
 
-  it("only creates and rotates keys during signing while keeping tokens verifiable through exp", async () => {
+  it("rotates keys on schedule, re-acquires stalled keys, and keeps tokens verifiable through exp", async () => {
     vi.stubEnv("AUTH_URL", "http://auth.example");
     vi.stubEnv("APP_URL", "http://app.example");
     const rotatedOptions: JwtModuleOptions = {
@@ -342,10 +365,10 @@ describe("standalone JWT module", () => {
       expect(await initial.json()).toEqual({ keys: [] });
       expect(await orm.em.fork().count(Jwk)).toBe(0);
 
-      // Issue a 60s token using a 50s grace signer so we can verify firstSigner's 20s grace retirement at +30s.
+      // Issue a 50s token using a 50s grace signer so we can verify firstSigner's 20s grace retirement at +30s.
       const longToken = await longGraceSigner.sign(
         {},
-        { ...scope, subject: "user:1", expiresIn: 60 },
+        { ...scope, subject: "user:1", expiresIn: 50 },
       );
       const oldHeader = decodeProtectedHeader(longToken);
       expect(oldHeader.alg).toBe("ES256");
@@ -361,10 +384,8 @@ describe("standalone JWT module", () => {
         "Invalid token",
       );
       await expect(
-        firstSigner.sign({}, { ...claims, expiresIn: 31 }),
-      ).rejects.toThrow(
-        "JWT expiry cannot exceed JWKS rotationInterval plus gracePeriod",
-      );
+        firstSigner.sign({}, { ...claims, expiresIn: 21 }),
+      ).rejects.toThrow("JWT expiry cannot exceed JWKS gracePeriod");
 
       const activeJwks = await firstSigner.getJwks();
       expect(activeJwks).toEqual({
@@ -399,20 +420,41 @@ describe("standalone JWT module", () => {
         "JWT issuer is required",
       );
 
-      // At start + 6s, firstKey only has 24s of total verification life left (expiresAt 10s + grace 20s = 30s),
-      // so requesting a 25s token rotates early to keep the issued token verifiable until its exp.
-      vi.setSystemTime(start + 6_000);
-      const earlyRotated = await secondSigner.sign(
-        {},
-        { ...scope, subject: "user:1", expiresIn: 25 },
-      );
-      const rotatedHeader = decodeProtectedHeader(earlyRotated);
+      // Simulate clock advancing past key expiry while decrypting the selected key so sign() re-acquires a fresh ES512 key.
+      vi.setSystemTime(start + 9_000);
+      const secondSignerCrypt = Reflect.get(
+        secondSigner,
+        "crypt",
+      ) as CryptService;
+      const originalDecrypt = secondSignerCrypt.decrypt.bind(secondSignerCrypt);
+      let advancedDuringDecrypt = false;
+      const decryptSpy = vi
+        .spyOn(secondSignerCrypt, "decrypt")
+        .mockImplementation(async (data: string) => {
+          if (!advancedDuringDecrypt) {
+            advancedDuringDecrypt = true;
+            vi.setSystemTime(start + 11_000);
+          }
+          return await originalDecrypt(data);
+        });
+      let rotatedToken: string;
+      try {
+        rotatedToken = await secondSigner.sign({}, claims);
+      } finally {
+        decryptSpy.mockRestore();
+      }
+      const rotatedHeader = decodeProtectedHeader(rotatedToken);
       expect(rotatedHeader.alg).toBe("ES512");
       expect(rotatedHeader.kid).not.toBe(oldHeader.kid);
+      expect(decodeJwt(rotatedToken).iat).toBe(
+        Math.floor((start + 11_000) / 1000),
+      );
+      expect(decodeJwt(rotatedToken).exp).toBe(
+        Math.floor((start + 11_000) / 1000) + 20,
+      );
       expect(await orm.em.fork().count(Jwk)).toBe(2);
 
       // Concurrent peer signers reuse the fresh rotated key and JWKS reads never create keys.
-      vi.setSystemTime(start + 10_000);
       const expiredJwks = await fetch(`${url}/.well-known/jwks.json`);
       const expiredJwksBody = (await expiredJwks.json()) as {
         keys: { kid: string; crv: string }[];
@@ -430,23 +472,23 @@ describe("standalone JWT module", () => {
         { sub: "user:1" },
       );
       await expect(
-        secondSigner.verify(earlyRotated, scope),
+        secondSigner.verify(rotatedToken, scope),
       ).resolves.toMatchObject({ sub: "user:1" });
 
-      // At start + 30s, firstKey leaves firstSigner's 20s gracePeriod so longToken (exp = 60s) is rejected,
-      // while earlyRotated (exp = 31s, key verifiable until 36s) still verifies.
+      // At start + 30s, firstKey leaves firstSigner's 20s gracePeriod so longToken (exp = 50s) is rejected,
+      // while rotatedToken (created at +11s, verifiable until +41s, exp = +31s) still verifies.
       vi.setSystemTime(start + 30_000);
       await expect(firstSigner.verify(longToken, scope)).rejects.toThrow(
         "Invalid token",
       );
       await expect(
-        secondSigner.verify(earlyRotated, scope),
+        secondSigner.verify(rotatedToken, scope),
       ).resolves.toMatchObject({ sub: "user:1" });
       expect((await firstSigner.getJwks()).keys.map(({ kid }) => kid)).toEqual([
         rotatedHeader.kid,
       ]);
 
-      vi.setSystemTime(start + 36_000);
+      vi.setSystemTime(start + 41_000);
       const retiredJwks = await fetch(`${url}/.well-known/jwks.json`);
       expect(retiredJwks.status).toBe(200);
       expect(await retiredJwks.json()).toEqual({ keys: [] });
