@@ -24,7 +24,7 @@ import { MODULE_OPTIONS_TOKEN } from "../jwt.module-definition.js";
 import {
   type ResolvedJwksOptions,
   resolveJwksOptions,
-} from "../utils/resolve-jwks-options.js";
+} from "../utils/resolve-jwks-options.util.js";
 
 const uuidPattern =
   /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;

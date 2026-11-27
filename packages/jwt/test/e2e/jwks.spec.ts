@@ -32,7 +32,7 @@ import { Jwk } from "../../src/entities/jwk.entity.js";
 import type { JwtModuleOptions } from "../../src/interfaces/jwt-module-options.interface.js";
 import { JwtModule } from "../../src/jwt.module.js";
 import { JwtService } from "../../src/services/jwt.service.js";
-import { resolveJwksOptions } from "../../src/utils/resolve-jwks-options.js";
+import { resolveJwksOptions } from "../../src/utils/resolve-jwks-options.util.js";
 
 class CustomJwksException extends Error {}
 

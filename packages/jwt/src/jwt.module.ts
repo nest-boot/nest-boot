@@ -12,7 +12,7 @@ import {
   OPTIONS_TYPE,
 } from "./jwt.module-definition.js";
 import { JwtService } from "./services/jwt.service.js";
-import { resolveJwksOptions } from "./utils/resolve-jwks-options.js";
+import { resolveJwksOptions } from "./utils/resolve-jwks-options.util.js";
 
 /** Signs and verifies application JWTs using database-backed signing keys. */
 @Global()

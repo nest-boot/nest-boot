@@ -1,7 +1,7 @@
 import type { DynamicModule, Type } from "@nestjs/common";
 
 import type { DynamicControllerFactoryOptions } from "../interfaces/dynamic-controller-factory-options.interface.js";
-import { createDynamicController } from "./create-dynamic-controller.js";
+import { createDynamicController } from "./create-dynamic-controller.util.js";
 
 /**
  * Returns a new {@link DynamicModule} with an isolated dynamic controller and its
