@@ -19,6 +19,7 @@ import {
   type FieldNode,
   getNamedType,
   getVariableValues,
+  GraphQLError,
   type GraphQLField,
   type GraphQLSchema,
   isCompositeType,
@@ -149,6 +150,32 @@ function mutationBaseCost(field: GraphQLField<unknown, unknown>): number {
   return typeof mutationComplexity === "number" ? mutationComplexity : 10;
 }
 
+/**
+ * Checks whether an error came from GraphQL variable coercion.
+ * @param error - The thrown value to inspect.
+ * @returns Whether the error is a variable coercion error.
+ */
+function isVariableCoercionError(error: unknown): error is GraphQLError {
+  if (!(error instanceof GraphQLError) || error.nodes?.length !== 1) {
+    return false;
+  }
+
+  const [node] = error.nodes;
+  if (node.kind !== Kind.VARIABLE_DEFINITION) {
+    return false;
+  }
+
+  const variableName = node.variable.name.value;
+  return (
+    error.message.startsWith(`Variable "$${variableName}" has invalid value`) ||
+    error.message.startsWith(
+      `Variable "$${variableName}" got invalid value `,
+    ) ||
+    error.message.startsWith(`Variable "$${variableName}" of required type `) ||
+    error.message.startsWith(`Variable "$${variableName}" of non-null type `)
+  );
+}
+
 @Plugin()
 export class GraphQLRateLimitPlugin implements ApolloServerPlugin {
   private readonly defaultEstimator: ComplexityEstimator;
@@ -192,43 +219,62 @@ export class GraphQLRateLimitPlugin implements ApolloServerPlugin {
       requestedQueryCost: 0,
       actualQueryCost: 0,
     };
+    let deferredVariableError: GraphQLError | undefined;
+    let reserved = false;
 
     return {
       didResolveOperation: async (args) => {
         const { request, document, operation } = args;
-        let query = document;
-        let mutationSelections: Set<FieldNode> | undefined;
-        if (operation?.operation === OperationTypeNode.MUTATION) {
-          const selections = collectMutationSelections(
-            schema,
-            document,
-            operation,
-            request.variables ?? {},
-          );
-          query = {
-            ...document,
-            definitions: document.definitions.map((definition) =>
-              definition === operation
-                ? {
-                    ...operation,
-                    selectionSet: { ...operation.selectionSet, selections },
-                  }
-                : definition,
-            ),
-          };
-          mutationSelections = new Set(selections);
+        if (!operation) {
+          return;
         }
 
-        cost.requestedQueryCost = getComplexity({
-          schema,
-          operationName: request.operationName,
-          query,
-          variables: request.variables,
-          estimators: [
-            (field) =>
-              estimateCost(field, mutationSelections?.has(field.node) === true),
-          ],
-        });
+        try {
+          let query = document;
+          let mutationSelections: Set<FieldNode> | undefined;
+          if (operation.operation === OperationTypeNode.MUTATION) {
+            const selections = collectMutationSelections(
+              schema,
+              document,
+              operation,
+              request.variables ?? {},
+            );
+            query = {
+              ...document,
+              definitions: document.definitions.map((definition) =>
+                definition === operation
+                  ? {
+                      ...operation,
+                      selectionSet: { ...operation.selectionSet, selections },
+                    }
+                  : definition,
+              ),
+            };
+            mutationSelections = new Set(selections);
+          }
+
+          cost.requestedQueryCost = getComplexity({
+            schema,
+            operationName: request.operationName,
+            query,
+            variables: request.variables,
+            estimators: [
+              (field) =>
+                estimateCost(
+                  field,
+                  mutationSelections?.has(field.node) === true,
+                ),
+            ],
+          });
+        } catch (error) {
+          // Let Apollo's execution pipeline coerce variables so all BAD_USER_INPUT
+          // errors, their order, and HTTP status handling match unthrottled requests.
+          if (isVariableCoercionError(error)) {
+            deferredVariableError = error;
+            return;
+          }
+          throw error;
+        }
 
         if (cost.requestedQueryCost > maxComplexity) {
           throw new GraphQLTooManyRequestsError(
@@ -249,8 +295,21 @@ export class GraphQLRateLimitPlugin implements ApolloServerPlugin {
         if (blocked) {
           throw new GraphQLTooManyRequestsError();
         }
+
+        reserved = true;
       },
       executionDidStart: async () => {
+        if (!reserved) {
+          const error = deferredVariableError;
+          return error
+            ? {
+                willResolveField: () => {
+                  throw error;
+                },
+              }
+            : undefined;
+        }
+
         return {
           willResolveField: ({ args, info }) => {
             const parentTypeFields = info.parentType.getFields();
@@ -283,6 +342,7 @@ export class GraphQLRateLimitPlugin implements ApolloServerPlugin {
       },
       willSendResponse: async (request): Promise<void> => {
         if (
+          reserved &&
           request.response.body.kind === "single" &&
           "data" in request.response.body.singleResult
         ) {

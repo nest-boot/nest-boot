@@ -3,6 +3,8 @@ import {
   Field,
   type FieldComplexityEstimatorArgs,
   GraphQLModule,
+  ID,
+  InputType,
   Int,
   Mutation,
   ObjectType,
@@ -26,6 +28,29 @@ interface GraphQLResponse {
     };
   };
 }
+
+@InputType()
+class SkillOwnerInput {
+  @Field(() => String)
+  type!: string;
+}
+
+@InputType()
+class CreateSkillInput {
+  @Field(() => SkillOwnerInput)
+  owner!: SkillOwnerInput;
+}
+
+@InputType()
+class CreateDetailedSkillInput {
+  @Field(() => SkillOwnerInput)
+  owner!: SkillOwnerInput;
+
+  @Field(() => String)
+  name!: string;
+}
+
+const createSkillResolver = vi.fn(() => "skill-1");
 
 @ObjectType()
 class MutationDetails {
@@ -159,6 +184,21 @@ class TestResolver {
   })
   updateWithResolvedCost(): number {
     return 3;
+  }
+
+  @Mutation(() => ID)
+  createSkill(
+    @Args("input", { type: () => CreateSkillInput }) _input: CreateSkillInput,
+  ): string {
+    return createSkillResolver();
+  }
+
+  @Mutation(() => ID)
+  createDetailedSkill(
+    @Args("input", { type: () => CreateDetailedSkillInput })
+    _input: CreateDetailedSkillInput,
+  ): string {
+    return createSkillResolver();
   }
 }
 
@@ -450,22 +490,113 @@ describe("GraphQLRateLimitModule - e2e", () => {
     });
   });
 
+  it("preserves Apollo responses for invalid variables and unresolved operations without calling resolvers or charging points", async () => {
+    createSkillResolver.mockClear();
+    const baselineApp = await createApp();
+    const rateLimitedApp = await createApp(
+      GraphQLRateLimitModule.forRoot({
+        maxComplexity: 10,
+        defaultComplexity: 10,
+        maximumAvailable: 10,
+        restoreRate: 1,
+        getId: () => "client",
+      }),
+    );
+    apps.push(baselineApp, rateLimitedApp);
+    const baselineHttp = request(baselineApp.getHttpServer());
+    const rateLimitedHttp = request(rateLimitedApp.getHttpServer());
+    const createSkillMutation = /* GraphQL */ `
+      mutation CreateSkill($input: CreateSkillInput!) {
+        createSkill(input: $input)
+      }
+    `;
+    const createDetailedSkillMutation = /* GraphQL */ `
+      mutation CreateDetailedSkill($input: CreateDetailedSkillInput!) {
+        createDetailedSkill(input: $input)
+      }
+    `;
+
+    for (const payload of [
+      { query: createSkillMutation, variables: { input: {} } },
+      { query: createDetailedSkillMutation, variables: { input: {} } },
+      { query: createSkillMutation, variables: {} },
+      { query: createSkillMutation, variables: { input: null } },
+      {
+        query:
+          "query ($first: Int!, $second: Int!) { a: weighted(weight: $first) b: weighted(weight: $second) }",
+        variables: {},
+      },
+      {
+        query:
+          "mutation Update($include: Boolean!) { updateStatus @include(if: $include) }",
+        variables: { include: null },
+      },
+      { query: "query First { hello } query Second { hello }" },
+      { query: "query First { hello }", operationName: "Missing" },
+    ]) {
+      const [baseline, rateLimited] = await Promise.all([
+        baselineHttp.post("/graphql").send(payload),
+        rateLimitedHttp.post("/graphql").send(payload),
+      ]);
+
+      expect(rateLimited.status).toBe(400);
+      expect(rateLimited.status).toBe(baseline.status);
+      expect(rateLimited.body).toEqual(baseline.body);
+    }
+
+    const multiErrorResponse = await rateLimitedHttp
+      .post("/graphql")
+      .send({ query: createDetailedSkillMutation, variables: { input: {} } })
+      .expect(400);
+    expect((multiErrorResponse.body as GraphQLResponse).errors).toMatchObject([
+      {
+        message:
+          'Variable "$input" got invalid value {}; Field "name" of required type "String!" was not provided.',
+        extensions: { code: "BAD_USER_INPUT" },
+      },
+      {
+        message:
+          'Variable "$input" got invalid value {}; Field "owner" of required type "SkillOwnerInput!" was not provided.',
+        extensions: { code: "BAD_USER_INPUT" },
+      },
+    ]);
+
+    expect(createSkillResolver).not.toHaveBeenCalled();
+
+    const validResponse = await rateLimitedHttp
+      .post("/graphql")
+      .send({ query: "{ hello }" })
+      .expect(200);
+    expect(validResponse.body).toMatchObject({
+      data: { hello: "world" },
+      extensions: {
+        cost: {
+          requestedQueryCost: 10,
+          actualQueryCost: 10,
+        },
+      },
+    });
+  });
+
   /**
    * Returns initialized test application and its exposed dependencies.
-   * @param rateLimitModule - GraphQL rate-limit module registration to test.
+   * @param rateLimitModule - Optional GraphQL rate-limit module registration to test.
    * @returns Initialized test application and its exposed dependencies.
    */
   async function createApp(
-    rateLimitModule: DynamicModule,
+    rateLimitModule?: DynamicModule,
   ): Promise<INestApplication> {
+    const imports: DynamicModule[] = [
+      GraphQLModule.forRoot({
+        autoSchemaFile: true,
+        graphiql: false,
+      }),
+    ];
+    if (rateLimitModule) {
+      imports.push(rateLimitModule);
+    }
     const moduleRef = await Test.createTestingModule({
-      imports: [
-        GraphQLModule.forRoot({
-          autoSchemaFile: true,
-          graphiql: false,
-        }),
-        rateLimitModule,
-      ],
+      imports,
       providers: [TestResolver],
     }).compile();
     const app = moduleRef.createNestApplication();

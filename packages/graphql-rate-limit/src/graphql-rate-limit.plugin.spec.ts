@@ -6,6 +6,7 @@ import {
   buildSchema,
   FieldNode,
   getOperationAST,
+  GraphQLError,
   GraphQLResolveInfo,
   Kind,
   parse,
@@ -41,7 +42,7 @@ interface TestExecutionListener {
 
 interface TestRequestListener {
   didResolveOperation(args: GraphQLRequestContext<BaseContext>): Promise<void>;
-  executionDidStart(): Promise<TestExecutionListener>;
+  executionDidStart(): Promise<TestExecutionListener | undefined>;
   willSendResponse(args: GraphQLRequestContext<BaseContext>): Promise<void>;
 }
 
@@ -57,8 +58,17 @@ describe("GraphQLRateLimitPlugin", () => {
       failedItem: Item
     }
 
+    input SkillOwnerInput {
+      type: String!
+    }
+
+    input CreateSkillInput {
+      owner: SkillOwnerInput!
+    }
+
     type Mutation {
       update: UpdateResult!
+      createSkill(input: CreateSkillInput!): ID!
     }
 
     type UpdateResult {
@@ -137,6 +147,7 @@ describe("GraphQLRateLimitPlugin", () => {
       ...options,
       ...overrides,
     });
+  const queryOperation = getOperationAST(document, "TestQuery") ?? undefined;
   const mutationContext = (include: boolean | null) =>
     ({
       request: { operationName: "Update", variables: { include } },
@@ -164,6 +175,7 @@ describe("GraphQLRateLimitPlugin", () => {
     const context = {
       request: { operationName: "TestQuery", variables: {} },
       document,
+      operation: queryOperation,
       response,
     } as unknown as GraphQLRequestContext<BaseContext>;
     const plugin = createPlugin();
@@ -172,6 +184,9 @@ describe("GraphQLRateLimitPlugin", () => {
     await listener.didResolveOperation(context);
 
     const executionListener = await listener.executionDidStart();
+    if (!executionListener) {
+      throw new Error("Expected an execution listener");
+    }
     const queryType = schema.getQueryType();
     if (!queryType) {
       throw new Error("Expected a query type");
@@ -220,6 +235,7 @@ describe("GraphQLRateLimitPlugin", () => {
     const context = {
       request: { operationName: "TestQuery", variables: {} },
       document,
+      operation: queryOperation,
     } as unknown as GraphQLRequestContext<BaseContext>;
     const plugin = createPlugin();
     const listener = (await plugin.requestDidStart()) as TestRequestListener;
@@ -269,15 +285,131 @@ describe("GraphQLRateLimitPlugin", () => {
     expect(subPoint).toHaveBeenCalledWith(context, 0);
   });
 
-  it("rejects invalid mutation directive variables before reserving any points", async () => {
+  it("skips complexity reservation when Apollo did not resolve an operation", async () => {
+    const response = {
+      body: {
+        kind: "single" as const,
+        singleResult: {
+          data: { hello: "cached" },
+        },
+      },
+    };
+    const context = {
+      request: { operationName: "Unknown", variables: {} },
+      document: mutationDocument,
+      operation: undefined,
+      response,
+    } as unknown as GraphQLRequestContext<BaseContext>;
+    const listener =
+      (await createPlugin().requestDidStart()) as TestRequestListener;
+
+    await listener.didResolveOperation(context);
+    await expect(listener.executionDidStart()).resolves.toBeUndefined();
+    await listener.willSendResponse(context);
+
+    expect(mockedGetComplexity).not.toHaveBeenCalled();
+    expect(subPoint).not.toHaveBeenCalled();
+    expect(addPoint).not.toHaveBeenCalled();
+  });
+
+  it("defers invalid mutation directive variables to Apollo without reserving points", async () => {
     const listener =
       (await createPlugin().requestDidStart()) as TestRequestListener;
 
     await expect(
       listener.didResolveOperation(mutationContext(null)),
-    ).rejects.toThrow(
+    ).resolves.toBeUndefined();
+    expect(mockedGetComplexity).not.toHaveBeenCalled();
+    expect(subPoint).not.toHaveBeenCalled();
+
+    const executionListener = await listener.executionDidStart();
+    expect(() =>
+      executionListener?.willResolveField({
+        args: {},
+        info: {} as unknown as GraphQLResolveInfo,
+      }),
+    ).toThrow(
       'Variable "$include" of non-null type "Boolean!" must not be null.',
     );
+  });
+
+  it("defers missing required input fields to Apollo without reserving points", async () => {
+    const actual = await vi.importActual<
+      typeof import("graphql-query-complexity")
+    >("graphql-query-complexity");
+    mockedGetComplexity.mockImplementationOnce(actual.getComplexity);
+    const createSkillDocument = parse(
+      "mutation CreateSkill($input: CreateSkillInput!) { createSkill(input: $input) }",
+    );
+    const context = {
+      request: {
+        operationName: "CreateSkill",
+        variables: { input: {} },
+      },
+      document: createSkillDocument,
+      operation: getOperationAST(createSkillDocument, "CreateSkill"),
+    } as unknown as GraphQLRequestContext<BaseContext>;
+    const listener =
+      (await createPlugin().requestDidStart()) as TestRequestListener;
+
+    await expect(
+      listener.didResolveOperation(context),
+    ).resolves.toBeUndefined();
+    expect(subPoint).not.toHaveBeenCalled();
+
+    const executionListener = await listener.executionDidStart();
+    expect(() =>
+      executionListener?.willResolveField({
+        args: {},
+        info: {} as unknown as GraphQLResolveInfo,
+      }),
+    ).toThrow(
+      'Variable "$input" got invalid value {}; Field "owner" of required type "SkillOwnerInput!" was not provided.',
+    );
+  });
+
+  it("defers legacy variable coercion messages and rethrows unrelated complexity errors", async () => {
+    const listener =
+      (await createPlugin().requestDidStart()) as TestRequestListener;
+    const operation = getOperationAST(mutationDocument, "Update");
+    const variableNode = operation?.variableDefinitions?.[0];
+    if (!variableNode) {
+      throw new Error("Expected variable definition");
+    }
+
+    const legacyCoercionError = new GraphQLError(
+      'Variable "$include" has invalid value "forbidden".',
+      { nodes: [variableNode] },
+    );
+    mockedGetComplexity.mockImplementationOnce(() => {
+      throw legacyCoercionError;
+    });
+    await expect(
+      listener.didResolveOperation({
+        request: { operationName: "TestQuery", variables: {} },
+        document,
+        operation: queryOperation,
+      } as unknown as GraphQLRequestContext<BaseContext>),
+    ).resolves.toBeUndefined();
+
+    for (const unrelatedError of [
+      new Error("Estimator crashed"),
+      new GraphQLError("No complexity calculated"),
+      new GraphQLError("Unrelated field error", { nodes: [operation] }),
+      new GraphQLError("Unrelated variable error", { nodes: [variableNode] }),
+    ]) {
+      mockedGetComplexity.mockImplementationOnce(() => {
+        throw unrelatedError;
+      });
+      await expect(
+        listener.didResolveOperation({
+          request: { operationName: "TestQuery", variables: {} },
+          document,
+          operation: queryOperation,
+        } as unknown as GraphQLRequestContext<BaseContext>),
+      ).rejects.toBe(unrelatedError);
+    }
+
     expect(subPoint).not.toHaveBeenCalled();
   });
 
@@ -286,6 +418,7 @@ describe("GraphQLRateLimitPlugin", () => {
     const context = {
       request: { operationName: "TestQuery", variables: {} },
       document,
+      operation: queryOperation,
     } as unknown as GraphQLRequestContext<BaseContext>;
     const plugin = createPlugin();
     const listener = (await plugin.requestDidStart()) as TestRequestListener;
@@ -301,6 +434,7 @@ describe("GraphQLRateLimitPlugin", () => {
     const context = {
       request: { operationName: "TestQuery", variables: {} },
       document,
+      operation: queryOperation,
     } as unknown as GraphQLRequestContext<BaseContext>;
     const moduleRef = await Test.createTestingModule({
       providers: [
