@@ -10,6 +10,7 @@ import { getCurrentApiKey } from "../api-key/utils/get-current-api-key.util.js";
 import {
   CAN_METADATA,
   CUSTOM_ROUTE_ARGS_METADATA,
+  EXTERNAL_HANDLER_INSTANCE,
   GQL_PARAM_TYPES,
   ROUTE_ARGS_METADATA,
   ROUTE_PARAM_TYPES,
@@ -114,11 +115,19 @@ export class AuthGuard implements CanActivate {
     subjectCallback: CanSubjectCallback,
     context: ExecutionContext,
   ): Promise<Subject> {
-    const handlerSelf = await this.moduleRef.resolve<unknown>(
-      context.getClass(),
-      this.getContextId(context),
-      { strict: false },
-    );
+    const boundInstance =
+      typeof context.getArgs === "function"
+        ? (context.getArgs() as unknown as Record<symbol, unknown>)[
+            EXTERNAL_HANDLER_INSTANCE
+          ]
+        : undefined;
+    const handlerSelf =
+      boundInstance ??
+      (await this.moduleRef.resolve<unknown>(
+        context.getClass(),
+        this.getContextId(context),
+        { strict: false },
+      ));
     const args = await this.getSubjectCallbackArgs(context);
 
     return await subjectCallback(handlerSelf, ...args);

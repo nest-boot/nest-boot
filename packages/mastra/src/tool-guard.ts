@@ -2,7 +2,7 @@ import { AsyncLocalStorage } from "node:async_hooks";
 
 import type { Agent as MastraAgent } from "@mastra/core/agent";
 import { MASTRA_TOOL_MARKER, Tool as MastraTool } from "@mastra/core/tools";
-import { CAN_METADATA } from "@nest-boot/auth";
+import { CAN_METADATA, EXTERNAL_HANDLER_INSTANCE } from "@nest-boot/auth";
 import {
   type CanActivate,
   ForbiddenException,
@@ -462,6 +462,22 @@ function consumePreflightApprovedTool(tool: object): boolean {
 }
 
 /**
+ * Attaches the bound handler instance to an `ExecutionContext` argument array via
+ * `@nest-boot/auth`'s non-enumerable symbol so dynamic `@Can` callbacks resolve `self`
+ * directly without requiring `moduleRef.resolve(context.getClass())`.
+ * @param args - Execution context argument array
+ * @param instance - Bound Mastra tool instance
+ * @returns Same `args` array with `EXTERNAL_HANDLER_INSTANCE` defined
+ */
+function attachHandlerInstance(args: unknown[], instance: object): unknown[] {
+  Object.defineProperty(args, EXTERNAL_HANDLER_INSTANCE, {
+    value: instance,
+    enumerable: false,
+  });
+  return args;
+}
+
+/**
  * Binds NestJS `ExternalContextCreator` execution guards (`"mastra:tool:execution"`) and
  * exposure-time discovery guards (`"mastra:tool:discovery"`) onto a Mastra tool instance.
  * @param tool - Target Mastra tool instance
@@ -504,7 +520,7 @@ export function bindToolGuards(
     }
 
     if (discoveryGuardFn) {
-      await discoveryGuardFn([]);
+      await discoveryGuardFn(attachHandlerInstance([], tool));
     }
   };
 
@@ -532,7 +548,7 @@ export function bindToolGuards(
       );
     }
     if (executionGuardFn) {
-      await executionGuardFn(args);
+      await executionGuardFn(attachHandlerInstance(args, tool));
     }
   };
 

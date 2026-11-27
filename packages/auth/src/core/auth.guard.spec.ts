@@ -25,6 +25,7 @@ import { AuthAbility } from "../common/auth.ability.js";
 import {
   CAN_METADATA,
   CUSTOM_ROUTE_ARGS_METADATA,
+  EXTERNAL_HANDLER_INSTANCE,
   ROUTE_ARGS_METADATA,
 } from "../common/constants/permission.constants.js";
 import * as authorization from "../common/utils/can.util.js";
@@ -1455,6 +1456,48 @@ describe("permission checks", () => {
       });
       expect(subjectCallback).toHaveBeenCalledWith(
         handlerThis,
+        toolInput,
+        toolExecContext,
+      );
+      expect(canMock).toHaveBeenCalledWith("update", subjectInstance);
+    });
+    it("resolves dynamic subject callbacks against EXTERNAL_HANDLER_INSTANCE without moduleRef lookup", async () => {
+      const subjectInstance = new Subject();
+      const boundTool = { id: "ad-hoc-tool", lookup: () => subjectInstance };
+      const toolInput = { articleId: "article-2" };
+      const toolExecContext = { requestContext: { tenant: "acme" } };
+      const mastraArgs: unknown[] = [toolInput, toolExecContext];
+      Object.defineProperty(mastraArgs, EXTERNAL_HANDLER_INSTANCE, {
+        value: boundTool,
+        enumerable: false,
+      });
+      const subjectCallback = vi.fn((self: typeof boundTool) => self.lookup());
+      const canMock = vi.fn(() => true);
+      const { guard, reflector, moduleRef } = await createGuard({
+        can: canMock,
+      } as unknown as TestAbility);
+      moduleRef.resolve.mockRejectedValueOnce(
+        new Error("Unregistered custom-token or ad-hoc tool class"),
+      );
+      setCanMetadata(reflector, {
+        action: "update",
+        subjectCallback,
+      });
+      await RequestContext.run(createAuthRequestContext("http"), async () => {
+        await expect(
+          guard.canActivate(
+            createContext(
+              undefined,
+              undefined,
+              mastraArgs,
+              "mastra:tool:execution",
+            ),
+          ),
+        ).resolves.toBe(true);
+      });
+      expect(moduleRef.resolve).not.toHaveBeenCalled();
+      expect(subjectCallback).toHaveBeenCalledWith(
+        boundTool,
         toolInput,
         toolExecContext,
       );

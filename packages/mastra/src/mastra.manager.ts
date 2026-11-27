@@ -479,11 +479,13 @@ export class MastraManager implements OnModuleInit, OnApplicationShutdown {
    * @returns `true` when the tool exists and passes exposure-time guards
    */
   async canAccessTool(idOrTool: string | AnyMastraTool): Promise<boolean> {
+    this.onModuleInit();
     const tool =
       typeof idOrTool === "string" ? this.getTool(idOrTool) : idOrTool;
     if (!tool) {
       return false;
     }
+    this.ensureToolBound(tool);
     return await canExposeMastraTool(tool);
   }
 

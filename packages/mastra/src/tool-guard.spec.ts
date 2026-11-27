@@ -461,6 +461,32 @@ describe("BaseTool Guard authorization and exposure filtering", () => {
       }
     }
 
+    const CUSTOM_TOKEN_DYNAMIC_TOOL = Symbol("CUSTOM_TOKEN_DYNAMIC_TOOL");
+
+    @Injectable()
+    class CustomTokenDynamicArticleTool extends BaseTool({
+      id: "custom-token-dynamic-article-tool",
+      description:
+        "Tool registered under a custom DI token with dynamic @Can subject callback",
+      inputSchema: z.object({ articleId: z.string() }),
+      outputSchema: z.object({ tokenVerifiedId: z.string() }),
+    }) {
+      constructor(private readonly repo: ArticleRepository) {
+        super();
+      }
+
+      @Can(
+        "update",
+        (
+          self: CustomTokenDynamicArticleTool,
+          input: { articleId: string },
+        ): Article => self.repo.findById(input.articleId),
+      )
+      execute(input: { articleId: string }) {
+        return Promise.resolve({ tokenVerifiedId: input.articleId });
+      }
+    }
+
     @Module({
       providers: [
         ArticleRepository,
@@ -471,6 +497,10 @@ describe("BaseTool Guard authorization and exposure filtering", () => {
         UpdateArticleTool,
         BetaMetricsTool,
         DirectMastraAdminTool,
+        {
+          provide: CUSTOM_TOKEN_DYNAMIC_TOOL,
+          useClass: CustomTokenDynamicArticleTool,
+        },
         EditorialAssistantAgent,
         DirectSubclassedAgent,
       ],
@@ -544,6 +574,43 @@ describe("BaseTool Guard authorization and exposure filtering", () => {
       expect(manager.getTool("rotate-system-secret-tool")).toBe(adminTool);
       expect(mastra.getToolById("update-article-tool")).toBe(updateArticleTool);
       expect(await manager.canAccessTool("missing-tool")).toBe(false);
+
+      @Can("manage", AdminSettings)
+      class AdHocUnregisteredSecretTool extends BaseTool({
+        description: "Ad-hoc tool passed directly to canAccessTool(instance)",
+      }) {
+        execute() {
+          return Promise.resolve({ ok: true });
+        }
+      }
+      const adHocSecretTool = new AdHocUnregisteredSecretTool();
+
+      class AdHocDynamicArticleTool extends BaseTool({
+        id: "ad-hoc-dynamic-article-tool",
+        description:
+          "Ad-hoc tool with dynamic @Can whose class is not registered in DI",
+        inputSchema: z.object({ articleId: z.string() }),
+        outputSchema: z.object({ verifiedId: z.string() }),
+      }) {
+        constructor(private readonly repo: ArticleRepository) {
+          super();
+        }
+
+        @Can(
+          "update",
+          (
+            self: AdHocDynamicArticleTool,
+            input: { articleId: string },
+          ): Article => self.repo.findById(input.articleId),
+        )
+        execute(input: { articleId: string }) {
+          return Promise.resolve({ verifiedId: input.articleId });
+        }
+      }
+      const adHocDynamicTool = new AdHocDynamicArticleTool(
+        moduleRef.get(ArticleRepository),
+      );
+      mastra.addTool(adHocDynamicTool);
 
       // 1. Unauthenticated caller: exposure filtering hides protected tools and transient guard with HttpException(403)
       await runWithAuthIdentity(
@@ -698,6 +765,28 @@ describe("BaseTool Guard authorization and exposure filtering", () => {
           expect(accessibleIds).toContain("update-article-tool");
           expect(accessibleIds).not.toContain("rotate-system-secret-tool");
           expect(accessibleIds).not.toContain("direct-mastra-admin-tool");
+
+          // Instance overload on canAccessTool binds ad-hoc tools before checking exposure
+          expect(await manager.canAccessTool(adHocSecretTool)).toBe(false);
+
+          // Dynamic @Can callbacks resolve `self` against the bound tool for both ad-hoc and custom-token tools
+          expect(
+            await adHocDynamicTool.execute({ articleId: "art-own" }),
+          ).toEqual({ verifiedId: "art-own" });
+          await expect(
+            adHocDynamicTool.execute({ articleId: "art-other" }),
+          ).rejects.toThrow(ForbiddenException);
+
+          const customTokenDynamicTool =
+            moduleRef.get<CustomTokenDynamicArticleTool>(
+              CUSTOM_TOKEN_DYNAMIC_TOOL,
+            );
+          expect(
+            await customTokenDynamicTool.execute({ articleId: "art-own" }),
+          ).toEqual({ tokenVerifiedId: "art-own" });
+          await expect(
+            customTokenDynamicTool.execute({ articleId: "art-other" }),
+          ).rejects.toThrow(ForbiddenException);
         },
       );
 
@@ -710,6 +799,7 @@ describe("BaseTool Guard authorization and exposure filtering", () => {
           permissions: ["admin:manage", "article:read"],
         },
         async () => {
+          expect(await manager.canAccessTool(adHocSecretTool)).toBe(true);
           const adminTools = await agent.listTools();
           expect(Object.keys(adminTools)).toEqual(
             expect.arrayContaining([
