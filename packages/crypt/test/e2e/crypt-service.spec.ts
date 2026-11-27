@@ -39,5 +39,25 @@ describe("CryptService", () => {
         await expect(cryptService.decrypt("invalid-jwe")).rejects.toThrow();
       });
     });
+    describe("context option", () => {
+      it("should encrypt and decrypt within the same context while isolating from root and other contexts", async () => {
+        const encrypted = await cryptService.encrypt("private-key", {
+          context: "jwt",
+        });
+
+        expect(await cryptService.decrypt(encrypted, { context: "jwt" })).toBe(
+          "private-key",
+        );
+        await expect(cryptService.decrypt(encrypted)).rejects.toThrow();
+        await expect(
+          cryptService.decrypt(encrypted, { context: "other" }),
+        ).rejects.toThrow();
+
+        const rootEncrypted = await cryptService.encrypt("root-data");
+        await expect(
+          cryptService.decrypt(rootEncrypted, { context: "jwt" }),
+        ).rejects.toThrow();
+      });
+    });
   });
 });

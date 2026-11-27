@@ -46,12 +46,60 @@ describe("CryptService", () => {
         const decrypted = await CryptService.decrypt(encrypted);
         expect(decrypted).toEqual(value);
       });
+      it("should isolate subkeys when context option is provided", async () => {
+        CryptService.init(TEST_SECRET);
+        const encrypted = await CryptService.encrypt("secret-key", {
+          context: "jwt",
+        });
+
+        expect(await CryptService.decrypt(encrypted, { context: "jwt" })).toBe(
+          "secret-key",
+        );
+        await expect(CryptService.decrypt(encrypted)).rejects.toThrow();
+        await expect(
+          CryptService.decrypt(encrypted, { context: "other" }),
+        ).rejects.toThrow();
+      });
     });
   });
-  describe("constructor", () => {
+  describe("constructor and context options", () => {
     it("should create instance with secret", () => {
       const service = new CryptService(TEST_SECRET);
       expect(service).toBeDefined();
+    });
+    it("should isolate root and contextual keys and reuse cached derived keys", async () => {
+      const service = new CryptService(TEST_SECRET);
+      const rootCipher = await service.encrypt("payload");
+      const jwtCipher1 = await service.encrypt("payload", { context: "jwt" });
+      const jwtCipher2 = await service.encrypt("payload-2", { context: "jwt" });
+
+      expect(await service.decrypt(rootCipher)).toBe("payload");
+      expect(await service.decrypt(jwtCipher1, { context: "jwt" })).toBe(
+        "payload",
+      );
+      expect(await service.decrypt(jwtCipher2, { context: "jwt" })).toBe(
+        "payload-2",
+      );
+
+      await expect(service.decrypt(jwtCipher1)).rejects.toThrow();
+      await expect(
+        service.decrypt(jwtCipher1, { context: "other" }),
+      ).rejects.toThrow();
+      await expect(
+        service.decrypt(rootCipher, { context: "jwt" }),
+      ).rejects.toThrow();
+    });
+    it("should reject empty or whitespace contexts", async () => {
+      const service = new CryptService(TEST_SECRET);
+      await expect(service.encrypt("data", { context: "" })).rejects.toThrow(
+        "Crypt context must be a non-empty string.",
+      );
+      await expect(service.decrypt("data", { context: "   " })).rejects.toThrow(
+        "Crypt context must be a non-empty string.",
+      );
+      await expect(
+        service.encrypt("data", { context: null as unknown as string }),
+      ).rejects.toThrow("Crypt context must be a non-empty string.");
     });
   });
 });

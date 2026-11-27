@@ -2,21 +2,22 @@
 
 Registers a database-backed JWT signer and a public JWKS controller. Both direct
 `JwtModule` imports and `JwtModule.forRoot` / `JwtModule.forRootAsync` require
-`DatabaseModule` and a migration for the `jwk` table:
+`DatabaseModule`, `CryptModule`, and a migration for the `jwk` table:
 
 ```ts
+import { CryptModule } from "@nest-boot/crypt";
 import { DatabaseModule } from "@nest-boot/database";
 import { JwtModule } from "@nest-boot/jwt";
 import { Module } from "@nestjs/common";
 
 @Module({
-  imports: [DatabaseModule.forRoot({ entities: [] }), JwtModule],
+  imports: [DatabaseModule.forRoot({ entities: [] }), CryptModule, JwtModule],
 })
 export class AppModule {}
 ```
 
-Use `JwtModule.forRoot` or `JwtModule.forRootAsync` to customize the issuer,
-secret, or JWKS endpoint:
+Use `JwtModule.forRoot` or `JwtModule.forRootAsync` to customize the issuer or
+JWKS endpoint:
 
 ```ts
 JwtModule.forRoot({
@@ -24,10 +25,10 @@ JwtModule.forRoot({
 });
 ```
 
-The issuer defaults to `AUTH_URL`, then `APP_URL`. The encryption secret defaults
-to `JWT_SECRET`, then `APP_SECRET`. Set `issuer` or `secret`
-to override these values. Every application instance must use the same issuer
-and strong encryption secret.
+The issuer defaults to `AUTH_URL`, then `APP_URL`. Set `issuer` to override this
+value. Signing private keys are encrypted at rest via `CryptService` using the
+`"jwt"` HKDF context. Every application instance must share the same issuer and
+`CryptModule` secret.
 
 Inject `JwtService` to sign and verify tokens. A signing request creates a key
 when no active key exists. JWKS reads publish public keys within their signing

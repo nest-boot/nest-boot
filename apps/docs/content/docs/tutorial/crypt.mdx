@@ -55,6 +55,19 @@ export class SecretService {
 
 Both operations are asynchronous. `encrypt()` returns a five-part compact JWE string, and `decrypt()` accepts that serialized value.
 
+### Domain Separation (`context`)
+
+Pass an optional `{ context }` (`CryptOptions`) to derive an isolated 256-bit subkey via the HKDF `info` parameter. Ciphertexts encrypted under one `context` cannot be decrypted under the root key or a different `context`:
+
+```typescript
+const encrypted = await this.cryptService.encrypt(value, {
+  context: "user:ssn",
+});
+const decrypted = await this.cryptService.decrypt(encrypted, {
+  context: "user:ssn",
+});
+```
+
 ## MikroORM Integration
 
 Use the `@EncryptedProperty()` decorator from `@nest-boot/database-crypt` for automatic field encryption. See the [MikroORM tutorial](/docs/tutorial/database#encrypted-properties) for details.

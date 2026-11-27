@@ -6,7 +6,7 @@
     "url": "https://github.com/nest-boot/nest-boot.git",
     "directory": "packages/crypt"
   },
-  "description": "",
+  "description": "Symmetric JWE encryption and HKDF key derivation for Nest Boot",
   "author": {
     "name": "Xudong Huang",
     "email": "me@huangxudong.com",
@@ -21,8 +21,7 @@
   },
   "files": [
     "dist",
-    "!dist/**/*.tsbuildinfo",
-    "templates"
+    "!dist/**/*.tsbuildinfo"
   ],
   "scripts": {
     "prebuild": "pnpm run clean",

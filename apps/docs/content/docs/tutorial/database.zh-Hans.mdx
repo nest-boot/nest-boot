@@ -394,15 +394,15 @@ export class CloudProviderAccount {
   @PrimaryKey({ type: t.bigint })
   id!: string;
 
-  @EncryptedProperty()
+  @EncryptedProperty({ type: t.string })
   apiKey!: string;
 
-  @EncryptedProperty()
+  @EncryptedProperty({ type: t.string, context: "cloud:api-secret" })
   apiSecret!: string;
 }
 ```
 
-值在写入时自动加密，读取时自动解密。需要注册 `CryptModule`：
+字符串值会在创建和更新前自动加密；读取时显式加载该惰性列并通过 `CryptService.decrypt()` 解密（配置了 `context` 时需传入相同的 `{ context }`）。需要注册 `CryptModule`：
 
 ```typescript
 import { CryptModule } from "@nest-boot/crypt";

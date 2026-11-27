@@ -30,6 +30,7 @@ import {
 
 const uuidPattern =
   /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+const jwtCryptOptions = { context: "jwt" } as const;
 
 export interface JwtVerifyOptions {
   type: string;
@@ -52,6 +53,9 @@ export class JwtService {
   constructor(
     private readonly em: EntityManager,
     @Optional()
+    @Inject(CryptService)
+    crypt?: CryptService,
+    @Optional()
     @Inject(MODULE_OPTIONS_TOKEN)
     options: JwtModuleOptions = {},
   ) {
@@ -64,20 +68,14 @@ export class JwtService {
       );
     }
 
-    const secret =
-      options.secret ?? process.env.JWT_SECRET ?? process.env.APP_SECRET;
-    if (
-      !secret ||
-      secret.length < 32 ||
-      Math.log2(new Set(secret).size) * secret.length < 120
-    ) {
+    if (!crypt) {
       throw new Error(
-        "JWT requires a strong secret of at least 32 characters. Set secret, JWT_SECRET, or APP_SECRET.",
+        "CryptService is required. Import CryptModule in your application.",
       );
     }
 
     this.issuer = issuer;
-    this.crypt = new CryptService(`auth-jwt:${secret}`);
+    this.crypt = crypt;
   }
 
   get jwksPath(): string {
@@ -208,7 +206,7 @@ export class JwtService {
   }> {
     const key = await this.findOrCreateSigningKey();
     const privateKey = await importPKCS8(
-      await this.crypt.decrypt(key.privateKey),
+      await this.crypt.decrypt(key.privateKey, jwtCryptOptions),
       key.publicKey.alg,
     );
     return { key, privateKey };
@@ -250,6 +248,7 @@ export class JwtService {
     const publicJwk = await exportJWK(publicKey);
     const encryptedPrivateKey = await this.crypt.encrypt(
       await exportPKCS8(privateKey),
+      jwtCryptOptions,
     );
     const createdAt = new Date();
 

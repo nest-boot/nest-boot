@@ -8,7 +8,7 @@ import {
 } from "./crypt.module-definition.js";
 import { CryptService } from "./crypt.service.js";
 import { CryptModuleOptions } from "./crypt-module-options.interface.js";
-import { estimateEntropy } from "./utils/estimate-entropy.js";
+import { estimateEntropy } from "./utils/estimate-entropy.util.js";
 
 /**
  * Module that provides encryption and decryption services using JWE (A256GCMKW + A256GCM).

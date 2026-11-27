@@ -29,7 +29,7 @@ const jwksController = createDynamicController(JwksController, {
 export class JwtModule extends ConfigurableModuleClass {
   /**
    * Registers JWT signing with explicit or environment-backed configuration.
-   * @param options - JWT issuer, key encryption and JWKS settings.
+   * @param options - JWT issuer and JWKS settings.
    * @returns Dynamic JWT module.
    */
   static override forRoot(options: typeof OPTIONS_TYPE = {}): DynamicModule {

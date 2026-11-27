@@ -55,6 +55,19 @@ export class SecretService {
 
 两个操作都是异步的。`encrypt()` 返回五段式紧凑 JWE 字符串，`decrypt()` 接收该序列化值。
 
+### 密钥域隔离（`context`）
+
+可通过可选的 `{ context }`（`CryptOptions`）传入 HKDF `info` 参数派生独立的 256 位子密钥。不同 `context`（以及未传 `context` 的根密钥）之间的密文互不相通：
+
+```typescript
+const encrypted = await this.cryptService.encrypt(value, {
+  context: "user:ssn",
+});
+const decrypted = await this.cryptService.decrypt(encrypted, {
+  context: "user:ssn",
+});
+```
+
 ## MikroORM 集成
 
 使用 `@nest-boot/database-crypt` 的 `@EncryptedProperty()` 装饰器实现自动字段加密。详见 [MikroORM 教程](/docs/tutorial/database#加密属性)。
