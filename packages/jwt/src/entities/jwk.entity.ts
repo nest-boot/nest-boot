@@ -4,7 +4,7 @@ import { type Opt, t } from "@mikro-orm/core";
 import { Entity, PrimaryKey, Property } from "@mikro-orm/decorators/legacy";
 import type { JWK } from "jose";
 
-import type { JwtAlgorithm } from "../interfaces/jwks-options.interface.js";
+import type { JwtAlgorithm } from "../types/jwt-algorithm.type.js";
 
 @Entity()
 export class Jwk {

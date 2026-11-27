@@ -1,7 +1,5 @@
-import type {
-  JwksOptions,
-  JwtAlgorithm,
-} from "../interfaces/jwks-options.interface.js";
+import type { JwksOptions } from "../interfaces/jwks-options.interface.js";
+import type { JwtAlgorithm } from "../types/jwt-algorithm.type.js";
 
 const thirtyDays = 60 * 60 * 24 * 30;
 const literalPath = /^\/(?:[A-Za-z0-9_~.-]+\/)*[A-Za-z0-9_~.-]+$/;

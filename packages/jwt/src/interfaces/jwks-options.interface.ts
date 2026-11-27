@@ -1,4 +1,4 @@
-export type JwtAlgorithm = "Ed25519" | "ES256" | "ES512";
+import type { JwtAlgorithm } from "../types/jwt-algorithm.type.js";
 
 /** Options for the JWKS endpoint and its signing keys. */
 export interface JwksOptions {
