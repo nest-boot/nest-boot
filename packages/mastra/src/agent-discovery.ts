@@ -393,17 +393,18 @@ function filterAuthorizedRecord<TRecord>(
 }
 
 /**
- * Wraps a discovery method (`listTools`, `listAgents`, or `listWorkflows`) on an
- * `Agent` instance idempotently and locks the property so post-`super()` class fields
- * or monkey-patches cannot silently strip `@Can(...)` filtering.
+ * Installs an idempotent, non-configurable wrapper around an `Agent` method so
+ * post-`super()` class fields or monkey-patches cannot strip `@Can(...)` filtering.
  * @param agent - Target Mastra agent instance
- * @param methodName - Discovery method name on `MastraAgent`
- * @param onAuthorizedEntry - Optional hook invoked for each authorized primitive
+ * @param methodName - Property name on `MastraAgent`
+ * @param buildWrapper - Factory producing the wrapped function from the original method
  */
-function wrapDiscoveryMethod(
+function installLockedMethodWrapper(
   agent: MastraAgent,
-  methodName: "listTools" | "listAgents" | "listWorkflows",
-  onAuthorizedEntry?: (value: unknown) => void,
+  methodName: string,
+  buildWrapper: (
+    currentMethod: WrappedDiscoveryFunction,
+  ) => WrappedDiscoveryFunction,
 ): void {
   const currentMethod = Reflect.get(agent, methodName) as
     | WrappedDiscoveryFunction
@@ -415,18 +416,7 @@ function wrapDiscoveryMethod(
     return;
   }
 
-  const wrapped: WrappedDiscoveryFunction = function (
-    this: MastraAgent,
-    ...args: unknown[]
-  ) {
-    const raw = currentMethod.apply(this, args);
-    if (isPromiseLike(raw)) {
-      return Promise.resolve(raw).then((resolved) =>
-        filterAuthorizedRecord(resolved, args[0], onAuthorizedEntry),
-      );
-    }
-    return filterAuthorizedRecord(raw, args[0], onAuthorizedEntry);
-  };
+  const wrapped = buildWrapper(currentMethod);
 
   Object.defineProperty(wrapped, WRAPPED_DISCOVERY_METHOD, {
     value: true,
@@ -442,22 +432,183 @@ function wrapDiscoveryMethod(
 }
 
 /**
- * Wraps an `Agent` instance's `listTools()`, `listAgents()`, and `listWorkflows()`
- * (plus internal `__fork()` clones) so any `@Can(...)`-restricted tools, sub-agents,
+ * Wraps a discovery method (`listTools`, `listAgents`, or `listWorkflows`) on an
+ * `Agent` instance idempotently so unauthorized `@Can(...)` entries are filtered out.
+ * @param agent - Target Mastra agent instance
+ * @param methodName - Discovery method name on `MastraAgent`
+ * @param onAuthorizedEntry - Optional hook invoked for each authorized primitive
+ */
+function wrapDiscoveryMethod(
+  agent: MastraAgent,
+  methodName: "listTools" | "listAgents" | "listWorkflows",
+  onAuthorizedEntry?: (value: unknown) => void,
+): void {
+  installLockedMethodWrapper(agent, methodName, (currentMethod) => {
+    return function (this: MastraAgent, ...args: unknown[]) {
+      const raw = currentMethod.apply(this, args);
+      if (isPromiseLike(raw)) {
+        return Promise.resolve(raw).then((resolved) =>
+          filterAuthorizedRecord(resolved, args[0], onAuthorizedEntry),
+        );
+      }
+      return filterAuthorizedRecord(raw, args[0], onAuthorizedEntry);
+    };
+  });
+}
+
+/**
+ * Filters a nested `toolsets` dictionary (`{ [toolsetName]: { [toolName]: tool } }`)
+ * against `@Can(...)` metadata in the active `RequestContext`.
+ * @param toolsets - Candidate `toolsets` map passed to `Agent` execution or `defaultOptions`
+ * @param options - Discovery options (`{ requestContext }`)
+ * @returns Filtered null-prototype `toolsets` dictionary
+ */
+async function filterToolsetsMap(
+  toolsets: Record<string, unknown>,
+  options: unknown,
+): Promise<Record<string, unknown>> {
+  const filteredToolsets = Object.create(null) as Record<string, unknown>;
+  for (const [toolsetName, toolset] of Object.entries(toolsets)) {
+    Object.defineProperty(filteredToolsets, toolsetName, {
+      value: await filterAuthorizedRecord(
+        toolset,
+        options,
+        concealToolInstanceDependencies,
+      ),
+      enumerable: true,
+      configurable: true,
+      writable: true,
+    });
+  }
+  return filteredToolsets;
+}
+
+/**
+ * Wraps an internal `Agent` execution tool-conversion method (`listToolsets` or
+ * `listClientTools`) so per-call `toolsets` and `clientTools` passed into `generate()`
+ * or `stream()` apply the same `@Can(...)` discovery filtering as `listTools()`.
+ * @param agent - Target Mastra agent instance
+ * @param methodName - Internal `Agent` method name (`"listToolsets"` or `"listClientTools"`)
+ * @param fieldName - Parameter property holding the tools input (`"toolsets"` or `"clientTools"`)
+ * @param filterField - Filter applied to `params[fieldName]` prior to conversion
+ */
+function wrapExecutionToolFieldMethod(
+  agent: MastraAgent,
+  methodName: "listToolsets" | "listClientTools",
+  fieldName: "toolsets" | "clientTools",
+  filterField: (value: Record<string, unknown>, options: unknown) => unknown,
+): void {
+  installLockedMethodWrapper(agent, methodName, (currentMethod) => {
+    return async function (this: MastraAgent, ...args: unknown[]) {
+      const params = args[0];
+      if (typeof params === "object" && params !== null) {
+        const record = params as Record<string, unknown>;
+        const fieldValue = record[fieldName];
+        if (typeof fieldValue === "object" && fieldValue !== null) {
+          const filteredValue = await filterField(
+            fieldValue as Record<string, unknown>,
+            { requestContext: record.requestContext },
+          );
+          return await currentMethod.call(
+            this,
+            { ...record, [fieldName]: filteredValue },
+            ...args.slice(1),
+          );
+        }
+      }
+      return await currentMethod.apply(this, args);
+    };
+  });
+}
+
+/**
+ * Filters `toolsets` and `clientTools` declared inside `Agent.getDefaultOptions()`
+ * (including `Agent.network()`, which reads `defaultOptions.clientTools` directly),
+ * leaving `defaultOptions` without `toolsets`/`clientTools` untouched and synchronous.
+ * @param defaultOptions - Raw result of `agent.getDefaultOptions(...)`
+ * @param discoveryOptions - Discovery options (`{ requestContext }`)
+ * @returns Unchanged `defaultOptions`, or a `Promise` resolving to a filtered copy
+ */
+function filterDefaultOptionsCapabilities(
+  defaultOptions: unknown,
+  discoveryOptions: unknown,
+): unknown {
+  if (typeof defaultOptions !== "object" || defaultOptions === null) {
+    return defaultOptions;
+  }
+
+  const record = defaultOptions as Record<string, unknown>;
+  const hasToolsets =
+    typeof record.toolsets === "object" && record.toolsets !== null;
+  const hasClientTools =
+    typeof record.clientTools === "object" && record.clientTools !== null;
+  if (!hasToolsets && !hasClientTools) {
+    return defaultOptions;
+  }
+
+  return (async () => {
+    const copy: Record<string, unknown> = { ...record };
+    if (hasToolsets) {
+      copy.toolsets = await filterToolsetsMap(
+        record.toolsets as Record<string, unknown>,
+        discoveryOptions,
+      );
+    }
+    if (hasClientTools) {
+      copy.clientTools = await filterAuthorizedRecord(
+        record.clientTools,
+        discoveryOptions,
+        concealToolInstanceDependencies,
+      );
+    }
+    return copy;
+  })();
+}
+
+/**
+ * Wraps an `Agent` instance's capability discovery surfaces (`listTools`, `listAgents`,
+ * `listWorkflows`, per-call `listToolsets` / `listClientTools`, `getDefaultOptions`,
+ * and internal `__fork()` clones) so any `@Can(...)`-restricted tools, sub-agents,
  * or workflows unauthorized in the current `RequestContext` are hidden from the agent.
  * Stateless across containers: all authorization state is read per-call from `RequestContext`.
  * @param agent - Target Mastra agent instance
  */
 export function wrapAgentDiscovery(agent: MastraAgent): void {
-  wrapDiscoveryMethod(agent, "listTools", (tool) => {
-    concealToolInstanceDependencies(tool);
-  });
+  wrapDiscoveryMethod(agent, "listTools", concealToolInstanceDependencies);
   wrapDiscoveryMethod(agent, "listAgents", (subAgent) => {
     if (subAgent instanceof MastraAgent) {
       wrapAgentDiscovery(subAgent);
     }
   });
   wrapDiscoveryMethod(agent, "listWorkflows");
+  wrapExecutionToolFieldMethod(
+    agent,
+    "listToolsets",
+    "toolsets",
+    filterToolsetsMap,
+  );
+  wrapExecutionToolFieldMethod(
+    agent,
+    "listClientTools",
+    "clientTools",
+    (clientTools, options) =>
+      filterAuthorizedRecord(
+        clientTools,
+        options,
+        concealToolInstanceDependencies,
+      ),
+  );
+  installLockedMethodWrapper(agent, "getDefaultOptions", (currentMethod) => {
+    return function (this: MastraAgent, ...args: unknown[]) {
+      const raw = currentMethod.apply(this, args);
+      if (isPromiseLike(raw)) {
+        return Promise.resolve(raw).then((resolved) =>
+          filterDefaultOptionsCapabilities(resolved, args[0]),
+        );
+      }
+      return filterDefaultOptionsCapabilities(raw, args[0]);
+    };
+  });
 
   const currentFork = Reflect.get(agent, "__fork") as
     | ((() => MastraAgent) & { [WRAPPED_AGENT_FORK]?: true })

@@ -498,16 +498,31 @@ describe("Agent @Can discovery filtering and Tool provider discovery", () => {
         null,
         async () => {
           recordedSupervisorTools.length = 0;
-          await supervisor.generate("What can you do?");
+          await supervisor.generate("What can you do?", {
+            toolsets: {
+              extraToolset: {
+                extraProtected: publishArticleTool,
+                extraPublic: publicEchoTool,
+              },
+            },
+            clientTools: {
+              clientProtected: publishArticleTool,
+              clientPublic: publicEchoTool,
+            },
+          });
           expect(recordedSupervisorTools[0]).toEqual(
             expect.arrayContaining([
               "publicEcho",
               "plainCalc",
+              "extraPublic",
+              "clientPublic",
               "agent-generalHelper",
               "workflow-summaryWorkflow",
             ]),
           );
           expect(recordedSupervisorTools[0]).not.toContain("publishArticle");
+          expect(recordedSupervisorTools[0]).not.toContain("extraProtected");
+          expect(recordedSupervisorTools[0]).not.toContain("clientProtected");
           expect(recordedSupervisorTools[0]).not.toContain("tenantArticle");
           expect(recordedSupervisorTools[0]).not.toContain(
             "agent-billingSpecialist",
@@ -572,6 +587,14 @@ describe("Agent @Can discovery filtering and Tool provider discovery", () => {
           recordedSupervisorTools.length = 0;
           await supervisor.generate("Run full suite", {
             requestContext: acmeCtx,
+            toolsets: {
+              extraToolset: {
+                extraProtected: publishArticleTool,
+              },
+            },
+            clientTools: {
+              clientProtected: publishArticleTool,
+            },
           });
           expect(recordedSupervisorTools[0]).toEqual(
             expect.arrayContaining([
@@ -579,6 +602,8 @@ describe("Agent @Can discovery filtering and Tool provider discovery", () => {
               "publishArticle",
               "tenantArticle",
               "plainCalc",
+              "extraProtected",
+              "clientProtected",
               "agent-generalHelper",
               "agent-billingSpecialist",
               "workflow-summaryWorkflow",
@@ -903,6 +928,100 @@ describe("Agent @Can discovery filtering and Tool provider discovery", () => {
             "nullProto",
             "asyncAllowed",
           ]);
+
+          // getDefaultOptions() stays synchronous when no toolsets/clientTools are present,
+          // and filters static & dynamic defaultOptions.toolsets and clientTools
+          const plainDefaultOptsAgent = new MastraAgent({
+            id: "plain-default-opts-agent",
+            name: "Plain Default Opts Agent",
+            instructions: "Tests sync defaultOptions passthrough",
+            model: "openai/gpt-4o-mini",
+            defaultOptions: { maxSteps: 3 },
+          });
+          wrapAgentDiscovery(plainDefaultOptsAgent);
+          expect(plainDefaultOptsAgent.getDefaultOptions()).toEqual({
+            maxSteps: 3,
+          });
+
+          const staticDefaultOptsAgent = new MastraAgent({
+            id: "static-default-opts-agent",
+            name: "Static Default Opts Agent",
+            instructions: "Tests static defaultOptions filtering",
+            model: "openai/gpt-4o-mini",
+            defaultOptions: {
+              maxSteps: 3,
+              toolsets: {
+                emptySet: {},
+                mixedSet: {
+                  denied: new UndefinedStaticSubjectTool(),
+                  allowed: nullProtoStructuralTool as never,
+                },
+              },
+              clientTools: {
+                deniedClient: new UndefinedStaticSubjectTool(),
+                allowedClient: nullProtoStructuralTool as never,
+              },
+            },
+          });
+          wrapAgentDiscovery(staticDefaultOptsAgent);
+          const filteredStaticOpts =
+            await staticDefaultOptsAgent.getDefaultOptions();
+          expect(
+            Object.keys(
+              (
+                filteredStaticOpts as {
+                  toolsets: { mixedSet: Record<string, unknown> };
+                }
+              ).toolsets.mixedSet,
+            ),
+          ).toEqual(["allowed"]);
+          expect(
+            Object.keys(
+              (filteredStaticOpts as { clientTools: Record<string, unknown> })
+                .clientTools,
+            ),
+          ).toEqual(["allowedClient"]);
+
+          const asyncDefaultOptsAgent = new MastraAgent({
+            id: "async-default-opts-agent",
+            name: "Async Default Opts Agent",
+            instructions: "Tests async defaultOptions filtering",
+            model: "openai/gpt-4o-mini",
+            defaultOptions: () =>
+              Promise.resolve({
+                toolsets: {
+                  asyncSet: {
+                    asyncAllowed: new AsyncAuthorizedCallbackTool(),
+                    asyncDenied: new AsyncUnauthorizedCallbackTool(),
+                  },
+                },
+                clientTools: {
+                  asyncAllowedClient: new AsyncAuthorizedCallbackTool(),
+                  asyncDeniedClient: new AsyncUnauthorizedCallbackTool(),
+                },
+              }),
+          });
+          wrapAgentDiscovery(asyncDefaultOptsAgent);
+          const resolvedAsyncDefaults =
+            await asyncDefaultOptsAgent.getDefaultOptions();
+          expect(
+            Object.keys(
+              (
+                resolvedAsyncDefaults as {
+                  toolsets: { asyncSet: Record<string, unknown> };
+                }
+              ).toolsets.asyncSet,
+            ),
+          ).toEqual(["asyncAllowed"]);
+          expect(
+            Object.keys(
+              (
+                resolvedAsyncDefaults as {
+                  clientTools: Record<string, unknown>;
+                }
+              ).clientTools,
+            ),
+          ).toEqual(["asyncAllowedClient"]);
 
           // Sync throw after an async rejecting callback does not leak an unhandledRejection
           const unhandled: unknown[] = [];
