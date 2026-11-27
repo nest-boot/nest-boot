@@ -42,10 +42,19 @@ buildAbility: ({ builder, permissions }) => {
 
 ## Base Classes
 
-- `BaseAgent` — injectable Mastra `Agent` subclass with automatic kebab-case `id` derivation.
-- `BaseTool(definition)` — injectable Mastra `Tool` class factory preserving native input/output validation and `super(options)` runtime configuration.
+- `BaseAgent` — injectable Mastra `Agent` subclass with automatic kebab-case `id` derivation and automatic exposure-time tool authorization filtering.
+- `BaseTool(definition)` — injectable Mastra `Tool` class factory preserving native input/output validation, `super(options)` runtime configuration, and NestJS Guard authorization (`@Can`, `@Public`, `@UseGuards`, `APP_GUARD`).
 - `BaseStep(schemas)` — injectable workflow `Step` class factory with full static schema typing.
 - `BaseWorkflow(schemas)` — injectable Mastra `Workflow` class factory with lifecycle hooks (`onStart`, `onFinish`, `onError`) and NestJS DI-safe `commit()`.
+
+## Tool Authorization
+
+Singleton `BaseTool` (and Mastra `Tool`) providers are automatically discovered by `MastraManager`, registered in `Mastra`, and protected at two layers via NestJS `ExternalContextCreator`:
+
+1. **Exposure-time filtering (`"mastra:tool:discovery"`)** — `agent.listTools()` (used by `generate()`, `stream()`, Studio, and `/api/mastra/agents/*`) and `/api/mastra/tools*` automatically hide tools whose authentication, static `@Can(action, Subject)`, or `@UseGuards(...)` checks deny access.
+2. **Execution-time enforcement (`"mastra:tool:execution"`)** — `tool.execute(...)` runs the full NestJS Guard pipeline (including dynamic `@Can(action, (self, input, context) => ...)` callbacks receiving the schema-validated `input` and tool `context`) before executing the tool body.
+
+Global `APP_GUARD` enhancers (such as `@nest-boot/auth`'s `AuthGuard`) run on both context types, matching `@nestjs/graphql`. Custom `APP_GUARD` implementations that inspect transport-specific objects (e.g. `switchToHttp().getRequest()`) should branch on `context.getType()`. Always read caller identity and permissions from `@nest-boot/auth` (`AuthContext` / `@nest-boot/request-context`); Mastra's `context.requestContext` carries untrusted caller-supplied parameters.
 
 ## Environment Variables
 

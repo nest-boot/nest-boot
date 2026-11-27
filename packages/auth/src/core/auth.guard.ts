@@ -58,13 +58,24 @@ export class AuthGuard implements CanActivate {
     if (!metadata?.length) {
       return true;
     }
+    const isDiscovery = this.isMastraDiscoveryContext(context);
     for (const requirement of metadata) {
       // Require a prepared identity before resolving a protected subject.
       getAuthAbility();
-      const subject = requirement.subjectCallback
-        ? await this.resolveSubject(requirement.subjectCallback, context)
-        : requirement.subject;
-      if (!can(requirement.action, subject)) {
+      if (requirement.subjectCallback) {
+        if (isDiscovery) {
+          continue;
+        }
+        const subject = await this.resolveSubject(
+          requirement.subjectCallback,
+          context,
+        );
+        if (!can(requirement.action, subject)) {
+          return false;
+        }
+        continue;
+      }
+      if (!can(requirement.action, requirement.subject)) {
         return false;
       }
     }
@@ -139,7 +150,27 @@ export class AuthGuard implements CanActivate {
       return await this.createRouteArguments(context, routeArgsMetadata);
     }
 
+    if (this.isMastraExecutionContext(context)) {
+      return [...context.getArgs()];
+    }
+
     return [];
+  }
+
+  private isMastraDiscoveryContext(context: ExecutionContext): boolean {
+    if (typeof context.getType !== "function") {
+      return false;
+    }
+    const type = context.getType<string>();
+    return type.startsWith("mastra:") && type.endsWith(":discovery");
+  }
+
+  private isMastraExecutionContext(context: ExecutionContext): boolean {
+    if (typeof context.getType !== "function") {
+      return false;
+    }
+    const type = context.getType<string>();
+    return type.startsWith("mastra:") && type.endsWith(":execution");
   }
 
   private getRouteArgsMetadata(
