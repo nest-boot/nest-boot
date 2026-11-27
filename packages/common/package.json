@@ -6,7 +6,7 @@
     "url": "https://github.com/nest-boot/nest-boot.git",
     "directory": "packages/common"
   },
-  "description": "Shared decorators and metadata constants for Nest Boot applications",
+  "description": "Shared decorators and dynamic controller utilities for Nest Boot applications",
   "author": {
     "name": "Xudong Huang",
     "email": "me@huangxudong.com",
@@ -43,16 +43,21 @@
     "@nest-boot/eslint": "workspace:^",
     "@nest-boot/tsconfig": "workspace:^",
     "@nestjs/common": "^12.6.2",
+    "@nestjs/core": "^12.6.2",
+    "@nestjs/platform-express": "^12.6.2",
+    "@nestjs/testing": "^12.6.2",
     "@types/node": "^24.0.0",
     "@vitest/coverage-v8": "^5.1.1",
     "eslint": "^9.39.3",
     "reflect-metadata": "^0.2.2",
+    "rxjs": "^7.8.2",
     "typescript": "^6.0.3",
     "vite": "^8.3.8",
     "vitest": "^5.1.1"
   },
   "peerDependencies": {
     "@nestjs/common": "^12.0.0",
+    "@nestjs/core": "^12.0.0",
     "reflect-metadata": "^0.2.2"
   },
   "publishConfig": {

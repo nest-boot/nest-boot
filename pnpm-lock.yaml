@@ -789,6 +789,15 @@ importers:
       '@nestjs/common':
         specifier: ^12.6.2
         version: 12.6.2
+      '@nestjs/core':
+        specifier: ^12.6.2
+        version: 12.6.2
+      '@nestjs/platform-express':
+        specifier: ^12.6.2
+        version: 12.6.2
+      '@nestjs/testing':
+        specifier: ^12.6.2
+        version: 12.6.2
       '@types/node':
         specifier: ^24.0.0
         version: 24.19.0
@@ -801,6 +810,9 @@ importers:
       reflect-metadata:
         specifier: ^0.2.2
         version: 0.2.2
+      rxjs:
+        specifier: ^7.8.2
+        version: 7.8.2
       typescript:
         specifier: ^6.0.3
         version: 6.0.3
