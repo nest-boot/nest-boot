@@ -24,6 +24,7 @@
     "!dist/**/*.tsbuildinfo"
   ],
   "dependencies": {
+    "@nest-boot/common": "workspace:^",
     "cookie": "^2.0.1",
     "graphql-type-json": "^0.3.2",
     "sonyflake-js": "^1.0.1"

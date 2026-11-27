@@ -613,6 +613,9 @@ importers:
 
   packages/auth:
     dependencies:
+      '@nest-boot/common':
+        specifier: workspace:^
+        version: link:../common
       cookie:
         specifier: ^2.0.1
         version: 2.0.1
@@ -774,6 +777,39 @@ importers:
       vitest:
         specifier: ^5.1.1
         version: 5.1.1
+
+  packages/common:
+    devDependencies:
+      '@nest-boot/eslint':
+        specifier: workspace:^
+        version: link:../eslint
+      '@nest-boot/tsconfig':
+        specifier: workspace:^
+        version: link:../tsconfig
+      '@nestjs/common':
+        specifier: ^12.6.2
+        version: 12.6.2
+      '@types/node':
+        specifier: ^24.0.0
+        version: 24.19.0
+      '@vitest/coverage-v8':
+        specifier: ^5.1.1
+        version: 5.1.2
+      eslint:
+        specifier: ^9.39.3
+        version: 9.39.3
+      reflect-metadata:
+        specifier: ^0.2.2
+        version: 0.2.2
+      typescript:
+        specifier: ^6.0.3
+        version: 6.0.3
+      vite:
+        specifier: ^8.3.8
+        version: 8.3.8
+      vitest:
+        specifier: ^5.1.1
+        version: 5.1.2
 
   packages/crypt:
     devDependencies:
@@ -1589,6 +1625,9 @@ importers:
 
   packages/jwt:
     dependencies:
+      '@nest-boot/common':
+        specifier: workspace:^
+        version: link:../common
       '@nest-boot/crypt':
         specifier: workspace:^
         version: link:../crypt

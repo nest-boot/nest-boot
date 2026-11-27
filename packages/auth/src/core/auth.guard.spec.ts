@@ -1,6 +1,7 @@
 import { AbilityBuilder, subject as caslSubject } from "@casl/ability";
 import { EntityManager } from "@mikro-orm/core";
 import { ref } from "@mikro-orm/core";
+import { IS_PUBLIC_KEY } from "@nest-boot/common";
 import { RequestContext } from "@nest-boot/request-context";
 import {
   ExecutionContext,
@@ -40,10 +41,7 @@ import { AuthGuard } from "./auth.guard.js";
 import { MODULE_OPTIONS_TOKEN } from "./auth.module-definition.js";
 import * as abilityFactory from "./auth-ability.factory.js";
 import { AuthContext } from "./auth-context.js";
-import {
-  IS_PUBLIC_KEY,
-  SELECTED_WORKSPACE,
-} from "./constants/auth.constants.js";
+import { SELECTED_WORKSPACE } from "./constants/auth.constants.js";
 import { Session as BaseSession } from "./entities/session.entity.js";
 import { User as BaseUser } from "./entities/user.entity.js";
 import { type AuthModuleOptions } from "./interfaces/auth-module-options.interface.js";

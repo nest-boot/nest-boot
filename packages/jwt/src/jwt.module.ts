@@ -1,14 +1,25 @@
 import { DatabaseModule } from "@nest-boot/database";
-import { type DynamicModule, Global, Module } from "@nestjs/common";
+import { Controller, type DynamicModule, Global, Module } from "@nestjs/common";
 
 import { JwksController } from "./controllers/jwks.controller.js";
 import { Jwk } from "./entities/jwk.entity.js";
+import type { JwtModuleOptions } from "./interfaces/jwt-module-options.interface.js";
 import {
   ASYNC_OPTIONS_TYPE,
   ConfigurableModuleClass,
+  MODULE_OPTIONS_TOKEN,
   OPTIONS_TYPE,
 } from "./jwt.module-definition.js";
 import { JwtService } from "./services/jwt.service.js";
+import { resolveJwksOptions } from "./utils/resolve-jwks-options.js";
+
+const JWKS_CONTROLLER_CONFIG = Symbol("JWKS_CONTROLLER_CONFIG");
+const UNSUPPORTED_ENHANCER_METADATA_KEYS = [
+  "__guards__",
+  "__interceptors__",
+  "__pipes__",
+  "__exceptionFilters__",
+] as const;
 
 /** Signs and verifies application JWTs using database-backed signing keys. */
 @Global()
@@ -24,10 +35,7 @@ export class JwtModule extends ConfigurableModuleClass {
    * @returns Dynamic JWT module.
    */
   static override forRoot(options: typeof OPTIONS_TYPE = {}): DynamicModule {
-    return {
-      ...super.forRoot(options),
-      controllers: [class extends JwksController {}],
-    };
+    return this.withController(super.forRoot(options));
   }
 
   /**
@@ -38,9 +46,39 @@ export class JwtModule extends ConfigurableModuleClass {
   static override forRootAsync(
     options: typeof ASYNC_OPTIONS_TYPE,
   ): DynamicModule {
+    return this.withController(super.forRootAsync(options));
+  }
+
+  private static withController(dynamicModule: DynamicModule): DynamicModule {
+    const controller = class extends JwksController {};
+    Object.defineProperty(controller, "name", { value: JwksController.name });
+
     return {
-      ...super.forRootAsync(options),
-      controllers: [class extends JwksController {}],
+      ...dynamicModule,
+      controllers: [controller],
+      providers: [
+        ...(dynamicModule.providers ?? []),
+        {
+          provide: JWKS_CONTROLLER_CONFIG,
+          inject: [MODULE_OPTIONS_TOKEN],
+          useFactory: (options: JwtModuleOptions) => {
+            const jwks = resolveJwksOptions(options.jwks);
+            Controller(jwks.path)(controller);
+            for (const decorator of jwks.decorators) {
+              decorator(controller);
+            }
+            if (
+              UNSUPPORTED_ENHANCER_METADATA_KEYS.some((key) =>
+                Reflect.hasOwnMetadata(key, controller),
+              )
+            ) {
+              throw new Error(
+                "JWKS decorators only support metadata decorators; Nest enhancers (@UseGuards, @UseInterceptors, @UsePipes, @UseFilters) are not supported",
+              );
+            }
+          },
+        },
+      ],
     };
   }
 }

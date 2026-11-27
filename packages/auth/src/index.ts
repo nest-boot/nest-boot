@@ -81,7 +81,6 @@ export * from "./api-key/utils/extract-api-key.util.js";
 export { AuthAbility } from "./common/auth.ability.js";
 export * from "./common/constants/permission.constants.js";
 export * from "./common/decorators/can.decorator.js";
-export * from "./common/decorators/public.decorator.js";
 export * from "./common/interfaces/ability-context.interface.js";
 export * from "./common/interfaces/route-argument-metadata-value.interface.js";
 export * from "./common/interfaces/scope-policy-options.interface.js";
@@ -99,10 +98,7 @@ export { entities, workspaceEntities } from "./core/auth-entities.js";
 export * from "./core/connections/account.connection-definition.js";
 export * from "./core/connections/session.connection-definition.js";
 export * from "./core/connections/user.connection-definition.js";
-export {
-  IS_PUBLIC_KEY,
-  SELECTED_WORKSPACE,
-} from "./core/constants/auth.constants.js";
+export { SELECTED_WORKSPACE } from "./core/constants/auth.constants.js";
 export * from "./core/constants/user.constants.js";
 export * from "./core/decorators/auth-session.decorator.js";
 export * from "./core/decorators/auth-user.decorator.js";

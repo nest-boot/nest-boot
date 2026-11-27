@@ -6,14 +6,12 @@ import { UserApiKeyService } from "./api-key/services/user-api-key.service.js";
 import { WorkspaceApiKeyService } from "./api-key/services/workspace-api-key.service.js";
 import { AuthAbility } from "./common/auth.ability.js";
 import { Can } from "./common/decorators/can.decorator.js";
-import { Public } from "./common/decorators/public.decorator.js";
 import { authorize } from "./common/utils/authorize.util.js";
 import { can } from "./common/utils/can.util.js";
 import { getAuthAbility } from "./common/utils/get-auth-ability.util.js";
 import { AuthGuard } from "./core/auth.guard.js";
 import { AuthMiddleware } from "./core/auth.middleware.js";
 import { AuthModule } from "./core/auth.module.js";
-import { IS_PUBLIC_KEY } from "./core/constants/auth.constants.js";
 import { Account } from "./core/entities/account.entity.js";
 import { Session } from "./core/entities/session.entity.js";
 import { User } from "./core/entities/user.entity.js";
@@ -259,7 +257,6 @@ describe("public API", () => {
   });
   it("should export auth modules, services, decorators, and entities", () => {
     expect(publicApi.UserService).toBe(UserService);
-    expect(publicApi.IS_PUBLIC_KEY).toBe(IS_PUBLIC_KEY);
     expect(publicApi.WorkspaceApiKeyService).toBe(WorkspaceApiKeyService);
     expect(publicApi.AuthGuard).toBe(AuthGuard);
     expect(publicApi.AuthMiddleware).toBe(AuthMiddleware);
@@ -269,7 +266,6 @@ describe("public API", () => {
     expect(publicApi.AuthApiKey).toBe(AuthApiKey);
     expect(publicApi.SelectedWorkspace).toBe(SelectedWorkspace);
     expect(publicApi.AuthWorkspaceMember).toBe(AuthWorkspaceMember);
-    expect(publicApi.Public).toBe(Public);
     expect(publicApi.Account).toBe(Account);
     expect(publicApi.WorkspaceApiKey).toBe(WorkspaceApiKey);
     expect(publicApi.Session).toBe(Session);
@@ -685,9 +681,8 @@ describe("exported input contracts", () => {
   });
 });
 
-describe("public decorator exports", () => {
-  it("exports the public and current-identity decorators", () => {
-    expect(publicApi.Public).toBe(Public);
+describe("current-identity decorator exports", () => {
+  it("exports the current-identity decorators", () => {
     for (const name of [
       "AuthSession",
       "AuthUser",

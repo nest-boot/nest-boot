@@ -1,13 +1,19 @@
 import { MikroORM } from "@mikro-orm/core";
 import { type MikroORM as PgliteORM, PgliteDriver } from "@mikro-orm/pglite";
+import { IS_PUBLIC_KEY, Public } from "@nest-boot/common";
 import { DatabaseModule } from "@nest-boot/database";
 import {
   type CanActivate,
+  Controller,
+  type ExecutionContext,
+  Get,
   type INestApplication,
+  Injectable,
   SetMetadata,
   UnauthorizedException,
   UseGuards,
 } from "@nestjs/common";
+import { APP_GUARD, Reflector } from "@nestjs/core";
 import { Test } from "@nestjs/testing";
 import { decodeJwt, decodeProtectedHeader } from "jose";
 
@@ -21,6 +27,30 @@ import { resolveJwksOptions } from "../../src/utils/resolve-jwks-options.js";
 class DenyGuard implements CanActivate {
   canActivate(): boolean {
     return false;
+  }
+}
+
+@Injectable()
+class PublicAwareGlobalGuard implements CanActivate {
+  constructor(private readonly reflector: Reflector) {}
+
+  canActivate(context: ExecutionContext): boolean {
+    const isPublic = this.reflector.getAllAndOverride<boolean>(IS_PUBLIC_KEY, [
+      context.getHandler(),
+      context.getClass(),
+    ]);
+    if (!isPublic) {
+      throw new UnauthorizedException("Authentication is required");
+    }
+    return true;
+  }
+}
+
+@Controller("protected")
+class ProtectedController {
+  @Get()
+  getProtected(): { ok: boolean } {
+    return { ok: true };
   }
 }
 
@@ -51,19 +81,29 @@ describe("standalone JWT module", () => {
   });
 
   it.each([false, true])(
-    "uses the configured JWKS controller path and metadata decorator (async options: %s)",
+    "marks the JWKS controller with @Public() by default and supports custom decorators (async options: %s)",
     async (asyncOptions) => {
       const path = "/keys/public.json";
-      let isPublicMetadata: unknown;
+      let skipThrottleMetadata: unknown;
       const url = await createApp(
         {
           issuer: "http://localhost",
           jwks: {
             path,
-            controllerDecorator: (target) => {
-              SetMetadata("isPublic", true)(target);
-              isPublicMetadata = Reflect.getMetadata("isPublic", target);
-            },
+            ...(asyncOptions
+              ? {
+                  decorators: [
+                    Public(),
+                    (target) => {
+                      SetMetadata("skipThrottle", true)(target);
+                      skipThrottleMetadata = Reflect.getMetadata(
+                        "skipThrottle",
+                        target,
+                      );
+                    },
+                  ],
+                }
+              : {}),
           },
         },
         "api",
@@ -75,25 +115,27 @@ describe("standalone JWT module", () => {
           vi.spyOn(jwt, "getJwks").mockResolvedValue({ keys: [] });
           return Promise.resolve();
         },
+        true,
       );
-      expect(isPublicMetadata).toBe(true);
+      if (asyncOptions) {
+        expect(skipThrottleMetadata).toBe(true);
+      }
       const jwks = await fetch(`${url}${path}`);
       expect(jwks.status).toBe(200);
       expect(await jwks.json()).toEqual({ keys: [] });
+      expect((await fetch(`${url}/api/protected`)).status).toBe(401);
       expect((await fetch(`${url}/api${path}`)).status).toBe(404);
       expect((await fetch(`${url}/.well-known/jwks.json`)).status).toBe(404);
     },
   );
 
-  it("rejects Nest enhancers in jwks.controllerDecorator", async () => {
+  it("rejects Nest enhancers in jwks.decorators", async () => {
     await expect(
       createApp({
         issuer: "http://localhost",
-        jwks: { controllerDecorator: UseGuards(DenyGuard) },
+        jwks: { decorators: [Public(), UseGuards(DenyGuard)] },
       }),
-    ).rejects.toThrow(
-      "JWKS controllerDecorator only supports metadata decorators",
-    );
+    ).rejects.toThrow("JWKS decorators only support metadata decorators");
     expect(JwksController).toBeDefined();
   });
 
@@ -359,6 +401,9 @@ describe("standalone JWT module", () => {
     expect(() => resolveJwksOptions({ path: "relative/path" })).toThrow(
       "JWKS path must be a literal absolute path",
     );
+    expect(() => resolveJwksOptions({ decorators: ["bad" as never] })).toThrow(
+      "JWKS decorators must be an array of class decorators",
+    );
     expect(() => resolveJwksOptions({ alg: "RS256" as never })).toThrow(
       "JWKS alg must be Ed25519, ES256, or ES512",
     );
@@ -389,6 +434,7 @@ describe("standalone JWT module", () => {
    * @param asyncOptions - Whether to configure JWT asynchronously.
    * @param exclude - Host prefix exclusions.
    * @param beforePrefix - Optional callback before setting the global prefix.
+   * @param withGlobalGuard - Whether to register an `IS_PUBLIC_KEY`-aware global guard.
    * @returns URL of the listening server.
    */
   async function createApp(
@@ -397,6 +443,7 @@ describe("standalone JWT module", () => {
     asyncOptions = false,
     exclude: string[] = [],
     beforePrefix?: (app: INestApplication) => Promise<void>,
+    withGlobalGuard = false,
   ) {
     const options = { secret, ...overrides };
     const module = await Test.createTestingModule({
@@ -412,6 +459,14 @@ describe("standalone JWT module", () => {
             })
           : JwtModule.forRoot(options),
       ],
+      ...(withGlobalGuard
+        ? {
+            controllers: [ProtectedController],
+            providers: [
+              { provide: APP_GUARD, useClass: PublicAwareGlobalGuard },
+            ],
+          }
+        : {}),
     }).compile();
     app = module.createNestApplication();
     app.useLogger(false);

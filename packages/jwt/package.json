@@ -89,6 +89,7 @@
     "./package.json": "./package.json"
   },
   "dependencies": {
+    "@nest-boot/common": "workspace:^",
     "@nest-boot/crypt": "workspace:^",
     "jose": "^6.2.12"
   }

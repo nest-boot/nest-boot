@@ -1,3 +1,5 @@
+import { Public } from "@nest-boot/common";
+
 import type { JwksOptions } from "../interfaces/jwks-options.interface.js";
 import type { JwtAlgorithm } from "../types/jwt-algorithm.type.js";
 
@@ -5,9 +7,7 @@ const thirtyDays = 60 * 60 * 24 * 30;
 const literalPath = /^\/(?:[A-Za-z0-9_~.-]+\/)*[A-Za-z0-9_~.-]+$/;
 const allowedAlgorithms = new Set<JwtAlgorithm>(["Ed25519", "ES256", "ES512"]);
 
-export type ResolvedJwksOptions = Required<
-  Omit<JwksOptions, "controllerDecorator">
->;
+export type ResolvedJwksOptions = Required<JwksOptions>;
 
 /**
  * Resolves JWKS configuration shared by signing, verification, and routing.
@@ -19,6 +19,7 @@ export function resolveJwksOptions(
 ): ResolvedJwksOptions {
   const {
     path = "/.well-known/jwks.json",
+    decorators = [Public()],
     alg = "Ed25519",
     rotationInterval = thirtyDays,
     gracePeriod = thirtyDays,
@@ -30,6 +31,12 @@ export function resolveJwksOptions(
     /(?:^|\/)\.{1,2}(?:\/|$)/.test(path)
   ) {
     throw new Error("JWKS path must be a literal absolute path");
+  }
+  if (
+    !Array.isArray(decorators) ||
+    decorators.some((decorator) => typeof decorator !== "function")
+  ) {
+    throw new Error("JWKS decorators must be an array of class decorators");
   }
   if (!allowedAlgorithms.has(alg)) {
     throw new Error("JWKS alg must be Ed25519, ES256, or ES512");
@@ -44,5 +51,5 @@ export function resolveJwksOptions(
       "JWKS gracePeriod must be a non-negative number of seconds",
     );
   }
-  return { path, alg, rotationInterval, gracePeriod };
+  return { path, decorators, alg, rotationInterval, gracePeriod };
 }

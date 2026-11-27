@@ -1,5 +1,7 @@
 ---
+"@nest-boot/common": patch
 "@nest-boot/jwt": patch
+"@nest-boot/auth": minor
 ---
 
-Add a standalone JWT module backed by `jose`, with signing, verification, a public JWKS controller, and database-backed signing key rotation.
+Move `Public` and `IS_PUBLIC_KEY` into a new `@nest-boot/common` package, and add a standalone `@nest-boot/jwt` module backed by `jose` with mandatory database-backed signing key rotation and a JWKS controller defaulting `jwks.decorators` to `[Public()]`.

@@ -22,7 +22,8 @@ to Ed25519, with 30 days each for the rotation interval and the grace period.
 
 Keep the JWKS route outside the global prefix when using the default well-known
 path. Use `app.get(JwtService).jwksPath` in the host application's prefix exclusions.
-If the host uses a global authentication guard, supply its public-route metadata
-decorator in `jwks.controllerDecorator`.
+`jwks.decorators` defaults to `[Public()]` from `@nest-boot/common` so global
+authentication guards allow access automatically; pass additional request-time
+metadata decorators (for example `[Public(), SkipThrottle()]`) when needed.
 
 The `jwk` table inherits the application's default database table privileges.

@@ -1,6 +1,6 @@
+import { Public } from "@nest-boot/common";
 import { Args, ID, Mutation, Query, Resolver } from "@nest-boot/graphql";
 
-import { Public } from "../../common/decorators/public.decorator.js";
 import { getAuthAbility } from "../../common/utils/get-auth-ability.util.js";
 import { serializeAbilityRules } from "../../common/utils/serialize-ability-rules.util.js";
 import { AuthUser } from "../decorators/auth-user.decorator.js";

@@ -2,6 +2,7 @@ import { EntityManager, type Opt, t } from "@mikro-orm/core";
 import { Entity, PrimaryKey, Property } from "@mikro-orm/decorators/legacy";
 import { MikroORM, PgliteDriver } from "@mikro-orm/pglite";
 import type { SqlEntityManager } from "@mikro-orm/sql";
+import { Public } from "@nest-boot/common";
 import { DatabaseModule } from "@nest-boot/database";
 import { HashService } from "@nest-boot/hash";
 import { Mailer } from "@nest-boot/mailer";
@@ -27,7 +28,6 @@ import {
 } from "../../src/api-key/entities/api-key.entity.js";
 import { SystemAccount } from "../../src/api-key/entities/system-account.entity.js";
 import { hashApiKey } from "../../src/api-key/utils/api-key-credential.util.js";
-import { Public } from "../../src/common/decorators/public.decorator.js";
 import { workspaceScopePolicy } from "../../src/common/policies/workspace-scope.policy.js";
 import { authorize } from "../../src/common/utils/authorize.util.js";
 import { AuthGuard } from "../../src/core/auth.guard.js";

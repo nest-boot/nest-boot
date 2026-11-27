@@ -6,10 +6,13 @@ export interface JwksOptions {
   path?: string;
 
   /**
-   * Optional metadata decorator for the JWKS controller, such as a public-route decorator.
-   * Nest enhancers (`@UseGuards`, `@UseInterceptors`, `@UsePipes`, `@UseFilters`) are not supported.
+   * Class decorators applied to the JWKS controller, defaulting to `[Public()]`.
+   *
+   * Only metadata decorators read at request time (such as `Public()` or `SkipThrottle()`)
+   * are supported; Nest enhancers (`@UseGuards`, `@UseInterceptors`, `@UsePipes`, `@UseFilters`)
+   * are not supported.
    */
-  controllerDecorator?: ClassDecorator;
+  decorators?: ClassDecorator[];
 
   /** Signing key algorithm, defaulting to `"Ed25519"`. */
   alg?: JwtAlgorithm;
