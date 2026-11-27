@@ -45,32 +45,36 @@ describe("I18nModule - e2e", () => {
     await Promise.all(apps.splice(0).map((app) => app.close()));
   });
 
-  it("supports direct static module import with global I18N injection", async () => {
-    const app = await createApp(I18nModule);
+  it("isolates bare I18nModule from resources configured by an earlier or concurrent application", async () => {
+    const configuredApp = await createApp(I18nModule.forRoot(createOptions()));
+    const defaultApp = await createApp(I18nModule);
 
-    const response = await request(app.getHttpServer())
-      .get("/translations")
-      .expect(200);
-
-    expect(response.body).toEqual({
-      injected: "greeting",
-      language: "en",
-      requestScoped: "greeting",
-    });
-  });
-
-  it("detects the request language and exposes it through RequestContext", async () => {
-    const app = await createApp(I18nModule.forRoot(createOptions()));
-
-    const response = await request(app.getHttpServer())
+    const configuredResponse = await request(configuredApp.getHttpServer())
       .get("/translations")
       .set("accept-language", "de")
       .expect(200);
+    const defaultGermanResponse = await request(defaultApp.getHttpServer())
+      .get("/translations")
+      .set("accept-language", "de")
+      .expect(200);
+    const defaultFallbackResponse = await request(defaultApp.getHttpServer())
+      .get("/translations")
+      .expect(200);
 
-    expect(response.body).toEqual({
+    expect(configuredResponse.body).toEqual({
       injected: "Hello",
       language: "de",
       requestScoped: "Hallo",
+    });
+    expect(defaultGermanResponse.body).toEqual({
+      injected: "greeting",
+      language: "de",
+      requestScoped: "greeting",
+    });
+    expect(defaultFallbackResponse.body).toEqual({
+      injected: "greeting",
+      language: "en",
+      requestScoped: "greeting",
     });
   });
 

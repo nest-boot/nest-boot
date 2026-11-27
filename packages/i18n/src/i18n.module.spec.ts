@@ -1,16 +1,25 @@
 const mocks = vi.hoisted(() => ({
+  createInstance: vi.fn(),
   init: vi.fn(() => Promise.resolve()),
   use: vi.fn(),
 }));
 
 vi.mock("i18next", () => {
-  const instance = {
-    init: mocks.init,
-    use: mocks.use,
+  const createMockInstance = () => {
+    const instance = {
+      init: mocks.init,
+      use: mocks.use,
+    };
+    mocks.use.mockReturnValue(instance);
+    return instance;
   };
-  mocks.use.mockReturnValue(instance);
+  mocks.createInstance.mockImplementation(createMockInstance);
 
-  return { default: instance };
+  return {
+    default: {
+      createInstance: mocks.createInstance,
+    },
+  };
 });
 
 vi.mock("i18next-fs-backend", () => ({
@@ -35,13 +44,16 @@ import type { I18nMiddleware } from "./i18n.middleware.js";
 import { I18nModule } from "./i18n.module.js";
 import { MODULE_OPTIONS_TOKEN } from "./i18n.module-definition.js";
 import type { I18nModuleOptions } from "./interfaces/i18n-module-options.interface.js";
+import { getDefaultI18nInstance } from "./utils/translation.js";
 
 describe("I18nModule", () => {
   beforeEach(() => {
+    mocks.createInstance.mockClear();
     mocks.init.mockClear();
+    mocks.use.mockClear();
   });
 
-  it("is decorated with @Global() and initializes i18next with defaults", async () => {
+  it("is decorated with @Global() and initializes a fresh i18next instance with defaults", async () => {
     const options: I18nModuleOptions = {
       lng: "de",
       resources: {
@@ -51,7 +63,9 @@ describe("I18nModule", () => {
     const provider = getI18nProvider();
 
     expect(Reflect.getMetadata(GLOBAL_MODULE_METADATA, I18nModule)).toBe(true);
-    await provider.useFactory();
+    const firstInstance = (await provider.useFactory()) as unknown;
+    expect(mocks.createInstance).toHaveBeenCalledOnce();
+    expect(getDefaultI18nInstance()).toBe(firstInstance);
     expect(mocks.init).toHaveBeenCalledWith({
       backend: {
         addPath: expect.stringContaining("locales/{{lng}}/{{ns}}.json"),
@@ -63,7 +77,9 @@ describe("I18nModule", () => {
     });
 
     mocks.init.mockClear();
-    await provider.useFactory(options);
+    const secondInstance = (await provider.useFactory(options)) as unknown;
+    expect(secondInstance).not.toBe(firstInstance);
+    expect(getDefaultI18nInstance()).toBe(secondInstance);
     expect(mocks.init).toHaveBeenCalledWith({
       backend: {
         addPath: expect.stringContaining("locales/{{lng}}/{{ns}}.json"),
@@ -111,11 +127,39 @@ describe("I18nModule", () => {
     const middlewareManager = { apply } as unknown as MiddlewareManager;
     const i18nMiddleware = {} as I18nMiddleware;
 
-    new I18nModule(middlewareManager, i18nMiddleware);
+    const moduleInstance = new I18nModule(middlewareManager, i18nMiddleware);
+    moduleInstance.onApplicationShutdown();
 
     expect(apply).toHaveBeenCalledWith(i18nMiddleware);
     expect(dependencies).toHaveBeenCalledWith(RequestContextMiddleware);
     expect(forRoutes).toHaveBeenCalledWith("*");
+  });
+
+  it("clears the default fallback instance only when owned by the shutting-down module", async () => {
+    const forRoutes = vi.fn();
+    const dependencies = vi.fn(() => ({ forRoutes }));
+    const apply = vi.fn(() => ({ dependencies }));
+    const middlewareManager = { apply } as unknown as MiddlewareManager;
+    const i18nMiddleware = {} as I18nMiddleware;
+    const provider = getI18nProvider();
+    const firstInstance = await provider.useFactory();
+    const secondInstance = await provider.useFactory();
+
+    const firstModule = new I18nModule(
+      middlewareManager,
+      i18nMiddleware,
+      firstInstance as never,
+    );
+    firstModule.onApplicationShutdown();
+    expect(getDefaultI18nInstance()).toBe(secondInstance);
+
+    const secondModule = new I18nModule(
+      middlewareManager,
+      i18nMiddleware,
+      secondInstance as never,
+    );
+    secondModule.onApplicationShutdown();
+    expect(getDefaultI18nInstance()).toBeUndefined();
   });
 });
 
