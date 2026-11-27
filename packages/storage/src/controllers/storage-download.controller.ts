@@ -7,13 +7,11 @@ import {
   Redirect,
 } from "@nestjs/common";
 
-import {
-  STORAGE_DOWNLOAD_PATH,
-  StorageDownloadService,
-} from "../services/storage-download.service.js";
+import { StorageDownloadService } from "../services/storage-download.service.js";
+import { DEFAULT_STORAGE_DOWNLOAD_PATH } from "../utils/resolve-storage-download-path.util.js";
 
 /** Validates storage download requests and redirects to S3. */
-@Controller(STORAGE_DOWNLOAD_PATH)
+@Controller(DEFAULT_STORAGE_DOWNLOAD_PATH)
 export class StorageDownloadController {
   constructor(private readonly downloads: StorageDownloadService) {}
 

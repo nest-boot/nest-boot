@@ -8,10 +8,7 @@ import {
 
 import { StorageDownloadController } from "./controllers/storage-download.controller.js";
 import { type StorageModuleOptions } from "./interfaces/storage-module-options.interface.js";
-import {
-  STORAGE_DOWNLOAD_PATH,
-  StorageDownloadService,
-} from "./services/storage-download.service.js";
+import { StorageDownloadService } from "./services/storage-download.service.js";
 import { Storage } from "./storage.js";
 import {
   ASYNC_OPTIONS_TYPE,
@@ -20,6 +17,7 @@ import {
   OPTIONS_TYPE,
 } from "./storage.module-definition.js";
 import { loadStorageOptionsFromEnv } from "./utils/load-storage-options-from-env.util.js";
+import { resolveStorageDownloadPath } from "./utils/resolve-storage-download-path.util.js";
 
 const storageProvider: Provider<Storage> = {
   provide: Storage,
@@ -84,7 +82,7 @@ export class StorageModule extends StorageCoreModule {
           download?.enabled === false
             ? { path: [] }
             : {
-                path: STORAGE_DOWNLOAD_PATH,
+                path: resolveStorageDownloadPath(download?.path),
                 decorators: download?.controllerDecorator
                   ? [download.controllerDecorator]
                   : [],

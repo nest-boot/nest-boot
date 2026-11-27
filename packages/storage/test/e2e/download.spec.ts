@@ -15,7 +15,9 @@ it("keeps storage usable when the app has no JwtModule", async () => {
   const app = module.createNestApplication();
   try {
     await app.listen(0, "127.0.0.1");
-    const response = await fetch(`${await app.getUrl()}/storage/file.txt`);
+    const response = await fetch(
+      `${await app.getUrl()}/storage/download/file.txt`,
+    );
     expect(response.status).toBe(404);
     await expect(
       app.get(StorageDownloadService).createUrl("file.txt", "user:42"),
@@ -36,7 +38,7 @@ it.each([
 ])(
   "leaves the download path free when explicitly disabled",
   async (storageModule) => {
-    @Controller("storage")
+    @Controller("storage/download")
     class CustomStorageController {
       @Get("*key")
       getFile(): { custom: boolean } {
@@ -53,7 +55,9 @@ it.each([
     const app = module.createNestApplication();
     try {
       await app.listen(0, "127.0.0.1");
-      const response = await fetch(`${await app.getUrl()}/storage/file.txt`);
+      const response = await fetch(
+        `${await app.getUrl()}/storage/download/file.txt`,
+      );
       expect(response.status).toBe(200);
       await expect(response.json()).resolves.toEqual({ custom: true });
       await expect(
@@ -65,9 +69,13 @@ it.each([
   },
 );
 
-it.each(["direct", "sync", "async"] as const)(
-  "enables downloads by default with %s registration and follows the host prefix",
-  async (registration) => {
+it.each([
+  { registration: "direct", path: undefined, route: "storage/download" },
+  { registration: "sync", path: "/files/download/", route: "files/download" },
+  { registration: "async", path: "assets/signed", route: "assets/signed" },
+] as const)(
+  "mounts the $registration download route at $route under the host prefix",
+  async ({ registration, path: configuredPath, route }) => {
     vi.stubEnv("STORAGE_BUCKET", "files");
     const prefix = registration === "direct" ? "" : "gateway/api";
     const key = "nested/image #? %.png";
@@ -95,6 +103,7 @@ it.each(["direct", "sync", "async"] as const)(
       bucket: "files",
       download: {
         baseURL: "https://downloads.example.com",
+        path: configuredPath,
         resolveContentType: (key: string) =>
           key.endsWith(".png") ? "image/png" : null,
       },
@@ -118,7 +127,7 @@ it.each(["direct", "sync", "async"] as const)(
       }
       await app.listen(0, "127.0.0.1");
       const link = await downloads.createUrl(key, "user:42");
-      const path = `${prefix ? `/${prefix}` : ""}/storage/nested/image%20%23%3F%20%25.png`;
+      const path = `${prefix ? `/${prefix}` : ""}/${route}/nested/image%20%23%3F%20%25.png`;
       expect(link).toBe(
         `${registration === "direct" ? "" : options.download.baseURL}${path}?token=signed-token`,
       );
@@ -137,6 +146,14 @@ it.each(["direct", "sync", "async"] as const)(
       const url = new URL(`${path}?token=signed-token`, await app.getUrl());
       const response = await fetch(url, { redirect: "manual" });
       expect(response.status).toBe(302);
+      if (registration !== "direct") {
+        const defaultRoute = new URL(
+          `/${prefix}/storage/download/file.txt`,
+          await app.getUrl(),
+        );
+        expect((await fetch(defaultRoute)).status).toBe(404);
+        expect(downloads.keyFromUrl(defaultRoute.pathname)).toBeUndefined();
+      }
       expect(response.headers.get("location")).toBe(
         "https://files.example.com/image.png?signature=example",
       );
@@ -172,3 +189,17 @@ it.each(["direct", "sync", "async"] as const)(
     }
   },
 );
+
+it("rejects dynamic download paths during registration", async () => {
+  const module = Test.createTestingModule({
+    imports: [
+      StorageModule.register({
+        bucket: "files",
+        download: { path: "/files/:id" },
+      }),
+    ],
+  });
+  await expect(module.compile()).rejects.toThrow(
+    "Storage download path must contain only static URL segments",
+  );
+});

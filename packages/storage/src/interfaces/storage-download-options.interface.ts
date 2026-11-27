@@ -3,6 +3,9 @@ export interface StorageDownloadOptions {
   /** Mounts the download route and allows link signing. Defaults to true. */
   enabled?: boolean;
 
+  /** Static route path under the Nest global prefix. Defaults to `/storage/download`. */
+  path?: string;
+
   /** Public origin serving the download route. Defaults to root-relative links. */
   baseURL?: string;
 

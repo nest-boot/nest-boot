@@ -13,8 +13,8 @@ import type { StorageDownloadOptions } from "../interfaces/storage-download-opti
 import type { StorageModuleOptions } from "../interfaces/storage-module-options.interface.js";
 import { Storage } from "../storage.js";
 import { MODULE_OPTIONS_TOKEN } from "../storage.module-definition.js";
+import { resolveStorageDownloadPath } from "../utils/resolve-storage-download-path.util.js";
 
-export const STORAGE_DOWNLOAD_PATH = "storage";
 const scope = { type: "storage-download+jwt", audience: "storage-download" };
 const maxPresignedLifetime = 7 * 24 * 60 * 60;
 
@@ -22,6 +22,7 @@ const maxPresignedLifetime = 7 * 24 * 60 * 60;
 @Injectable()
 export class StorageDownloadService {
   private readonly origin: string;
+  private readonly path: string;
   private readonly expiresIn: number;
   private readonly options: StorageDownloadOptions;
 
@@ -36,6 +37,7 @@ export class StorageDownloadService {
     const download = options?.download;
     this.options =
       download?.enabled === false ? { enabled: false } : (download ?? {});
+    this.path = resolveStorageDownloadPath(this.options.path);
     const base = this.options.baseURL
       ? new URL(this.options.baseURL)
       : undefined;
@@ -147,9 +149,7 @@ export class StorageDownloadService {
     const prefix = this.applicationConfig
       .getGlobalPrefix()
       .replace(/^\/+|\/+$/g, "");
-    return prefix
-      ? `/${prefix}/${STORAGE_DOWNLOAD_PATH}/`
-      : `/${STORAGE_DOWNLOAD_PATH}/`;
+    return prefix ? `/${prefix}/${this.path}/` : `/${this.path}/`;
   }
 
   private isObjectKey(key: string): boolean {
