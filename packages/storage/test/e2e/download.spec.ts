@@ -1,18 +1,65 @@
+import { IS_PUBLIC_KEY, Public } from "@nest-boot/common";
 import { JwtService } from "@nest-boot/jwt";
 import {
+  type CanActivate,
   Controller,
+  type ExecutionContext,
   Get,
   Global,
+  Injectable,
   Module,
+  type NestInterceptor,
+  UnauthorizedException,
+  UseInterceptors,
   VersioningType,
 } from "@nestjs/common";
+import { APP_GUARD, Reflector } from "@nestjs/core";
 import { Test } from "@nestjs/testing";
+import type { Observable } from "rxjs";
 
 import {
   Storage,
   StorageDownloadService,
   StorageModule,
 } from "../../src/index.js";
+
+@Injectable()
+class PublicAwareGlobalGuard implements CanActivate {
+  constructor(private readonly reflector: Reflector) {}
+
+  canActivate(context: ExecutionContext): boolean {
+    const isPublic = this.reflector.getAllAndOverride<boolean>(IS_PUBLIC_KEY, [
+      context.getHandler(),
+      context.getClass(),
+    ]);
+    if (isPublic) {
+      return true;
+    }
+    throw new UnauthorizedException();
+  }
+}
+
+@Controller("protected")
+class ProtectedController {
+  @Get()
+  check(): { ok: boolean } {
+    return { ok: true };
+  }
+}
+
+@Injectable()
+class DownloadHeaderInterceptor implements NestInterceptor {
+  intercept(
+    context: ExecutionContext,
+    next: { handle: () => Observable<unknown> },
+  ): Observable<unknown> {
+    context
+      .switchToHttp()
+      .getResponse<{ setHeader: (name: string, value: string) => void }>()
+      .setHeader("x-download-enhanced", "true");
+    return next.handle();
+  }
+}
 
 it("keeps storage usable and returns 404 when the app has no JwtModule", async () => {
   const module = await Test.createTestingModule({
@@ -121,7 +168,7 @@ it.each([
     excluded: true,
   },
 ] as const)(
-  "mounts the $registration download route at $route (excluded: $excluded) and stays version-neutral",
+  "mounts the $registration download route at $route (excluded: $excluded) with @Public() and VERSION_NEUTRAL by default",
   async ({ registration, path: configuredPath, route, excluded }) => {
     vi.stubEnv("STORAGE_BUCKET", "files");
     const prefix = registration === "direct" ? "" : "gateway/api";
@@ -160,6 +207,14 @@ it.each([
       download: {
         baseURL: "https://downloads.example.com",
         path: configuredPath,
+        ...(registration === "async"
+          ? {
+              decorators: [
+                Public(),
+                UseInterceptors(DownloadHeaderInterceptor),
+              ],
+            }
+          : {}),
         resolveContentType: (key: string) =>
           key.endsWith(".png") ? "image/png" : null,
       },
@@ -171,6 +226,8 @@ it.each([
     }[registration];
     const module = await Test.createTestingModule({
       imports: [registeredModule, JwtFixtureModule],
+      controllers: [ProtectedController],
+      providers: [{ provide: APP_GUARD, useClass: PublicAwareGlobalGuard }],
     })
       .overrideProvider(Storage)
       .useValue(storage)
@@ -189,6 +246,10 @@ it.each([
         );
       }
       await app.listen(0, "127.0.0.1");
+      const baseAppUrl = await app.getUrl();
+      const protectedPath = `${prefix ? `/${prefix}` : ""}/v1/protected`;
+      expect((await fetch(`${baseAppUrl}${protectedPath}`)).status).toBe(401);
+
       const link = await downloads.createUrl(key, "user:42");
       const effectivePrefix = prefix && !excluded ? `/${prefix}` : "";
       const path = `${effectivePrefix}/${route}/nested/image%20%23%3F%20%25.png`;
@@ -217,21 +278,21 @@ it.each([
         expiresIn: 3600,
       });
 
-      const url = new URL(`${path}?token=signed-token`, await app.getUrl());
+      const url = new URL(`${path}?token=signed-token`, baseAppUrl);
       const response = await fetch(url, { redirect: "manual" });
       expect(response.status).toBe(302);
+      if (registration === "async") {
+        expect(response.headers.get("x-download-enhanced")).toBe("true");
+      }
       if (registration !== "direct") {
-        const defaultRoute = new URL(
-          `/${prefix}/files/file.txt`,
-          await app.getUrl(),
-        );
+        const defaultRoute = new URL(`/${prefix}/files/file.txt`, baseAppUrl);
         expect((await fetch(defaultRoute)).status).toBe(404);
         expect(downloads.keyFromUrl(defaultRoute.pathname)).toBeUndefined();
       }
       if (excluded) {
         const prefixedUrl = new URL(
           `/${prefix}/${route}/nested/image%20%23%3F%20%25.png?token=signed-token`,
-          await app.getUrl(),
+          baseAppUrl,
         );
         expect((await fetch(prefixedUrl, { redirect: "manual" })).status).toBe(
           404,
@@ -288,16 +349,32 @@ it.each([
   },
 );
 
-it("rejects dynamic download paths during registration", async () => {
-  const module = Test.createTestingModule({
-    imports: [
-      StorageModule.register({
-        bucket: "files",
-        download: { path: "/files/:id" },
-      }),
-    ],
-  });
-  await expect(module.compile()).rejects.toThrow(
+it("rejects invalid download route options during registration", async () => {
+  await expect(
+    Test.createTestingModule({
+      imports: [
+        StorageModule.register({
+          bucket: "files",
+          download: { path: "/files/:id" },
+        }),
+      ],
+    }).compile(),
+  ).rejects.toThrow(
     "Storage download path must contain only static URL segments",
+  );
+
+  await expect(
+    Test.createTestingModule({
+      imports: [
+        StorageModule.register({
+          bucket: "files",
+          download: {
+            decorators: ["invalid" as unknown as ClassDecorator],
+          },
+        }),
+      ],
+    }).compile(),
+  ).rejects.toThrow(
+    "Storage download decorators must be an array of class decorators",
   );
 });

@@ -12,8 +12,13 @@ export interface StorageDownloadOptions {
   /** Download token lifetime in seconds. Defaults to one hour. */
   expiresIn?: number;
 
-  /** Optional decorator for the download controller, such as a public-route decorator. */
-  controllerDecorator?: ClassDecorator;
+  /**
+   * Class decorators applied to the download controller, defaulting to `[Public()]`.
+   *
+   * Supports both metadata decorators (such as `Public()` or `SkipThrottle()`) and
+   * Nest enhancers (`@UseGuards`, `@UseInterceptors`, `@UsePipes`, `@UseFilters`).
+   */
+  decorators?: ClassDecorator[];
 
   /** Overrides the response content type. Return null to disallow an object key. */
   resolveContentType?: (key: string) => string | null;

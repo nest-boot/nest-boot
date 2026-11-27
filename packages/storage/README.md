@@ -29,9 +29,12 @@ to an S3 presigned URL with the same expiration deadline. Both responses use
 `Cache-Control: no-store`.
 
 Tokens last one hour by default. Use `download.expiresIn` to set the lifetime in
-seconds. Hosts with a global authentication guard can supply their public
-route decorator with `download.controllerDecorator`. Use `download.resolveContentType` to
-override the S3 content type or return `null` to disallow an object key.
+seconds. `download.decorators` defaults to `[Public()]` from `@nest-boot/common`
+so global authentication guards allow signed download requests automatically;
+pass additional class decorators (for example `[Public(), SkipThrottle()]` or
+`UseGuards(...)` / `UseInterceptors(...)`) when needed. Use
+`download.resolveContentType` to override the S3 content type or return `null`
+to disallow an object key.
 
 To omit the route, set `download.enabled` to `false` in the options passed to
 `register()` or returned by the `registerAsync()` factory.

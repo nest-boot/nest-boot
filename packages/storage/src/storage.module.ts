@@ -1,6 +1,7 @@
 import {
   createDynamicController,
   type DynamicControllerOptions,
+  Public,
   withDynamicController,
 } from "@nest-boot/common";
 import { JwtService } from "@nest-boot/jwt";
@@ -46,15 +47,19 @@ function resolveDownloadControllerOptions(
     return { path: [] };
   }
   const path = resolveStorageDownloadPath(download?.path);
+  const decorators = download?.decorators ?? [Public()];
+  if (
+    !Array.isArray(decorators) ||
+    decorators.some((decorator) => typeof decorator !== "function")
+  ) {
+    throw new Error(
+      "Storage download decorators must be an array of class decorators",
+    );
+  }
   if (!jwt) {
     return { path: [] };
   }
-  return {
-    path,
-    decorators: download?.controllerDecorator
-      ? [download.controllerDecorator]
-      : [],
-  };
+  return { path, decorators };
 }
 
 const directDownloadController = createDynamicController(
