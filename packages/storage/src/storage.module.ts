@@ -2,7 +2,6 @@ import {
   createDynamicController,
   type DynamicControllerOptions,
   Public,
-  withDynamicController,
 } from "@nest-boot/common";
 import { JwtService } from "@nest-boot/jwt";
 import {
@@ -36,7 +35,7 @@ const storageProvider: Provider<Storage> = {
  * Resolves the dynamic controller configuration for signed downloads.
  * @param options - Storage module options, when provided.
  * @param jwt - Optional JWT signer/verifier registered by the host application.
- * @returns Dynamic controller mount options; omits the route when disabled or without JWT.
+ * @returns Dynamic controller mount options; disables the controller when disabled or without JWT.
  */
 function resolveDownloadControllerOptions(
   options?: StorageModuleOptions,
@@ -44,7 +43,7 @@ function resolveDownloadControllerOptions(
 ): DynamicControllerOptions {
   const download = options?.download;
   if (download?.enabled === false) {
-    return { path: [] };
+    return { enabled: false };
   }
   const path = resolveStorageDownloadPath(download?.path);
   const decorators = download?.decorators ?? [Public()];
@@ -57,78 +56,56 @@ function resolveDownloadControllerOptions(
     );
   }
   if (!jwt) {
-    return { path: [] };
+    return { enabled: false };
   }
   return { path, decorators };
 }
 
-const directDownloadController = createDynamicController(
-  StorageDownloadController,
-  {
-    inject: [
-      { token: MODULE_OPTIONS_TOKEN, optional: true },
-      { token: JwtService, optional: true },
-    ],
-    useFactory: resolveDownloadControllerOptions,
-  },
-);
-
-@Global()
-@Module({ providers: [storageProvider], exports: [Storage] })
-class StorageCoreModule extends ConfigurableModuleClass {}
+const downloadController = createDynamicController(StorageDownloadController, {
+  inject: [
+    { token: MODULE_OPTIONS_TOKEN, optional: true },
+    { token: JwtService, optional: true },
+  ],
+  useFactory: resolveDownloadControllerOptions,
+});
 
 /**
  * Global module that provides an S3-backed {@link Storage} service.
  *
- * Exports only {@link Storage} and {@link StorageDownloadService}; the raw S3
- * client instances remain internal implementation details owned by {@link Storage}.
+ * Import the module directly to read the supported S3 environment variables,
+ * or use {@link StorageModule.forRoot} and {@link StorageModule.forRootAsync}
+ * for explicit configuration. Exports only {@link Storage} and
+ * {@link StorageDownloadService}; the AWS SDK clients remain private
+ * implementation details owned by {@link Storage}.
  */
 @Global()
 @Module({
-  controllers: [directDownloadController.controller],
+  controllers: [downloadController.controller],
   providers: [
     storageProvider,
     StorageDownloadService,
-    directDownloadController.provider,
+    downloadController.provider,
   ],
   exports: [Storage, StorageDownloadService],
 })
-export class StorageModule extends StorageCoreModule {
+export class StorageModule extends ConfigurableModuleClass {
   /**
    * Registers the StorageModule with explicit storage options.
    * @param options - Storage configuration
    * @returns Dynamic module configuration
    */
   static override forRoot(options: typeof OPTIONS_TYPE = {}): DynamicModule {
-    return this.withDownloadController(super.forRoot(options));
+    return super.forRoot(options);
   }
 
   /**
-   * Registers the StorageModule using asynchronously resolved options.
-   * @param options - Async factory or provider options for storage configuration
+   * Registers the StorageModule asynchronously.
+   * @param options - Async configuration options
    * @returns Dynamic module configuration
    */
   static override forRootAsync(
     options: typeof ASYNC_OPTIONS_TYPE,
   ): DynamicModule {
-    return this.withDownloadController(super.forRootAsync(options));
-  }
-
-  private static withDownloadController(
-    definition: DynamicModule,
-  ): DynamicModule {
-    return withDynamicController(
-      {
-        ...definition,
-        module: StorageCoreModule,
-        providers: [...(definition.providers ?? []), StorageDownloadService],
-        exports: [StorageDownloadService],
-      },
-      StorageDownloadController,
-      {
-        inject: [MODULE_OPTIONS_TOKEN, { token: JwtService, optional: true }],
-        useFactory: resolveDownloadControllerOptions,
-      },
-    );
+    return super.forRootAsync(options);
   }
 }

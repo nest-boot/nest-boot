@@ -63,7 +63,7 @@ class DownloadHeaderInterceptor implements NestInterceptor {
 
 it("keeps storage usable and returns 404 when the app has no JwtModule", async () => {
   const module = await Test.createTestingModule({
-    imports: [StorageModule.register({ bucket: "files" })],
+    imports: [StorageModule.forRoot({ bucket: "files" })],
   }).compile();
   const app = module.createNestApplication();
   try {
@@ -89,25 +89,25 @@ it.each([
   },
   {
     label: "without JwtModule (sync)",
-    factory: () => StorageModule.register({ bucket: "files" }),
+    factory: () => StorageModule.forRoot({ bucket: "files" }),
     expectedError: "Storage download links require JwtModule",
   },
   {
     label: "without JwtModule (async)",
     factory: () =>
-      StorageModule.registerAsync({ useFactory: () => ({ bucket: "files" }) }),
+      StorageModule.forRootAsync({ useFactory: () => ({ bucket: "files" }) }),
     expectedError: "Storage download links require JwtModule",
   },
   {
     label: "when explicitly disabled (sync)",
     factory: () =>
-      StorageModule.register({ bucket: "files", download: { enabled: false } }),
+      StorageModule.forRoot({ bucket: "files", download: { enabled: false } }),
     expectedError: "Storage downloads are disabled",
   },
   {
     label: "when explicitly disabled (async)",
     factory: () =>
-      StorageModule.registerAsync({
+      StorageModule.forRootAsync({
         useFactory: () => ({
           bucket: "files",
           download: { enabled: false, baseURL: "unused" },
@@ -221,8 +221,8 @@ it.each([
     };
     const registeredModule = {
       direct: StorageModule,
-      sync: StorageModule.register(options),
-      async: StorageModule.registerAsync({ useFactory: () => options }),
+      sync: StorageModule.forRoot(options),
+      async: StorageModule.forRootAsync({ useFactory: () => options }),
     }[registration];
     const module = await Test.createTestingModule({
       imports: [registeredModule, JwtFixtureModule],
@@ -353,7 +353,7 @@ it("rejects invalid download route options during registration", async () => {
   await expect(
     Test.createTestingModule({
       imports: [
-        StorageModule.register({
+        StorageModule.forRoot({
           bucket: "files",
           download: { path: "/files/:id" },
         }),
@@ -366,7 +366,7 @@ it("rejects invalid download route options during registration", async () => {
   await expect(
     Test.createTestingModule({
       imports: [
-        StorageModule.register({
+        StorageModule.forRoot({
           bucket: "files",
           download: {
             decorators: ["invalid" as unknown as ClassDecorator],

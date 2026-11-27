@@ -202,7 +202,6 @@ export class StorageDownloadService {
       .exclude?.some(
         (route) =>
           (route.requestMethod === RequestMethod.ALL ||
-            (route.requestMethod as number) === -1 ||
             route.requestMethod === RequestMethod.GET) &&
           route.pathRegex.test(routePath),
       );
