@@ -132,7 +132,7 @@ export class JwtService {
           ) {
             throw new UnauthorizedException("Invalid token");
           }
-          const key = await this.keyManager().findOne(
+          const key = await this.createEntityManager().findOne(
             Jwk,
             {
               id: kid,
@@ -162,7 +162,7 @@ export class JwtService {
   }
 
   async getJwks(): Promise<JSONWebKeySet> {
-    const keys = await this.keyManager().find(
+    const keys = await this.createEntityManager().find(
       Jwk,
       { expiresAt: { $gt: this.verificationCutoff() } },
       {
@@ -194,19 +194,8 @@ export class JwtService {
     return new Date(Date.now() - this.jwks.gracePeriod * 1000);
   }
 
-  private keyManager(): EntityManager {
-    const current = this.em.getContext(false);
-    if (!current.getSessionContext() && !current.global) {
-      return current.fork({ clear: true, keepTransactionContext: true });
-    }
-    if (current.isInTransaction()) {
-      throw new Error(
-        "JWT key access cannot bypass an active RLS transaction. Call JwtService before starting the scoped transaction.",
-      );
-    }
-    const fork = current.fork({ clear: true });
-    fork.clearSessionContext();
-    return fork;
+  private createEntityManager(): EntityManager {
+    return this.em.fork({ keepTransactionContext: true });
   }
 
   private async prepareSigningKey(): Promise<{
@@ -222,7 +211,7 @@ export class JwtService {
   }
 
   private async findOrCreateSigningKey(): Promise<Jwk> {
-    const em = this.keyManager();
+    const em = this.createEntityManager();
     const existing = await em.findOne(
       Jwk,
       { expiresAt: { $gt: new Date() } },
@@ -233,9 +222,7 @@ export class JwtService {
     }
 
     if (em.isInTransaction()) {
-      throw new Error(
-        "JWT signing key creation requires a committed context outside an active transaction",
-      );
+      return await this.createAndPersistKey(em);
     }
 
     return await (this.inflightKeyCreation ??= this.createAndPersistKey(

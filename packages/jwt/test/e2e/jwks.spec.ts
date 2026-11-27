@@ -274,29 +274,22 @@ describe("standalone JWT module", () => {
       expect(await initial.json()).toEqual({ keys: [] });
       expect(await orm.em.fork().count(Jwk)).toBe(0);
 
-      // Creating a brand-new key inside an uncommitted transaction is rejected so tokens never reference rollback-able keys.
-      await expect(
-        orm.em.transactional(async () => {
-          await signer.sign({}, claims);
-        }),
-      ).rejects.toThrow(
-        "JWT signing key creation requires a committed context outside an active transaction",
-      );
-      expect(await orm.em.fork().count(Jwk)).toBe(0);
-
-      const [first, second] = await Promise.all([
-        signer.sign({}, claims),
-        signer.sign({}, { ...claims, subject: "user:2" }),
-      ]);
-      const header = decodeProtectedHeader(first);
+      // Creating and reusing signing keys works seamlessly both inside and outside PGlite transactions.
+      const txFirst = await orm.em.transactional(async () => {
+        const token = await signer.sign({}, claims);
+        await expect(signer.verify(token, scope)).resolves.toMatchObject({
+          sub: "user:1",
+        });
+        expect((await signer.getJwks()).keys).toHaveLength(1);
+        return token;
+      });
+      const header = decodeProtectedHeader(txFirst);
       expect(header.alg).toBe("Ed25519");
-      expect(decodeProtectedHeader(second).kid).toBe(header.kid);
       expect(await orm.em.fork().count(Jwk)).toBe(1);
 
-      // Even at maximum allowed lifetime (gracePeriod = 30d), subsequent requests after time advances reuse the active key.
       vi.setSystemTime(start + 5_000);
-      const third = await signer.sign({}, claims);
-      expect(decodeProtectedHeader(third).kid).toBe(header.kid);
+      const second = await signer.sign({}, { ...claims, subject: "user:2" });
+      expect(decodeProtectedHeader(second).kid).toBe(header.kid);
       expect(await orm.em.fork().count(Jwk)).toBe(1);
 
       const [storedKey] = await orm.em.fork().find(Jwk, {});
@@ -365,13 +358,20 @@ describe("standalone JWT module", () => {
       expect(await initial.json()).toEqual({ keys: [] });
       expect(await orm.em.fork().count(Jwk)).toBe(0);
 
-      // Issue a 50s token using a 50s grace signer so we can verify firstSigner's 20s grace retirement at +30s.
-      const longToken = await longGraceSigner.sign(
-        {},
-        { ...scope, subject: "user:1", expiresIn: 50 },
-      );
+      // Issue two concurrent 50s tokens on an empty table to exercise inflight key coalescing outside transactions.
+      const [longToken, secondLongToken] = await Promise.all([
+        longGraceSigner.sign(
+          {},
+          { ...scope, subject: "user:1", expiresIn: 50 },
+        ),
+        longGraceSigner.sign(
+          {},
+          { ...scope, subject: "user:2", expiresIn: 50 },
+        ),
+      ]);
       const oldHeader = decodeProtectedHeader(longToken);
       expect(oldHeader.alg).toBe("ES256");
+      expect(decodeProtectedHeader(secondLongToken).kid).toBe(oldHeader.kid);
 
       const [reused, other] = await Promise.all([
         firstSigner.sign({}, claims),
@@ -569,11 +569,9 @@ describe("standalone JWT module", () => {
       issuer: "http://auth.example",
       secret,
     });
-    await expect(
-      rlsFork.transactional(async () => {
-        await rlsJwt.getJwks();
-      }),
-    ).rejects.toThrow("JWT key access cannot bypass an active RLS transaction");
+    await rlsFork.transactional(async () => {
+      expect((await rlsJwt.getJwks()).keys).toHaveLength(1);
+    });
   });
 
   /**
