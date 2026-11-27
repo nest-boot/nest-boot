@@ -1,5 +1,12 @@
 import { DatabaseModule } from "@nest-boot/database";
-import { Controller, type DynamicModule, Global, Module } from "@nestjs/common";
+import {
+  Controller,
+  type DynamicModule,
+  Global,
+  Module,
+  type Type,
+} from "@nestjs/common";
+import { ModulesContainer } from "@nestjs/core";
 
 import { JwksController } from "./controllers/jwks.controller.js";
 import { Jwk } from "./entities/jwk.entity.js";
@@ -13,11 +20,11 @@ import {
 import { JwtService } from "./services/jwt.service.js";
 import { resolveJwksOptions } from "./utils/resolve-jwks-options.js";
 
-const UNSUPPORTED_ENHANCER_METADATA_KEYS = [
-  "__guards__",
-  "__interceptors__",
-  "__pipes__",
-  "__exceptionFilters__",
+const ENHANCER_METADATA_ENTRIES = [
+  ["__guards__", "guard"],
+  ["__interceptors__", "interceptor"],
+  ["__pipes__", "pipe"],
+  ["__exceptionFilters__", "filter"],
 ] as const;
 
 /** Signs and verifies application JWTs using database-backed signing keys. */
@@ -59,21 +66,39 @@ export class JwtModule extends ConfigurableModuleClass {
         ...(dynamicModule.providers ?? []),
         {
           provide: Symbol("JWKS_CONTROLLER"),
-          inject: [MODULE_OPTIONS_TOKEN],
-          useFactory: (options: JwtModuleOptions) => {
+          inject: [MODULE_OPTIONS_TOKEN, ModulesContainer],
+          useFactory: (
+            options: JwtModuleOptions,
+            modulesContainer: ModulesContainer,
+          ) => {
             const jwks = resolveJwksOptions(options.jwks);
             Controller(jwks.path)(controller);
             for (const decorator of jwks.decorators) {
               decorator(controller);
             }
-            if (
-              UNSUPPORTED_ENHANCER_METADATA_KEYS.some((key) =>
-                Reflect.hasOwnMetadata(key, controller),
-              )
-            ) {
-              throw new Error(
-                "JWKS decorators only support metadata decorators; Nest enhancers (@UseGuards, @UseInterceptors, @UsePipes, @UseFilters) are not supported",
-              );
+
+            const hostModule = [...modulesContainer.values()].find(
+              (moduleRef) => moduleRef.controllers.has(controller),
+            );
+            if (hostModule) {
+              for (const [metadataKey, subtype] of ENHANCER_METADATA_ENTRIES) {
+                const enhancers = Reflect.getMetadata(
+                  metadataKey,
+                  controller,
+                ) as unknown[] | undefined;
+                for (const enhancer of enhancers ?? []) {
+                  if (typeof enhancer === "function") {
+                    const enhancerType = enhancer as Type;
+                    hostModule.addInjectable(enhancerType, subtype, controller);
+                    const wrapper = hostModule.injectables.get(enhancerType);
+                    if (wrapper && !wrapper.instance) {
+                      wrapper.instance = Object.create(
+                        enhancerType.prototype as object,
+                      ) as object;
+                    }
+                  }
+                }
+              }
             }
           },
         },

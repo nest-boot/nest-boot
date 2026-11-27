@@ -3,19 +3,29 @@ import { type MikroORM as PgliteORM, PgliteDriver } from "@mikro-orm/pglite";
 import { IS_PUBLIC_KEY, Public } from "@nest-boot/common";
 import { DatabaseModule } from "@nest-boot/database";
 import {
+  type ArgumentsHost,
+  type CallHandler,
   type CanActivate,
+  Catch,
   Controller,
+  type ExceptionFilter,
   type ExecutionContext,
   Get,
   type INestApplication,
   Injectable,
+  type NestInterceptor,
+  type PipeTransform,
   SetMetadata,
   UnauthorizedException,
+  UseFilters,
   UseGuards,
+  UseInterceptors,
+  UsePipes,
 } from "@nestjs/common";
-import { APP_GUARD, Reflector } from "@nestjs/core";
+import { APP_GUARD, HttpAdapterHost, Reflector } from "@nestjs/core";
 import { Test } from "@nestjs/testing";
 import { decodeJwt, decodeProtectedHeader } from "jose";
+import { type Observable } from "rxjs";
 
 import { JwksController } from "../../src/controllers/jwks.controller.js";
 import { Jwk } from "../../src/entities/jwk.entity.js";
@@ -24,9 +34,64 @@ import { JwtModule } from "../../src/jwt.module.js";
 import { JwtService } from "../../src/services/jwt.service.js";
 import { resolveJwksOptions } from "../../src/utils/resolve-jwks-options.js";
 
-class DenyGuard implements CanActivate {
-  canActivate(): boolean {
-    return false;
+class CustomJwksException extends Error {}
+
+@Injectable()
+class InjectableJwksGuard implements CanActivate {
+  constructor(private readonly jwt: JwtService) {}
+
+  canActivate(context: ExecutionContext): boolean {
+    const req = context
+      .switchToHttp()
+      .getRequest<{ headers: Record<string, string | undefined> }>();
+    if (req.headers["x-trigger-filter"] === "1") {
+      throw new CustomJwksException(this.jwt.jwksPath);
+    }
+    return req.headers["x-deny-jwks"] !== "1";
+  }
+}
+
+@Injectable()
+class InjectableJwksInterceptor implements NestInterceptor {
+  constructor(
+    private readonly jwt: JwtService,
+    private readonly httpAdapterHost: HttpAdapterHost,
+  ) {}
+
+  intercept(context: ExecutionContext, next: CallHandler): Observable<unknown> {
+    this.httpAdapterHost.httpAdapter.setHeader(
+      context.switchToHttp().getResponse(),
+      "x-jwks-path",
+      this.jwt.jwksPath,
+    );
+    return next.handle();
+  }
+}
+
+let instantiatedPipePath: string | undefined;
+
+@Injectable()
+class InjectableJwksPipe implements PipeTransform {
+  constructor(jwt: JwtService) {
+    instantiatedPipePath = jwt.jwksPath;
+  }
+
+  transform(value: unknown): unknown {
+    return value;
+  }
+}
+
+@Catch(CustomJwksException)
+@Injectable()
+class InjectableJwksFilter implements ExceptionFilter {
+  constructor(private readonly httpAdapterHost: HttpAdapterHost) {}
+
+  catch(exception: CustomJwksException, host: ArgumentsHost): void {
+    this.httpAdapterHost.httpAdapter.reply(
+      host.switchToHttp().getResponse(),
+      { filteredPath: exception.message },
+      418,
+    );
   }
 }
 
@@ -73,6 +138,7 @@ describe("standalone JWT module", () => {
   beforeEach(() => {
     vi.stubEnv("AUTH_URL", undefined);
     vi.stubEnv("APP_URL", undefined);
+    instantiatedPipePath = undefined;
   });
 
   afterEach(async () => {
@@ -129,15 +195,56 @@ describe("standalone JWT module", () => {
     },
   );
 
-  it("rejects Nest enhancers in jwks.decorators", async () => {
-    await expect(
-      createApp({
-        issuer: "http://localhost",
-        jwks: { decorators: [Public(), UseGuards(DenyGuard)] },
-      }),
-    ).rejects.toThrow("JWKS decorators only support metadata decorators");
-    expect(JwksController).toBeDefined();
-  });
+  it.each([false, true])(
+    "supports @UseGuards, @UseInterceptors, @UsePipes, and @UseFilters in jwks.decorators (async options: %s)",
+    async (asyncOptions) => {
+      const path = "/keys/enhanced.json";
+      const url = await createApp(
+        {
+          issuer: "http://localhost",
+          jwks: {
+            path,
+            decorators: [
+              Public(),
+              UseGuards(InjectableJwksGuard),
+              UseInterceptors(InjectableJwksInterceptor),
+              UsePipes(InjectableJwksPipe),
+              UseFilters(InjectableJwksFilter),
+            ],
+          },
+        },
+        undefined,
+        asyncOptions,
+        [],
+        (createdApp) => {
+          vi.spyOn(createdApp.get(JwtService), "getJwks").mockResolvedValue({
+            keys: [],
+          });
+          return Promise.resolve();
+        },
+        true,
+      );
+
+      expect(JwksController).toBeDefined();
+      expect(instantiatedPipePath).toBe(path);
+
+      const okResponse = await fetch(`${url}${path}`);
+      expect(okResponse.status).toBe(200);
+      expect(okResponse.headers.get("x-jwks-path")).toBe(path);
+      expect(await okResponse.json()).toEqual({ keys: [] });
+
+      const deniedResponse = await fetch(`${url}${path}`, {
+        headers: { "x-deny-jwks": "1" },
+      });
+      expect(deniedResponse.status).toBe(403);
+
+      const filteredResponse = await fetch(`${url}${path}`, {
+        headers: { "x-trigger-filter": "1" },
+      });
+      expect(filteredResponse.status).toBe(418);
+      expect(await filteredResponse.json()).toEqual({ filteredPath: path });
+    },
+  );
 
   it("uses 30-day Ed25519 rotation by default and works inside PGlite transactions", async () => {
     const url = await createApp({ issuer: "http://auth.example" });

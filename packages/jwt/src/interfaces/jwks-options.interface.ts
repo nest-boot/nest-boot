@@ -8,9 +8,8 @@ export interface JwksOptions {
   /**
    * Class decorators applied to the JWKS controller, defaulting to `[Public()]`.
    *
-   * Only metadata decorators read at request time (such as `Public()` or `SkipThrottle()`)
-   * are supported; Nest enhancers (`@UseGuards`, `@UseInterceptors`, `@UsePipes`, `@UseFilters`)
-   * are not supported.
+   * Supports both metadata decorators (such as `Public()` or `SkipThrottle()`) and
+   * Nest enhancers (`@UseGuards`, `@UseInterceptors`, `@UsePipes`, `@UseFilters`).
    */
   decorators?: ClassDecorator[];
 
