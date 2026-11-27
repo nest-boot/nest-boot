@@ -1,6 +1,6 @@
 import "reflect-metadata";
 
-import { type EventArgs, t, wrap } from "@mikro-orm/core";
+import { type EventArgs, type Opt, t, wrap } from "@mikro-orm/core";
 import { Entity, PrimaryKey } from "@mikro-orm/decorators/legacy";
 import { MikroORM } from "@mikro-orm/pglite";
 import { CryptService } from "@nest-boot/crypt";
@@ -62,6 +62,21 @@ class UserWithNullableEncryptedField {
   ssn?: string | null;
 }
 
+@Entity()
+class UserWithContextualEncryptedFields {
+  @PrimaryKey({ type: t.integer })
+  id!: number;
+
+  @EncryptedProperty({ type: t.string, context: "user:ssn" })
+  ssn!: string;
+
+  @EncryptedProperty({ type: t.string, context: "user:card" })
+  creditCard!: string;
+
+  @EncryptedProperty({ type: t.string })
+  plainContextNote!: string;
+}
+
 describe("EncryptedProperty", () => {
   let orm: MikroORM;
 
@@ -74,6 +89,7 @@ describe("EncryptedProperty", () => {
         ParentEntity,
         ChildEntity,
         UserWithNullableEncryptedField,
+        UserWithContextualEncryptedFields,
       ],
       dbName: nextDbName(),
     });
@@ -97,6 +113,15 @@ describe("EncryptedProperty", () => {
         EncryptedProperty()(target, symbolKey);
       }).toThrow(
         "EncryptedProperty decorator can only be used on string properties.",
+      );
+    });
+
+    it("should throw error when context is empty or whitespace", () => {
+      expect(() => EncryptedProperty({ context: "" })).toThrow(
+        "EncryptedProperty context must be a non-empty string.",
+      );
+      expect(() => EncryptedProperty({ context: "   " })).toThrow(
+        "EncryptedProperty context must be a non-empty string.",
       );
     });
 
@@ -461,6 +486,137 @@ describe("EncryptedProperty", () => {
       expect(foundNotNull?.id).toBe(userWithSsn.id);
       // Value is encrypted
       expect(foundNotNull?.ssn?.split(".")).toHaveLength(5);
+    });
+  });
+
+  describe("context domain separation", () => {
+    it("should isolate keys per property context on create and update while keeping default properties unscoped", async () => {
+      const em = orm.em.fork();
+
+      const user = em.create(UserWithContextualEncryptedFields, {
+        ssn: "123-45-6789",
+        creditCard: "4111-1111-1111-1111",
+        plainContextNote: "root-note",
+      });
+      em.persist(user);
+      await em.flush();
+
+      const [row] = await em.getConnection().execute<
+        {
+          ssn: string;
+          credit_card: string;
+          plain_context_note: string;
+        }[]
+      >(`SELECT ssn, credit_card, plain_context_note FROM user_with_contextual_encrypted_fields WHERE id = ?`, [user.id]);
+
+      expect(await CryptService.decrypt(row.ssn, { context: "user:ssn" })).toBe(
+        "123-45-6789",
+      );
+      expect(
+        await CryptService.decrypt(row.credit_card, { context: "user:card" }),
+      ).toBe("4111-1111-1111-1111");
+      expect(await CryptService.decrypt(row.plain_context_note)).toBe(
+        "root-note",
+      );
+
+      // Cross-context and root decryption must fail
+      await expect(CryptService.decrypt(row.ssn)).rejects.toThrow();
+      await expect(
+        CryptService.decrypt(row.ssn, { context: "user:card" }),
+      ).rejects.toThrow();
+      await expect(
+        CryptService.decrypt(row.plain_context_note, { context: "user:ssn" }),
+      ).rejects.toThrow();
+
+      // Update contextual property and verify new ciphertext still uses the configured context
+      wrap(user).assign({ ssn: "999-99-9999" });
+      await em.flush();
+
+      const [updatedRow] = await em
+        .getConnection()
+        .execute<
+          { ssn: string }[]
+        >(`SELECT ssn FROM user_with_contextual_encrypted_fields WHERE id = ?`, [user.id]);
+      expect(
+        await CryptService.decrypt(updatedRow.ssn, { context: "user:ssn" }),
+      ).toBe("999-99-9999");
+      await expect(CryptService.decrypt(updatedRow.ssn)).rejects.toThrow();
+    });
+
+    it("should preserve context on duplicate decoration and allow subclasses to override parent context back to root", async () => {
+      @Entity()
+      class BaseContextualEntity {
+        @PrimaryKey({ type: t.integer })
+        id!: number;
+
+        @EncryptedProperty({ type: t.string, context: "base:secret" })
+        secret!: string;
+      }
+
+      @Entity()
+      class DerivedUnscopedEntity extends BaseContextualEntity {
+        @EncryptedProperty({ type: t.string })
+        override secret: Opt<string> = "";
+
+        @EncryptedProperty({ type: t.string, context: "dup:outer" })
+        @EncryptedProperty()
+        outerToken!: string;
+
+        @EncryptedProperty({ type: t.string })
+        @EncryptedProperty({ type: t.string, context: "dup:inner" })
+        innerToken!: string;
+      }
+
+      const tempOrm = await MikroORM.init({
+        entities: [BaseContextualEntity, DerivedUnscopedEntity],
+        dbName: nextDbName(),
+      });
+      await tempOrm.schema.create();
+
+      const em = tempOrm.em.fork();
+      const base = em.create(BaseContextualEntity, { secret: "base-val" });
+      const derived = em.create(DerivedUnscopedEntity, {
+        secret: "derived-val",
+        outerToken: "outer-val",
+        innerToken: "inner-val",
+      });
+      em.persist([base, derived]);
+      await em.flush();
+
+      const [baseRow] = await em
+        .getConnection()
+        .execute<
+          { secret: string }[]
+        >(`SELECT secret FROM base_contextual_entity WHERE id = ?`, [base.id]);
+      const [derivedRow] = await em
+        .getConnection()
+        .execute<
+          { secret: string; outer_token: string; inner_token: string }[]
+        >(`SELECT secret, outer_token, inner_token FROM derived_unscoped_entity WHERE id = ?`, [derived.id]);
+
+      // Base entity still uses "base:secret"
+      expect(
+        await CryptService.decrypt(baseRow.secret, { context: "base:secret" }),
+      ).toBe("base-val");
+      await expect(CryptService.decrypt(baseRow.secret)).rejects.toThrow();
+
+      // Derived entity overrode secret to unscoped root key, and preserved contexts across both duplicate decorator orders
+      expect(await CryptService.decrypt(derivedRow.secret)).toBe("derived-val");
+      await expect(
+        CryptService.decrypt(derivedRow.secret, { context: "base:secret" }),
+      ).rejects.toThrow();
+      expect(
+        await CryptService.decrypt(derivedRow.outer_token, {
+          context: "dup:outer",
+        }),
+      ).toBe("outer-val");
+      expect(
+        await CryptService.decrypt(derivedRow.inner_token, {
+          context: "dup:inner",
+        }),
+      ).toBe("inner-val");
+
+      await tempOrm.close(true);
     });
   });
 });

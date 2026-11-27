@@ -43,6 +43,7 @@
     "@mikro-orm/core": "7.2.0",
     "@mikro-orm/decorators": "7.2.0",
     "@mikro-orm/pglite": "7.2.0",
+    "@nest-boot/crypt": "workspace:^",
     "@nest-boot/database": "workspace:^",
     "@nest-boot/eslint": "workspace:^",
     "@nest-boot/tsconfig": "workspace:^",
@@ -62,6 +63,7 @@
   "peerDependencies": {
     "@mikro-orm/core": "^7.2.0",
     "@mikro-orm/decorators": "^7.2.0",
+    "@nest-boot/crypt": "workspace:^",
     "@nest-boot/database": "workspace:^",
     "@nestjs/common": "^12.6.0",
     "@nestjs/core": "^12.6.0",
@@ -90,7 +92,6 @@
   },
   "dependencies": {
     "@nest-boot/common": "workspace:^",
-    "@nest-boot/crypt": "workspace:^",
     "jose": "^6.2.12"
   }
 }

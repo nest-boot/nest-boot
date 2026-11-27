@@ -413,15 +413,15 @@ export class CloudProviderAccount {
   @PrimaryKey({ type: t.bigint })
   id!: string;
 
-  @EncryptedProperty()
+  @EncryptedProperty({ type: t.string })
   apiKey!: string;
 
-  @EncryptedProperty()
+  @EncryptedProperty({ type: t.string, context: "cloud:api-secret" })
   apiSecret!: string;
 }
 ```
 
-Values are automatically encrypted on write and decrypted on read. Requires `CryptModule` to be registered:
+String values are automatically encrypted before create and update operations. Load lazy encrypted columns explicitly and decrypt them with `CryptService` (passing the matching `{ context }` when configured). Requires `CryptModule` to be registered:
 
 ```typescript
 import { CryptModule } from "@nest-boot/crypt";

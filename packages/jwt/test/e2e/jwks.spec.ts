@@ -1,7 +1,7 @@
 import { MikroORM } from "@mikro-orm/core";
 import { type MikroORM as PgliteORM, PgliteDriver } from "@mikro-orm/pglite";
 import { IS_PUBLIC_KEY, Public } from "@nest-boot/common";
-import { CryptService } from "@nest-boot/crypt";
+import { CryptModule, CryptService } from "@nest-boot/crypt";
 import { DatabaseModule } from "@nest-boot/database";
 import {
   type ArgumentsHost,
@@ -139,10 +139,10 @@ describe("standalone JWT module", () => {
     "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789-_";
 
   beforeEach(() => {
+    (CryptService as unknown as { _instance: undefined })._instance = undefined;
     vi.stubEnv("AUTH_URL", undefined);
     vi.stubEnv("APP_URL", undefined);
-    vi.stubEnv("JWT_SECRET", undefined);
-    vi.stubEnv("AUTH_SECRET", undefined);
+    vi.stubEnv("CRYPT_SECRET", undefined);
     vi.stubEnv("APP_SECRET", undefined);
     instantiatedPipePath = undefined;
   });
@@ -153,10 +153,9 @@ describe("standalone JWT module", () => {
   });
 
   it.each(["bare", "forRoot"] as const)(
-    "supports zero-config registration using environment variables (%s)",
+    "supports zero-config registration using CryptModule and environment variables (%s)",
     async (mode) => {
       vi.stubEnv("APP_URL", "http://app.example");
-      vi.stubEnv("AUTH_SECRET", secret);
 
       await expect(
         Test.createTestingModule({
@@ -170,11 +169,10 @@ describe("standalone JWT module", () => {
           ],
         }).compile(),
       ).rejects.toThrow(
-        "JWT requires a strong secret of at least 32 characters. Set secret, JWT_SECRET, or APP_SECRET.",
+        "CryptService is required. Import CryptModule in your application.",
       );
 
-      vi.stubEnv("AUTH_SECRET", undefined);
-      vi.stubEnv(mode === "bare" ? "JWT_SECRET" : "APP_SECRET", secret);
+      vi.stubEnv(mode === "bare" ? "CRYPT_SECRET" : "APP_SECRET", secret);
 
       const module = await Test.createTestingModule({
         imports: [
@@ -183,6 +181,7 @@ describe("standalone JWT module", () => {
             dbName: "memory://",
             entities: [],
           }),
+          CryptModule,
           mode === "bare" ? JwtModule : JwtModule.forRoot(),
         ],
         controllers: [ProtectedController],
@@ -196,6 +195,7 @@ describe("standalone JWT module", () => {
         defaultVersion: "1",
       });
       const jwt = app.get(JwtService);
+      const crypt = app.get(CryptService);
       expect(jwt.jwksPath).toBe("/.well-known/jwks.json");
       app.setGlobalPrefix("api", { exclude: [jwt.jwksPath] });
       await app.listen(0, "127.0.0.1");
@@ -215,6 +215,12 @@ describe("standalone JWT module", () => {
         iss: "http://app.example",
         sub: "user:1",
       });
+
+      const [storedKey] = await orm.em.fork().find(Jwk, {});
+      await expect(crypt.decrypt(storedKey.privateKey)).rejects.toThrow();
+      await expect(
+        crypt.decrypt(storedKey.privateKey, { context: "jwt" }),
+      ).resolves.toContain("BEGIN PRIVATE KEY");
 
       const jwksResponse = await fetch(`${url}/.well-known/jwks.json`);
       expect(jwksResponse.status).toBe(200);
@@ -398,7 +404,6 @@ describe("standalone JWT module", () => {
     vi.stubEnv("AUTH_URL", "http://auth.example");
     vi.stubEnv("APP_URL", "http://app.example");
     const rotatedOptions: JwtModuleOptions = {
-      secret,
       jwks: {
         alg: "ES256",
         rotationInterval: 10,
@@ -407,10 +412,10 @@ describe("standalone JWT module", () => {
     };
     const url = await createApp(rotatedOptions);
     const orm = app.get<PgliteORM>(MikroORM);
+    const crypt = app.get(CryptService);
     await orm.schema.create();
 
-    const longGraceSigner = new JwtService(orm.em, {
-      secret,
+    const longGraceSigner = new JwtService(orm.em, crypt, {
       jwks: {
         alg: "ES256",
         rotationInterval: 10,
@@ -422,8 +427,8 @@ describe("standalone JWT module", () => {
       ...rotatedOptions,
       jwks: { ...rotatedOptions.jwks, alg: "ES512" },
     };
-    const secondSigner = new JwtService(orm.em, nextAlgOptions);
-    const thirdSigner = new JwtService(orm.em, nextAlgOptions);
+    const secondSigner = new JwtService(orm.em, crypt, nextAlgOptions);
+    const thirdSigner = new JwtService(orm.em, crypt, nextAlgOptions);
     const scope = { type: "test+jwt", audience: "test" };
     const claims = { ...scope, subject: "user:1", expiresIn: 20 };
     const otherType = { ...claims, type: "other+jwt" };
@@ -482,8 +487,8 @@ describe("standalone JWT module", () => {
       expect(await orm.em.fork().count(Jwk)).toBe(1);
 
       vi.stubEnv("AUTH_URL", undefined);
-      const fallback = new JwtService(orm.em, rotatedOptions);
-      const explicit = new JwtService(orm.em, {
+      const fallback = new JwtService(orm.em, crypt, rotatedOptions);
+      const explicit = new JwtService(orm.em, crypt, {
         ...rotatedOptions,
         issuer: "https://explicit.example",
       });
@@ -494,7 +499,7 @@ describe("standalone JWT module", () => {
         "https://explicit.example",
       );
       vi.stubEnv("APP_URL", undefined);
-      expect(() => new JwtService(orm.em, rotatedOptions)).toThrow(
+      expect(() => new JwtService(orm.em, crypt, rotatedOptions)).toThrow(
         "JWT issuer is required",
       );
 
@@ -508,12 +513,12 @@ describe("standalone JWT module", () => {
       let advancedDuringDecrypt = false;
       const decryptSpy = vi
         .spyOn(secondSignerCrypt, "decrypt")
-        .mockImplementation(async (data: string) => {
+        .mockImplementation(async (data, options) => {
           if (!advancedDuringDecrypt) {
             advancedDuringDecrypt = true;
             vi.setSystemTime(start + 11_000);
           }
-          return await originalDecrypt(data);
+          return await originalDecrypt(data, options);
         });
       let rotatedToken: string;
       try {
@@ -620,11 +625,12 @@ describe("standalone JWT module", () => {
 
     expect(
       () =>
-        new JwtService(orm.em, {
+        new JwtService(orm.em, undefined, {
           issuer: "http://auth.example",
-          secret: "short",
         }),
-    ).toThrow("JWT requires a strong secret");
+    ).toThrow(
+      "CryptService is required. Import CryptModule in your application.",
+    );
     expect(() => resolveJwksOptions({ path: "relative/path" })).toThrow(
       "JWKS path must be a literal absolute path",
     );
@@ -643,9 +649,8 @@ describe("standalone JWT module", () => {
 
     const rlsFork = orm.em.fork({ useContext: true });
     rlsFork.setSessionContext({ variables: { "app.tenant_id": "t1" } });
-    const rlsJwt = new JwtService(rlsFork, {
+    const rlsJwt = new JwtService(rlsFork, app.get(CryptService), {
       issuer: "http://auth.example",
-      secret,
     });
     await rlsFork.transactional(async () => {
       expect((await rlsJwt.getJwks()).keys).toHaveLength(1);
@@ -653,7 +658,7 @@ describe("standalone JWT module", () => {
   });
 
   /**
-   * Starts a Nest application using only the database and JWT modules.
+   * Starts a Nest application using the database, crypt, and JWT modules.
    * @param overrides - JWT module options.
    * @param prefix - Host global prefix.
    * @param asyncOptions - Whether to configure JWT asynchronously.
@@ -670,14 +675,14 @@ describe("standalone JWT module", () => {
     beforePrefix?: (app: INestApplication) => Promise<void>,
     withGlobalGuard = false,
   ) {
-    const options = { secret, ...overrides };
+    vi.stubEnv("CRYPT_SECRET", secret);
     @Module({
       imports: [
         asyncOptions
           ? JwtModule.forRootAsync({
-              useFactory: () => Promise.resolve(options),
+              useFactory: () => Promise.resolve(overrides),
             })
-          : JwtModule.forRoot(options),
+          : JwtModule.forRoot(overrides),
       ],
       exports: [JwtModule],
     })
@@ -690,6 +695,7 @@ describe("standalone JWT module", () => {
           dbName: "memory://",
           entities: [],
         }),
+        CryptModule,
         ReexportedJwtModule,
       ],
       ...(withGlobalGuard

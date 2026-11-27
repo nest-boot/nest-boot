@@ -1641,9 +1641,6 @@ importers:
       '@nest-boot/common':
         specifier: workspace:^
         version: link:../common
-      '@nest-boot/crypt':
-        specifier: workspace:^
-        version: link:../crypt
       jose:
         specifier: ^6.2.12
         version: 6.2.12
@@ -1657,6 +1654,9 @@ importers:
       '@mikro-orm/pglite':
         specifier: 7.2.0
         version: 7.2.0
+      '@nest-boot/crypt':
+        specifier: workspace:^
+        version: link:../crypt
       '@nest-boot/database':
         specifier: workspace:^
         version: link:../database
