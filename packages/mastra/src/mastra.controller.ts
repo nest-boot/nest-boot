@@ -26,81 +26,15 @@ import {
 import { ApplicationConfig } from "@nestjs/core";
 import type { Request, Response } from "express";
 
-import { MastraManager } from "./mastra.manager.js";
 import {
   DEFAULT_MASTRA_SERVER_PREFIX,
   MASTRA_MODULE_OPTIONS,
   type MastraModuleOptions,
   normalizeMastraServerOptions,
 } from "./mastra.module-definition.js";
-import {
-  assertCanExposeMastraTool,
-  canExposeMastraTool,
-  runWithPreflightApprovedTool,
-} from "./tool-guard.js";
 
 const DANGEROUS_QUERY_KEYS = new Set(["__proto__", "prototype", "constructor"]);
 const BODY_HTTP_METHODS = new Set(["POST", "PUT", "PATCH", "DELETE"]);
-const SERIALIZED_TOOL_STRING_KEYS = [
-  "id",
-  "title",
-  "description",
-  "inputSchema",
-  "outputSchema",
-  "requestContextSchema",
-] as const;
-
-/**
- * Checks whether a value is a non-null, non-array plain object record.
- * @param value - Candidate value
- * @returns True when the value is an object record
- */
-function isRecord(value: unknown): value is Record<string, unknown> {
-  return typeof value === "object" && value !== null && !Array.isArray(value);
-}
-
-/**
- * Projects a serialized Mastra tool payload onto Mastra's public `serializedToolSchema`
- * fields so injected NestJS dependencies or internal tool properties are never exposed.
- * @param value - Raw serialized tool object
- * @returns Public serialized tool metadata
- */
-function projectSerializedTool(value: unknown): unknown {
-  if (!isRecord(value)) {
-    return value;
-  }
-
-  const projected: Record<string, unknown> = {};
-  for (const key of SERIALIZED_TOOL_STRING_KEYS) {
-    if (typeof value[key] === "string") {
-      projected[key] = value[key];
-    }
-  }
-  if (typeof value.requireApproval === "boolean") {
-    projected.requireApproval = value.requireApproval;
-  }
-  return projected;
-}
-
-/**
- * Projects nested `tools` maps inside a serialized Mastra agent object onto public metadata.
- * @param agentPayload - Serialized agent object
- * @returns Serialized agent with sanitized `tools` entries
- */
-function projectSerializedAgent(agentPayload: unknown): unknown {
-  if (!isRecord(agentPayload) || !isRecord(agentPayload.tools)) {
-    return agentPayload;
-  }
-
-  const projectedTools: Record<string, unknown> = {};
-  for (const [key, toolValue] of Object.entries(agentPayload.tools)) {
-    projectedTools[key] = projectSerializedTool(toolValue);
-  }
-  return {
-    ...agentPayload,
-    tools: projectedTools,
-  };
-}
 
 interface RequestWithMastraMetadata extends Request {
   mastraRawBodySize?: number;
@@ -188,15 +122,24 @@ function toWebRequest(req: Request): globalThis.Request {
 }
 
 /**
- * Normalizes Express query values to strings or string arrays while filtering unsafe keys.
+ * Normalizes Express query values to strings or string arrays while filtering unsafe
+ * keys and preserving route `pathParams` precedence when `@mastra/nestjs` merges parameters.
  * @param query - Express request query object
+ * @param pathParams - Matched route path parameters
  * @returns Sanitized query parameter record
  */
-function parseQueryParams(query: Request["query"]): Record<string, unknown> {
+function parseQueryParams(
+  query: Request["query"],
+  pathParams?: Record<string, string>,
+): Record<string, unknown> {
   const result: Record<string, unknown> = {};
 
   for (const [key, value] of Object.entries(query)) {
-    if (key === "requestContext" || DANGEROUS_QUERY_KEYS.has(key)) {
+    if (
+      key === "requestContext" ||
+      DANGEROUS_QUERY_KEYS.has(key) ||
+      (pathParams && Object.hasOwn(pathParams, key))
+    ) {
       continue;
     }
     result[key] = value;
@@ -229,7 +172,6 @@ export class MastraController {
     private readonly requestContext: RequestContextService,
     private readonly throttleGuard: MastraThrottleGuard,
     @Optional() private readonly applicationConfig?: ApplicationConfig,
-    @Optional() private readonly mastraManager?: MastraManager,
   ) {
     this.serverEnabled = normalizeMastraServerOptions(
       moduleOptions.server,
@@ -278,218 +220,17 @@ export class MastraController {
       await this.throttleGuard.checkLimit(req, limit, windowMs, routePath);
     }
 
-    const rawQueryParams = parseQueryParams(req.query);
-    const pathParamRecord =
-      typeof pathParams === "object" && pathParams !== null
-        ? (pathParams as Record<string, unknown>)
-        : undefined;
-    const pathParamKeys = pathParamRecord
-      ? new Set(Object.keys(pathParamRecord))
-      : undefined;
-    // Prevent untyped query parameters from overwriting route path parameters
-    // when `@mastra/nestjs` merges `pathParams` and `queryParams`.
-    const queryParams =
-      pathParamKeys && pathParamKeys.size > 0
-        ? Object.fromEntries(
-            Object.entries(rawQueryParams).filter(
-              ([key]) => !pathParamKeys.has(key),
-            ),
-          )
-        : rawQueryParams;
+    const queryParams = parseQueryParams(req.query, pathParams);
     const body = await this.parseBody(req, route.maxBodySize);
 
-    // Tools are singleton DI providers registered at startup (not hot-swapped by ID mid-request).
-    const requestedToolId =
-      typeof pathParamRecord?.toolId === "string"
-        ? pathParamRecord.toolId
-        : undefined;
-    let preflightApprovedTool: object | undefined;
-    if (
-      (route.path === "/tools/:toolId" ||
-        route.path === "/tools/:toolId/execute") &&
-      requestedToolId !== undefined
-    ) {
-      const matchedTool = this.resolveRouteTargetTool(requestedToolId);
-      if (matchedTool) {
-        if (method === "GET") {
-          if (!(await canExposeMastraTool(matchedTool))) {
-            throw new NotFoundException("Tool not found");
-          }
-        } else if (
-          method === "POST" &&
-          route.path === "/tools/:toolId/execute"
-        ) {
-          await assertCanExposeMastraTool(matchedTool);
-          if (typeof matchedTool === "object") {
-            preflightApprovedTool = matchedTool;
-          }
-        }
-      }
-    }
-
-    const executeRoute = () =>
-      this.routeHandler.executeHandler(route, {
-        pathParams,
-        queryParams,
-        body,
-        requestContext: this.requestContext.requestContext,
-        abortSignal: this.requestContext.abortSignal,
-        request: toWebRequest(req),
-      });
-    const isToolExecutePost =
-      method === "POST" &&
-      (route.path === "/tools/:toolId/execute" ||
-        route.path === "/agents/:agentId/tools/:toolId/execute");
-    const result =
-      isToolExecutePost || preflightApprovedTool
-        ? await runWithPreflightApprovedTool(
-            {
-              tool: preflightApprovedTool,
-              targetToolId: requestedToolId,
-            },
-            executeRoute,
-          )
-        : await executeRoute();
-
-    if (
-      method === "GET" &&
-      isRecord(result) &&
-      result.responseType === "json" &&
-      isRecord(result.data)
-    ) {
-      if (route.path === "/tools") {
-        return {
-          ...result,
-          data: await this.filterAndProjectSerializedTools(result.data),
-        };
-      }
-      if (
-        route.path === "/tools/:toolId" ||
-        route.path === "/agents/:agentId/tools/:toolId"
-      ) {
-        return {
-          ...result,
-          data: projectSerializedTool(result.data),
-        };
-      }
-      if (route.path === "/agents") {
-        const projectedAgents: Record<string, unknown> = {};
-        for (const [key, agentPayload] of Object.entries(result.data)) {
-          projectedAgents[key] = projectSerializedAgent(agentPayload);
-        }
-        return {
-          ...result,
-          data: projectedAgents,
-        };
-      }
-      if (route.path === "/agents/:agentId") {
-        return {
-          ...result,
-          data: projectSerializedAgent(result.data),
-        };
-      }
-    }
-
-    return result;
-  }
-
-  private resolveRouteTargetTool(toolId: string): unknown {
-    const registeredTools = this.options.tools;
-    if (registeredTools) {
-      const fromOptions = Object.values(registeredTools).find(
-        (candidate) =>
-          typeof candidate === "object" &&
-          candidate !== null &&
-          "id" in candidate &&
-          candidate.id === toolId,
-      );
-      if (fromOptions) {
-        return fromOptions;
-      }
-    }
-    return this.mastraManager?.getTool(toolId);
-  }
-
-  private resolveListedTool(
-    key: string,
-    serialized: unknown,
-    seenOptionToolIds: ReadonlySet<string>,
-  ): unknown {
-    const registeredTools = this.options.tools;
-    const hasOptionKey = Boolean(
-      registeredTools && Object.hasOwn(registeredTools, key),
-    );
-    const byRegistrationKey =
-      typeof this.mastraManager?.getToolByRegistrationKey === "function"
-        ? this.mastraManager.getToolByRegistrationKey(key)
-        : undefined;
-
-    if (byRegistrationKey !== undefined) {
-      const regToolId =
-        typeof byRegistrationKey.id === "string"
-          ? byRegistrationKey.id
-          : undefined;
-      if (regToolId === undefined || !seenOptionToolIds.has(regToolId)) {
-        return byRegistrationKey;
-      }
-    }
-
-    if (hasOptionKey && registeredTools) {
-      return registeredTools[key];
-    }
-
-    if (byRegistrationKey !== undefined) {
-      return byRegistrationKey;
-    }
-
-    const serializedId =
-      isRecord(serialized) && typeof serialized.id === "string"
-        ? serialized.id
-        : undefined;
-    if (serializedId !== undefined) {
-      const bySerializedId = this.resolveRouteTargetTool(serializedId);
-      if (bySerializedId !== undefined) {
-        return bySerializedId;
-      }
-    }
-    return this.resolveRouteTargetTool(key);
-  }
-
-  private async filterAndProjectSerializedTools(
-    serializedTools: Record<string, unknown>,
-  ): Promise<Record<string, unknown>> {
-    const seenOptionToolIds = new Set<string>();
-    for (const candidate of Object.values(this.options.tools ?? {})) {
-      if (
-        typeof candidate === "object" &&
-        candidate !== null &&
-        "id" in candidate &&
-        typeof candidate.id === "string"
-      ) {
-        seenOptionToolIds.add(candidate.id);
-      }
-    }
-
-    const entries = Object.entries(serializedTools);
-    const decisions = await Promise.all(
-      entries.map(async ([key, serialized]) => {
-        const targetTool = this.resolveListedTool(
-          key,
-          serialized,
-          seenOptionToolIds,
-        );
-        const allowed = await canExposeMastraTool(targetTool);
-        return [key, serialized, allowed] as const;
-      }),
-    );
-
-    const filtered: Record<string, unknown> = {};
-    for (const [key, serialized, allowed] of decisions) {
-      if (allowed) {
-        filtered[key] = projectSerializedTool(serialized);
-      }
-    }
-    return filtered;
+    return await this.routeHandler.executeHandler(route, {
+      pathParams,
+      queryParams,
+      body,
+      requestContext: this.requestContext.requestContext,
+      abortSignal: this.requestContext.abortSignal,
+      request: toWebRequest(req),
+    });
   }
 
   private async parseBody(

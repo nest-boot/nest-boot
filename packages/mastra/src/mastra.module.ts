@@ -53,7 +53,6 @@ import {
 } from "./mastra.module-definition.js";
 import { MastraStudioMiddleware } from "./mastra-studio.middleware.js";
 import { resolveMastraControllerOptions } from "./resolve-mastra-controller-options.util.js";
-import { assertMastraPrimitivesAvailable } from "./tool-guard.js";
 
 const MASTRA_CONTROLLER_TYPE = Symbol("MASTRA_CONTROLLER_TYPE");
 
@@ -228,10 +227,6 @@ function extractMastraCoreConfig(options: MastraModuleOptions): MastraConfig {
     }
   }
   const mastraConfig = omit(options, ["server", "studio"]);
-  assertMastraPrimitivesAvailable({
-    tools: mastraConfig.tools,
-    agents: mastraConfig.agents,
-  });
 
   const storage = mastraConfig.storage ?? createDefaultMastraStorage();
   const observability =
