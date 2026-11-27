@@ -20,7 +20,7 @@ coverage:
     patch:
       default: false
       packages:
-        target: 90%
+        target: 95%
         threshold: 0%
         paths:
           - "packages/"
