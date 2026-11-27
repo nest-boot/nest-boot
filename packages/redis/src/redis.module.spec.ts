@@ -40,12 +40,14 @@ describe("RedisModule", () => {
     const options = {
       host: "custom.redis",
     };
-    const dynamicModule = RedisModule.register(options);
+    const defaultModule = RedisModule.forRoot();
+    const dynamicModule = RedisModule.forRoot(options);
     const useFactory = () => options;
-    const asyncModule = RedisModule.registerAsync({
+    const asyncModule = RedisModule.forRootAsync({
       useFactory,
     });
 
+    expect(defaultModule.module).toBe(RedisModule);
     expect(dynamicModule.module).toBe(RedisModule);
     expect(dynamicModule.providers).toEqual(
       expect.arrayContaining([

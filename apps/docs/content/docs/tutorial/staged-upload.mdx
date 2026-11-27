@@ -31,7 +31,7 @@ import { StorageModule } from "@nest-boot/storage";
 import { Module } from "@nestjs/common";
 import { ConfigService } from "@nestjs/config";
 
-const StagedUploadDynamicModule = StagedUploadModule.registerAsync({
+const StagedUploadDynamicModule = StagedUploadModule.forRootAsync({
   inject: [ConfigService],
   useFactory: (configService: ConfigService) => ({
     url: configService.get("STAGED_UPLOAD_URL"),
@@ -59,12 +59,12 @@ internal Endpoint, and Bucket Endpoint configuration.
 
 ### Configuration Options
 
-| Option          | Description                                                                                  |
-| --------------- | -------------------------------------------------------------------------------------------- |
-| `url`           | Optional public prefix that replaces the origin/path of generated presigned POST URLs        |
-| `expires`       | Presigned POST lifetime in seconds; defaults to `3600`                                       |
-| `temporaryPath` | Temporary object path; defaults to `/tmp`                                                    |
-| `permanentPath` | Persisted object path; defaults to `/files`                                                  |
+| Option          | Description                                                                                 |
+| --------------- | ------------------------------------------------------------------------------------------- |
+| `url`           | Optional public prefix that replaces the origin/path of generated presigned POST URLs       |
+| `expires`       | Presigned POST lifetime in seconds; defaults to `3600`                                      |
+| `temporaryPath` | Temporary object path; defaults to `/tmp`                                                   |
+| `permanentPath` | Persisted object path; defaults to `/files`                                                 |
 | `limits`        | Accepted `{ fileSize, mimeTypes }` combinations; MIME patterns use picomatch glob semantics |
 
 Leading and trailing slashes in `temporaryPath` and `permanentPath` are
@@ -167,7 +167,7 @@ import { Module } from "@nestjs/common";
 @Module({
   imports: [
     StorageModule,
-    StagedUploadModule.register({
+    StagedUploadModule.forRoot({
       temporaryPath: "/tmp",
       permanentPath: "/files",
       limits: [
@@ -186,7 +186,7 @@ export class AppModule {}
 
 `StagedUploadGraphQLModule` has no configuration of its own and does not import
 an unconfigured `StagedUploadModule`. The application must register
-`StagedUploadModule.register()` or `registerAsync()` once before the resolver
+`StagedUploadModule.forRoot()` or `forRootAsync()` once before the resolver
 can use its globally exported service.
 
 ### Mutation

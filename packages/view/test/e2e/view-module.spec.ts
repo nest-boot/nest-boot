@@ -1,4 +1,4 @@
-import { Injectable } from "@nestjs/common";
+import { Injectable, Module } from "@nestjs/common";
 import { Test, type TestingModule } from "@nestjs/testing";
 import { Liquid } from "liquidjs";
 
@@ -8,6 +8,9 @@ import { ViewModule } from "../../src/view.module.js";
 class LiquidConsumer {
   constructor(readonly liquid: Liquid) {}
 }
+
+@Module({ providers: [LiquidConsumer] })
+class FeatureModule {}
 
 describe("ViewModule", () => {
   const modules: TestingModule[] = [];
@@ -44,7 +47,7 @@ describe("ViewModule", () => {
   });
   it("creates Liquid with synchronous registration options", async () => {
     const module = await compile(
-      ViewModule.register({
+      ViewModule.forRoot({
         root: ["templates/"],
         partials: ["templates/includes/"],
         layouts: ["templates/layouts/"],
@@ -69,7 +72,7 @@ describe("ViewModule", () => {
         globals: { product: "Nest Boot" },
       }),
     );
-    const module = await compile(ViewModule.registerAsync({ useFactory }));
+    const module = await compile(ViewModule.forRootAsync({ useFactory }));
     const liquid = module.get(Liquid);
     expect(useFactory).toHaveBeenCalledOnce();
     expect(liquid.options).toMatchObject({
@@ -81,21 +84,31 @@ describe("ViewModule", () => {
     });
     expect(liquid.options.cache).toBeDefined();
   });
-  it("exports Liquid to consumers", async () => {
-    const module = await Test.createTestingModule({
-      imports: [ViewModule],
-      providers: [LiquidConsumer],
-    }).compile();
-    modules.push(module);
-    expect(module.get(LiquidConsumer).liquid).toBe(module.get(Liquid));
-  });
+  it.each(["direct", "sync", "async"] as const)(
+    "globally exports Liquid to feature modules (%s registration)",
+    async (mode) => {
+      const viewModule =
+        mode === "sync"
+          ? ViewModule.forRoot({ extname: ".html" })
+          : mode === "async"
+            ? ViewModule.forRootAsync({
+                useFactory: () => ({ extname: ".tpl" }),
+              })
+            : ViewModule;
+      const module = await Test.createTestingModule({
+        imports: [viewModule, FeatureModule],
+      }).compile();
+      modules.push(module);
+      expect(module.get(LiquidConsumer).liquid).toBe(module.get(Liquid));
+    },
+  );
   /**
    * Returns compiled Nest testing module.
    * @param viewModule - View module registration to test.
    * @returns Compiled Nest testing module.
    */
   async function compile(
-    viewModule: typeof ViewModule | ReturnType<typeof ViewModule.register>,
+    viewModule: typeof ViewModule | ReturnType<typeof ViewModule.forRoot>,
   ): Promise<TestingModule> {
     const module = await Test.createTestingModule({
       imports: [viewModule],

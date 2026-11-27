@@ -59,11 +59,13 @@ describe("LoggerModule", () => {
     const options = {
       autoLogging: false,
     };
-    const dynamicModule = LoggerModule.register(options);
+    const defaultModule = LoggerModule.forRoot();
+    const dynamicModule = LoggerModule.forRoot(options);
     const useFactory = () => options;
-    const asyncModule = LoggerModule.registerAsync({
+    const asyncModule = LoggerModule.forRootAsync({
       useFactory,
     });
+    expect(defaultModule.module).toBe(LoggerModule);
     expect(dynamicModule.module).toBe(LoggerModule);
     expect(dynamicModule.providers).toEqual(
       expect.arrayContaining([

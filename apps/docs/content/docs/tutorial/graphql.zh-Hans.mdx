@@ -462,7 +462,7 @@ import { GraphQLRateLimitModule } from "@nest-boot/graphql-rate-limit";
 import { RedisModule } from "@nest-boot/redis";
 
 @Module({
-  imports: [RedisModule.register({}), GraphQLRateLimitModule],
+  imports: [RedisModule.forRoot({}), GraphQLRateLimitModule],
 })
 export class CommonModule {}
 ```
@@ -476,7 +476,7 @@ export class CommonModule {}
 3. 已注册的 `RedisModule` 提供的共享实例。
 4. 没有共享实例时使用进程内 memory 驱动。
 
-**迁移说明：** 限流模块不再读取 `REDIS_URL`。原来仅设置该环境变量的应用需要注册 `RedisModule` 才能继续使用 Redis 限流。显式 `connection` 也不再与环境变量配置合并；如需使用环境变量或共享配置，请将连接配置移至 `RedisModule.register()` 或 `registerAsync()`，并省略限流模块的 `connection`。
+**迁移说明：** 限流模块不再读取 `REDIS_URL`。原来仅设置该环境变量的应用需要注册 `RedisModule` 才能继续使用 Redis 限流。显式 `connection` 也不再与环境变量配置合并；如需使用环境变量或共享配置，请将连接配置移至 `RedisModule.forRoot()` 或 `forRootAsync()`，并省略限流模块的 `connection`。
 
 Memory 驱动适合本地开发和单进程应用，但不同进程或副本之间不会共享限流桶。如果配额需要全局共享，请使用 Redis 或自定义分布式驱动。
 

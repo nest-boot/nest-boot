@@ -61,7 +61,7 @@ describe("StorageModule", () => {
 
   it("supports synchronous registration and globally exports Storage only", async () => {
     const module = await compile(
-      StorageModule.register({
+      StorageModule.forRoot({
         accessKeyId: "registered-access-key",
         bucket: "registered-bucket",
         bucketEndpoint: true,
@@ -99,7 +99,7 @@ describe("StorageModule", () => {
         region: "eu-west-1",
       }),
     );
-    const module = await compile(StorageModule.registerAsync({ useFactory }));
+    const module = await compile(StorageModule.forRootAsync({ useFactory }));
     const storage = module.get(Storage);
 
     expect(useFactory).toHaveBeenCalledOnce();
@@ -110,7 +110,7 @@ describe("StorageModule", () => {
 
   it("reuses one client when the internal configuration is identical", async () => {
     const module = await compile(
-      StorageModule.register({
+      StorageModule.forRoot({
         bucket: "registered-bucket",
         bucketEndpoint: true,
         endpointUrl: "https://registered-bucket.s3.public.example.com",
@@ -132,7 +132,7 @@ describe("StorageModule", () => {
 
   it("destroys both clients on application shutdown", async () => {
     const module = await compile(
-      StorageModule.register({
+      StorageModule.forRoot({
         bucket: "registered-bucket",
         endpointUrl: "https://s3.public.example.com",
         internalEndpointUrl: "http://s3.internal:9000",
@@ -164,7 +164,7 @@ describe("StorageModule", () => {
 
     await expect(
       compile(
-        StorageModule.register({
+        StorageModule.forRoot({
           accessKeyId: "access-key",
           bucket: "registered-bucket",
         }),
@@ -183,7 +183,7 @@ describe("StorageModule", () => {
   async function compile(
     storageModule:
       | typeof StorageModule
-      | ReturnType<typeof StorageModule.register>,
+      | ReturnType<typeof StorageModule.forRoot>,
     featureModule?: typeof FeatureModule,
   ): Promise<TestingModule> {
     const module = await Test.createTestingModule({

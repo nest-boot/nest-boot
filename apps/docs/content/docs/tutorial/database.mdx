@@ -426,7 +426,7 @@ String values are automatically encrypted before create and update operations. L
 ```typescript
 import { CryptModule } from "@nest-boot/crypt";
 
-const CryptDynamicModule = CryptModule.registerAsync({
+const CryptDynamicModule = CryptModule.forRootAsync({
   inject: [ConfigService],
   useFactory: (configService: ConfigService) => ({
     secret: configService.getOrThrow("CRYPT_SECRET"),

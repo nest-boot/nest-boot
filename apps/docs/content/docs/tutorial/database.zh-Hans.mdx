@@ -407,7 +407,7 @@ export class CloudProviderAccount {
 ```typescript
 import { CryptModule } from "@nest-boot/crypt";
 
-const CryptDynamicModule = CryptModule.registerAsync({
+const CryptDynamicModule = CryptModule.forRootAsync({
   inject: [ConfigService],
   useFactory: (configService: ConfigService) => ({
     secret: configService.getOrThrow("CRYPT_SECRET"),

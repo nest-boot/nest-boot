@@ -20,7 +20,7 @@ import { estimateEntropy } from "./utils/estimate-entropy.util.js";
  *
  * @Module({
  *   imports: [
- *     CryptModule.register({
+ *     CryptModule.forRoot({
  *       secret: process.env.CRYPT_SECRET
  *     }),
  *   ],
@@ -81,11 +81,11 @@ import { estimateEntropy } from "./utils/estimate-entropy.util.js";
 export class CryptModule extends ConfigurableModuleClass {
   /**
    * Registers the CryptModule with the given options.
-   * @param options - Configuration options including secret and isGlobal
+   * @param options - Configuration options including secret
    * @returns Dynamic module configuration
    */
-  static override register(options: typeof OPTIONS_TYPE): DynamicModule {
-    return super.register(options);
+  static override forRoot(options: typeof OPTIONS_TYPE = {}): DynamicModule {
+    return super.forRoot(options);
   }
 
   /**
@@ -93,9 +93,9 @@ export class CryptModule extends ConfigurableModuleClass {
    * @param options - Async configuration options
    * @returns Dynamic module configuration
    */
-  static override registerAsync(
+  static override forRootAsync(
     options: typeof ASYNC_OPTIONS_TYPE,
   ): DynamicModule {
-    return super.registerAsync(options);
+    return super.forRootAsync(options);
   }
 }

@@ -78,7 +78,7 @@ describe("MailerModule", () => {
     vi.stubEnv("SMTP_PORT", "465");
 
     const module = await compile(
-      MailerModule.register({
+      MailerModule.forRoot({
         host: "registered.example.com",
         port: 587,
         secure: false,
@@ -97,7 +97,7 @@ describe("MailerModule", () => {
       host: "async.example.com",
       port: 2525,
     }));
-    const module = await compile(MailerModule.registerAsync({ useFactory }));
+    const module = await compile(MailerModule.forRootAsync({ useFactory }));
 
     expect(useFactory).toHaveBeenCalledOnce();
     expect(module.get(Mailer).options).toMatchObject({
@@ -108,9 +108,7 @@ describe("MailerModule", () => {
 
   it("sends mail with environment defaults through a registered transport", async () => {
     vi.stubEnv("SMTP_FROM", "Example <no-reply@example.com>");
-    const module = await compile(
-      MailerModule.register({ jsonTransport: true }),
-    );
+    const module = await compile(MailerModule.forRoot({ jsonTransport: true }));
     const mailer = module.get<Mailer<JSONTransport.SentMessageInfo>>(Mailer);
 
     const result = await mailer.sendMail({
@@ -151,9 +149,7 @@ describe("MailerModule", () => {
    * @returns Compiled Nest testing module.
    */
   async function compile(
-    mailerModule:
-      | typeof MailerModule
-      | ReturnType<typeof MailerModule.register>,
+    mailerModule: typeof MailerModule | ReturnType<typeof MailerModule.forRoot>,
     featureModule?: typeof FeatureModule,
   ): Promise<TestingModule> {
     const module = await Test.createTestingModule({

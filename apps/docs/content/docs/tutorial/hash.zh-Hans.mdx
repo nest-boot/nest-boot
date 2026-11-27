@@ -28,7 +28,7 @@ export class AppModule {}
 也可以显式传入 secret：
 
 ```typescript
-HashModule.register({
+HashModule.forRoot({
   secret: process.env.HASH_SECRET,
 });
 ```

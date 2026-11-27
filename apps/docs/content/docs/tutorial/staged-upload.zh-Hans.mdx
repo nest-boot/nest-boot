@@ -27,7 +27,7 @@ import { StorageModule } from "@nest-boot/storage";
 import { Module } from "@nestjs/common";
 import { ConfigService } from "@nestjs/config";
 
-const StagedUploadDynamicModule = StagedUploadModule.registerAsync({
+const StagedUploadDynamicModule = StagedUploadModule.forRootAsync({
   inject: [ConfigService],
   useFactory: (configService: ConfigService) => ({
     url: configService.get("STAGED_UPLOAD_URL"),
@@ -54,12 +54,12 @@ Endpoint 和 Bucket Endpoint 请参阅 [Storage 教程](/docs/tutorial/storage)�
 
 ### 配置选项
 
-| 选项            | 描述                                                                                   |
-| --------------- | -------------------------------------------------------------------------------------- |
-| `url`           | 可选的公开前缀，用于替换生成的 presigned POST URL 的 origin/path                       |
-| `expires`       | presigned POST 的有效秒数，默认为 `3600`                                               |
-| `temporaryPath` | 临时对象路径，默认为 `/tmp`                                                            |
-| `permanentPath` | 持久化后的对象路径，默认为 `/files`                                                    |
+| 选项            | 描述                                                                                  |
+| --------------- | ------------------------------------------------------------------------------------- |
+| `url`           | 可选的公开前缀，用于替换生成的 presigned POST URL 的 origin/path                      |
+| `expires`       | presigned POST 的有效秒数，默认为 `3600`                                              |
+| `temporaryPath` | 临时对象路径，默认为 `/tmp`                                                           |
+| `permanentPath` | 持久化后的对象路径，默认为 `/files`                                                   |
 | `limits`        | 可接受的 `{ fileSize, mimeTypes }` 组合；MIME pattern 使用 picomatch 的 glob 匹配语义 |
 
 `temporaryPath` 与 `permanentPath` 的前后斜杠会被规范化。每个路径必须至少包含一个
@@ -153,7 +153,7 @@ import { Module } from "@nestjs/common";
 @Module({
   imports: [
     StorageModule,
-    StagedUploadModule.register({
+    StagedUploadModule.forRoot({
       temporaryPath: "/tmp",
       permanentPath: "/files",
       limits: [
@@ -171,8 +171,8 @@ export class AppModule {}
 ```
 
 `StagedUploadGraphQLModule` 没有独立配置，也不会导入一个未配置的
-`StagedUploadModule`。应用必须先通过 `StagedUploadModule.register()` 或
-`registerAsync()` 注册一次全局服务，resolver 才能使用它。
+`StagedUploadModule`。应用必须先通过 `StagedUploadModule.forRoot()` 或
+`forRootAsync()` 注册一次全局服务，resolver 才能使用它。
 
 ### Mutation
 

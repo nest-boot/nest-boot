@@ -18,8 +18,8 @@ describe("StagedUploadModule", () => {
   it("should globally export StagedUploadService", async () => {
     const moduleRef = await Test.createTestingModule({
       imports: [
-        StorageModule.register({ bucket: "test-bucket" }),
-        StagedUploadModule.register(options),
+        StorageModule.forRoot({ bucket: "test-bucket" }),
+        StagedUploadModule.forRoot(options),
         FeatureModule,
       ],
     }).compile();

@@ -74,8 +74,8 @@ describe("Mailer health HTTP integration", () => {
       registration === "direct"
         ? MailerModule
         : registration === "async"
-          ? MailerModule.registerAsync({ useFactory: () => options })
-          : MailerModule.register(
+          ? MailerModule.forRootAsync({ useFactory: () => options })
+          : MailerModule.forRoot(
               registration === "json" ? { jsonTransport: true } : options,
             );
     const module = await Test.createTestingModule({

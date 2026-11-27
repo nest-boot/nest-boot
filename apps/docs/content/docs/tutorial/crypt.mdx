@@ -19,7 +19,7 @@ Set `CRYPT_SECRET` or `APP_SECRET` and import `CryptModule`, or register it expl
 import { CryptModule } from "@nest-boot/crypt";
 import { ConfigService } from "@nestjs/config";
 
-const CryptDynamicModule = CryptModule.registerAsync({
+const CryptDynamicModule = CryptModule.forRootAsync({
   inject: [ConfigService],
   useFactory: (configService: ConfigService) => ({
     secret: configService.getOrThrow("CRYPT_SECRET"),

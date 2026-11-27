@@ -15,7 +15,7 @@ pnpm add @nest-boot/view liquidjs
 
 ## Static Module
 
-Import `ViewModule` directly to use the defaults:
+`ViewModule` is global. Import it once in the root module to use the defaults, then inject `Liquid` in any feature module without importing `ViewModule` again:
 
 ```typescript
 import { ViewModule } from "@nest-boot/view";
@@ -55,7 +55,7 @@ project/
 
 ## Dynamic Module
 
-`register()` accepts any LiquidJS `LiquidOptions`. Options you provide override the defaults individually:
+`forRoot()` accepts any LiquidJS `LiquidOptions`. Options you provide override the defaults individually:
 
 ```typescript
 import { ViewModule } from "@nest-boot/view";
@@ -63,7 +63,7 @@ import { Module } from "@nestjs/common";
 
 @Module({
   imports: [
-    ViewModule.register({
+    ViewModule.forRoot({
       root: ["templates/"],
       partials: ["templates/includes/"],
       layouts: ["templates/layouts/"],
@@ -76,11 +76,9 @@ import { Module } from "@nestjs/common";
 export class AppModule {}
 ```
 
-Pass `isGlobal: true` alongside the LiquidJS options when the configured engine should be available application-wide.
-
 ## Asynchronous Dynamic Module
 
-Use `registerAsync()` when options depend on another provider:
+Use `forRootAsync()` when options depend on another provider:
 
 ```typescript
 import { ViewModule } from "@nest-boot/view";
@@ -89,7 +87,7 @@ import { Module } from "@nestjs/common";
 
 @Module({
   imports: [
-    ViewModule.registerAsync({
+    ViewModule.forRootAsync({
       inject: [ConfigService],
       useFactory: (config: ConfigService) => ({
         root: [config.getOrThrow<string>("VIEW_ROOT")],
@@ -129,7 +127,7 @@ export class EmailService {
 
 With the default `extname`, `renderFile("emails/welcome")` resolves `views/emails/welcome.liquid`. Use LiquidJS APIs such as `parseAndRender()`, `registerFilter()`, `registerTag()`, and `plugin()` for inline templates and engine customization.
 
-Values rendered with `{{ value }}` are HTML-escaped by default. Use `{{ trustedHtml | raw }}` only when the value is already trusted or sanitized. You can override `outputEscape` through `register()` or `registerAsync()` when rendering a non-HTML output format.
+Values rendered with `{{ value }}` are HTML-escaped by default. Use `{{ trustedHtml | raw }}` only when the value is already trusted or sanitized. You can override `outputEscape` through `forRoot()` or `forRootAsync()` when rendering a non-HTML output format.
 
 ## Migrating from Handlebars
 

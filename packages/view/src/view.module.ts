@@ -1,4 +1,9 @@
-import { type DynamicModule, Module, type Provider } from "@nestjs/common";
+import {
+  type DynamicModule,
+  Global,
+  Module,
+  type Provider,
+} from "@nestjs/common";
 import { Liquid } from "liquidjs";
 
 import {
@@ -24,12 +29,13 @@ const liquidProvider: Provider<Liquid> = {
 };
 
 /**
- * Template rendering module powered by LiquidJS.
+ * Global template rendering module powered by LiquidJS.
  *
  * Provides a configured `Liquid` instance. Import the module directly
- * to use the default `views/` paths, or use {@link ViewModule.register} and
- * {@link ViewModule.registerAsync} to pass any LiquidJS options.
+ * to use the default `views/` paths, or use {@link ViewModule.forRoot} and
+ * {@link ViewModule.forRootAsync} to pass any LiquidJS options.
  */
+@Global()
 @Module({ providers: [liquidProvider], exports: [liquidProvider] })
 export class ViewModule extends ConfigurableModuleClass {
   /**
@@ -37,8 +43,8 @@ export class ViewModule extends ConfigurableModuleClass {
    * @param options - LiquidJS configuration options
    * @returns Dynamic module configuration
    */
-  static override register(options: typeof OPTIONS_TYPE): DynamicModule {
-    return super.register(options);
+  static override forRoot(options: typeof OPTIONS_TYPE = {}): DynamicModule {
+    return super.forRoot(options);
   }
 
   /**
@@ -46,9 +52,9 @@ export class ViewModule extends ConfigurableModuleClass {
    * @param options - Async configuration options
    * @returns Dynamic module configuration
    */
-  static override registerAsync(
+  static override forRootAsync(
     options: typeof ASYNC_OPTIONS_TYPE,
   ): DynamicModule {
-    return super.registerAsync(options);
+    return super.forRootAsync(options);
   }
 }

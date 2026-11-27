@@ -6,4 +6,6 @@ export const {
   MODULE_OPTIONS_TOKEN,
   OPTIONS_TYPE,
   ASYNC_OPTIONS_TYPE,
-} = new ConfigurableModuleBuilder<RedisOptions>().build();
+} = new ConfigurableModuleBuilder<RedisOptions>()
+  .setClassMethodName("forRoot")
+  .build();

@@ -25,8 +25,8 @@ describe("StagedUploadGraphQLModule", () => {
   it("uses the globally registered staged upload service", async () => {
     const moduleRef = await Test.createTestingModule({
       imports: [
-        StorageModule.register({ bucket: "test-bucket" }),
-        StagedUploadModule.register({}),
+        StorageModule.forRoot({ bucket: "test-bucket" }),
+        StagedUploadModule.forRoot(),
         StagedUploadGraphQLModule,
       ],
     }).compile();

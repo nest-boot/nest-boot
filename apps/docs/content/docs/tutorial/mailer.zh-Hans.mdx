@@ -49,8 +49,8 @@ import { MailerModule } from "@nest-boot/mailer";
 export class AppModule {}
 ```
 
-需要显式配置连接时，使用 `MailerModule.register()` 或
-`MailerModule.registerAsync()`；显式选项的优先级高于所有连接环境变量。
+需要显式配置连接时，使用 `MailerModule.forRoot()` 或
+`MailerModule.forRootAsync()`；显式选项的优先级高于所有连接环境变量。
 `SMTP_FROM` 仍是默认发件人，可通过 `sendMail({ from })` 覆盖。
 
 ## 发送邮件

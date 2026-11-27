@@ -20,11 +20,11 @@ describe("HashModule", () => {
     process.env = originalEnv;
   });
 
-  describe("register", () => {
+  describe("forRoot", () => {
     it("should throw error when secret is missing", async () => {
       await expect(
         Test.createTestingModule({
-          imports: [HashModule.register({})],
+          imports: [HashModule.forRoot()],
         }).compile(),
       ).rejects.toThrow("Hash secret is required.");
     });
@@ -33,7 +33,7 @@ describe("HashModule", () => {
       process.env.HASH_SECRET = TEST_SECRET;
 
       const moduleRef = await Test.createTestingModule({
-        imports: [HashModule.register({})],
+        imports: [HashModule.forRoot()],
       }).compile();
 
       const hashService = moduleRef.get<HashService>(HashService);
@@ -48,7 +48,7 @@ describe("HashModule", () => {
       process.env.APP_SECRET = TEST_SECRET;
 
       const moduleRef = await Test.createTestingModule({
-        imports: [HashModule.register({})],
+        imports: [HashModule.forRoot({})],
       }).compile();
 
       const hashService = moduleRef.get<HashService>(HashService);
@@ -62,7 +62,7 @@ describe("HashModule", () => {
     it("should throw error when secret is too short", async () => {
       await expect(
         Test.createTestingModule({
-          imports: [HashModule.register({ secret: "short" })],
+          imports: [HashModule.forRoot({ secret: "short" })],
         }).compile(),
       ).rejects.toThrow("Hash secret must be at least 32 characters long.");
     });
@@ -73,17 +73,17 @@ describe("HashModule", () => {
 
       await expect(
         Test.createTestingModule({
-          imports: [HashModule.register({ secret: lowEntropySecret })],
+          imports: [HashModule.forRoot({ secret: lowEntropySecret })],
         }).compile(),
       ).rejects.toThrow("Hash secret appears low-entropy.");
     });
   });
 
-  describe("registerAsync", () => {
+  describe("forRootAsync", () => {
     it("should register module with async factory", async () => {
       const moduleRef = await Test.createTestingModule({
         imports: [
-          HashModule.registerAsync({
+          HashModule.forRootAsync({
             useFactory: () => ({
               secret: TEST_SECRET,
             }),

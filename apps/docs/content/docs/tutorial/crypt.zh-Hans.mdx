@@ -19,7 +19,7 @@ pnpm add @nest-boot/crypt
 import { CryptModule } from "@nest-boot/crypt";
 import { ConfigService } from "@nestjs/config";
 
-const CryptDynamicModule = CryptModule.registerAsync({
+const CryptDynamicModule = CryptModule.forRootAsync({
   inject: [ConfigService],
   useFactory: (configService: ConfigService) => ({
     secret: configService.getOrThrow("CRYPT_SECRET"),

@@ -90,7 +90,7 @@ describeWithRedis("RedisGraphQLRateLimitDriver integration", () => {
 
   it("shares RedisModule's connection and lets only RedisModule close it", async () => {
     const moduleRef = await Test.createTestingModule({
-      imports: [RedisModule.register({}), GraphQLRateLimitModule],
+      imports: [RedisModule.forRoot(), GraphQLRateLimitModule],
     })
       .overrideProvider(GraphQLRateLimitPlugin)
       .useValue({})

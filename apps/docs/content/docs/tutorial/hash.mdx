@@ -28,7 +28,7 @@ export class AppModule {}
 You can also pass the secret explicitly:
 
 ```typescript
-HashModule.register({
+HashModule.forRoot({
   secret: process.env.HASH_SECRET,
 });
 ```

@@ -1,7 +1,12 @@
 import { RequestContext } from "@nest-boot/request-context";
-import { Inject, Injectable, type NestMiddleware } from "@nestjs/common";
+import {
+  Inject,
+  Injectable,
+  type NestMiddleware,
+  Optional,
+} from "@nestjs/common";
 import { type Handler, type Request, type Response } from "express";
-import i18next from "i18next";
+import i18next, { type i18n } from "i18next";
 import * as middleware from "i18next-http-middleware";
 
 import { I18N } from "./i18n.constants.js";
@@ -26,12 +31,17 @@ export class I18nMiddleware implements NestMiddleware {
   /**
    * Creates a new I18nMiddleware instance.
    * @param options - i18next initialization and middleware options
+   * @param i18nInstance - Configured i18next instance for the current module container
    */
   constructor(
+    @Optional()
     @Inject(MODULE_OPTIONS_TOKEN)
-    readonly options: I18nModuleOptions,
+    readonly options: I18nModuleOptions = {},
+    @Optional()
+    @Inject(I18N)
+    private readonly i18nInstance: i18n = i18next,
   ) {
-    this.handler = middleware.handle(i18next as any, options);
+    this.handler = middleware.handle(this.i18nInstance as any, options);
   }
 
   /**

@@ -43,7 +43,7 @@ class FeatureModule {}
 
 @Module({
   imports: [
-    StorageModule.register({ bucket: testBucket, rootPath: testRoot }),
+    StorageModule.forRoot({ bucket: testBucket, rootPath: testRoot }),
     FeatureModule,
   ],
 })

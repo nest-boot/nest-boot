@@ -79,8 +79,8 @@ export class LoggerModule
    * @param options - Supported logger configuration options
    * @returns Dynamic module configuration
    */
-  static override register(options: typeof OPTIONS_TYPE): DynamicModule {
-    return super.register(options);
+  static override forRoot(options: typeof OPTIONS_TYPE = {}): DynamicModule {
+    return super.forRoot(options);
   }
 
   /**
@@ -88,10 +88,10 @@ export class LoggerModule
    * @param options - Async configuration options
    * @returns Dynamic module configuration
    */
-  static override registerAsync(
+  static override forRootAsync(
     options: typeof ASYNC_OPTIONS_TYPE,
   ): DynamicModule {
-    return super.registerAsync(options);
+    return super.forRootAsync(options);
   }
 
   /**

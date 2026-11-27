@@ -7,4 +7,6 @@ export const {
   MODULE_OPTIONS_TOKEN,
   OPTIONS_TYPE,
   ASYNC_OPTIONS_TYPE,
-} = new ConfigurableModuleBuilder<StorageModuleOptions>().build();
+} = new ConfigurableModuleBuilder<StorageModuleOptions>()
+  .setClassMethodName("forRoot")
+  .build();
