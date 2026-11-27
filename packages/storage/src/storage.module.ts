@@ -1,3 +1,4 @@
+import { withDynamicController } from "@nest-boot/common";
 import {
   type DynamicModule,
   Global,
@@ -5,7 +6,12 @@ import {
   type Provider,
 } from "@nestjs/common";
 
+import { StorageDownloadController } from "./controllers/storage-download.controller.js";
 import { type StorageModuleOptions } from "./interfaces/storage-module-options.interface.js";
+import {
+  STORAGE_DOWNLOAD_PATH,
+  StorageDownloadService,
+} from "./services/storage-download.service.js";
 import { Storage } from "./storage.js";
 import {
   ASYNC_OPTIONS_TYPE,
@@ -22,6 +28,10 @@ const storageProvider: Provider<Storage> = {
     new Storage(loadStorageOptionsFromEnv(options)),
 };
 
+@Global()
+@Module({ providers: [storageProvider], exports: [Storage] })
+class StorageCoreModule extends ConfigurableModuleClass {}
+
 /**
  * Global module that provides an S3-backed {@link Storage} service.
  *
@@ -31,15 +41,19 @@ const storageProvider: Provider<Storage> = {
  * details owned by {@link Storage}.
  */
 @Global()
-@Module({ providers: [storageProvider], exports: [Storage] })
-export class StorageModule extends ConfigurableModuleClass {
+@Module({
+  controllers: [StorageDownloadController],
+  providers: [storageProvider, StorageDownloadService],
+  exports: [Storage, StorageDownloadService],
+})
+export class StorageModule extends StorageCoreModule {
   /**
    * Registers the StorageModule with explicit storage options.
    * @param options - Storage configuration
    * @returns Dynamic module configuration
    */
   static override forRoot(options: typeof OPTIONS_TYPE = {}): DynamicModule {
-    return super.forRoot(options);
+    return this.withDownloadController(super.forRoot(options));
   }
 
   /**
@@ -50,6 +64,32 @@ export class StorageModule extends ConfigurableModuleClass {
   static override forRootAsync(
     options: typeof ASYNC_OPTIONS_TYPE,
   ): DynamicModule {
-    return super.forRootAsync(options);
+    return this.withDownloadController(super.forRootAsync(options));
+  }
+
+  private static withDownloadController(
+    definition: DynamicModule,
+  ): DynamicModule {
+    return withDynamicController(
+      {
+        ...definition,
+        module: StorageCoreModule,
+        providers: [...(definition.providers ?? []), StorageDownloadService],
+        exports: [StorageDownloadService],
+      },
+      StorageDownloadController,
+      {
+        inject: [MODULE_OPTIONS_TOKEN],
+        useFactory: ({ download }: StorageModuleOptions) =>
+          download?.enabled === false
+            ? { path: [] }
+            : {
+                path: STORAGE_DOWNLOAD_PATH,
+                decorators: download?.controllerDecorator
+                  ? [download.controllerDecorator]
+                  : [],
+              },
+      },
+    );
   }
 }

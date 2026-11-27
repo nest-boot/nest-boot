@@ -2517,6 +2517,10 @@ importers:
         version: 5.1.1
 
   packages/storage:
+    dependencies:
+      '@nest-boot/common':
+        specifier: workspace:^
+        version: link:../common
     devDependencies:
       '@aws-sdk/client-s3':
         specifier: ^3.1123.0
@@ -2533,6 +2537,9 @@ importers:
       '@nest-boot/eslint':
         specifier: workspace:^
         version: link:../eslint
+      '@nest-boot/jwt':
+        specifier: workspace:^
+        version: link:../jwt
       '@nest-boot/tsconfig':
         specifier: workspace:^
         version: link:../tsconfig

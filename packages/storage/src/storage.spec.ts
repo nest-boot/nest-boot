@@ -78,10 +78,12 @@ describe("Storage", () => {
       secretAccessKey: "secret-key",
     });
     const { client } = storageClients(storage);
+    const signingDate = new Date("2026-11-27T00:00:00.000Z");
 
     await expect(
       storage.createTemporaryUrl("reports/file.txt", {
         expiresIn: 120,
+        signingDate,
         ResponseContentType: "text/plain",
       }),
     ).resolves.toBe("https://signed.example.com/file.txt");
@@ -98,6 +100,7 @@ describe("Storage", () => {
     });
     expect(getSignedUrlMock).toHaveBeenNthCalledWith(1, client, command, {
       expiresIn: 120,
+      signingDate,
     });
     expect(getSignedUrlMock.mock.calls[1]?.[2]).toEqual({});
   });

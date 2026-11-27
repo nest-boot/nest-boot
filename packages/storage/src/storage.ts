@@ -179,7 +179,7 @@ export class Storage {
     path: string,
     options: StorageTemporaryUrlOptions = {},
   ): Promise<string> {
-    const { expiresIn, ...getObjectOptions } = options;
+    const { expiresIn, signingDate, ...getObjectOptions } = options;
 
     return await getSignedUrl(
       this.client,
@@ -188,7 +188,10 @@ export class Storage {
         Bucket: this.clientBucket,
         Key: this.objectKey(path),
       }),
-      expiresIn === undefined ? {} : { expiresIn },
+      {
+        ...(expiresIn === undefined ? {} : { expiresIn }),
+        ...(signingDate === undefined ? {} : { signingDate }),
+      },
     );
   }
 

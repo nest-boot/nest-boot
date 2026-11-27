@@ -8,6 +8,9 @@ export interface StorageTemporaryUrlOptions extends Omit<
 > {
   /** Signature lifetime in seconds. The AWS SDK defaults to 900 seconds. */
   expiresIn?: number;
+
+  /** Time from which the signature lifetime is measured. Defaults to the signing time. */
+  signingDate?: Date;
 }
 
 /** Options for {@link Storage.createTemporaryUploadUrl}. */

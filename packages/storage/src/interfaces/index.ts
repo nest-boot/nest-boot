@@ -1,3 +1,4 @@
+export * from "./storage-download-options.interface.js";
 export * from "./storage-entry.interface.js";
 export * from "./storage-file-options.interface.js";
 export * from "./storage-module-options.interface.js";

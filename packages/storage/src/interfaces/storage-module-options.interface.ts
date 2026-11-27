@@ -1,3 +1,5 @@
+import type { StorageDownloadOptions } from "./storage-download-options.interface.js";
+
 /** Configuration options for the global StorageModule and its S3 client. */
 export interface StorageModuleOptions {
   /** Long-lived access key used for S3-compatible authentication. */
@@ -15,6 +17,9 @@ export interface StorageModuleOptions {
    * Trailing slashes in the endpoint path are normalized when enabled.
    */
   bucketEndpoint?: boolean;
+
+  /** Configuration for the signed download route. */
+  download?: StorageDownloadOptions;
 
   /** External S3 endpoint used for uploads and as the public URL fallback. */
   endpointUrl?: string;

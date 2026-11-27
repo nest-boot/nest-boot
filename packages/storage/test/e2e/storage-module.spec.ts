@@ -59,7 +59,7 @@ describe("StorageModule", () => {
     expect(() => module.get(S3Client)).toThrow();
   });
 
-  it("supports synchronous registration and globally exports Storage only", async () => {
+  it("supports synchronous registration, globally exports Storage, and keeps the clients private", async () => {
     const module = await compile(
       StorageModule.forRoot({
         accessKeyId: "registered-access-key",
