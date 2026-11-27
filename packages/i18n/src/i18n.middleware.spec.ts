@@ -53,4 +53,11 @@ describe("I18nMiddleware", () => {
     );
     expect(next).toHaveBeenCalledOnce();
   });
+
+  it("defaults options to an empty object when omitted", () => {
+    const middleware = new I18nMiddleware();
+
+    expect(middleware.options).toEqual({});
+    expect(mocks.handle).toHaveBeenCalledWith(i18next, {});
+  });
 });

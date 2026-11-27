@@ -13,5 +13,5 @@
 
 Align dynamic module static configuration methods with the NestJS community guidelines:
 
-- Mark `ViewModule` as `@Global()` by default (removing the `isGlobal` registration extra) so its configured `Liquid` instance is shared across the application like other infrastructure modules.
+- Mark `I18nModule` and `ViewModule` with `@Global()` directly (removing `isGlobal` registration extras and supporting zero-config direct `I18nModule` imports alongside `ViewModule`).
 - Switch global once-per-application infrastructure modules (`CryptModule`, `GraphQLConnectionModule`, `HashModule`, `I18nModule`, `LoggerModule`, `MailerModule`, `RedisModule`, `StagedUploadModule`, `StorageModule`, and `ViewModule`) from `register` / `registerAsync` to `forRoot` / `forRootAsync`, with optional default `options = {}` on `forRoot()`.

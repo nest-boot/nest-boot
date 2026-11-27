@@ -3,7 +3,12 @@ import {
   RequestContextMiddleware,
   RequestContextModule,
 } from "@nest-boot/request-context";
-import { type DynamicModule, Module, type Provider } from "@nestjs/common";
+import {
+  type DynamicModule,
+  Global,
+  Module,
+  type Provider,
+} from "@nestjs/common";
 import i18next, { type i18n } from "i18next";
 import Backend from "i18next-fs-backend";
 import { LanguageDetector } from "i18next-http-middleware";
@@ -21,16 +26,37 @@ import { type I18nModuleOptions } from "./interfaces/i18n-module-options.interfa
 
 i18next.use(Backend).use(LanguageDetector);
 
+const i18nProvider: Provider<i18n> = {
+  provide: I18N,
+  inject: [{ token: MODULE_OPTIONS_TOKEN, optional: true }],
+  useFactory: async (moduleOptions: I18nModuleOptions = {}) => {
+    await i18next.init({
+      backend: {
+        loadPath: path.join(process.cwd(), "locales/{{lng}}/{{ns}}.json"),
+        addPath: path.join(process.cwd(), "locales/{{lng}}/{{ns}}.json"),
+      },
+      fallbackLng: "en",
+      keySeparator: false,
+      interpolation: { escapeValue: false },
+      ...moduleOptions,
+    });
+
+    return i18next;
+  },
+};
+
 /**
- * Module that provides i18n (internationalization) support via i18next.
+ * Global module that provides i18n (internationalization) support via i18next.
  *
  * Initializes i18next with file-system backend and HTTP language detection,
  * and makes the i18n instance available through dependency injection and
  * the request context.
  */
+@Global()
 @Module({
   imports: [RequestContextModule, MiddlewareModule],
-  providers: [I18nMiddleware],
+  providers: [I18nMiddleware, i18nProvider],
+  exports: [i18nProvider],
 })
 export class I18nModule extends ConfigurableModuleClass {
   /**
@@ -39,9 +65,7 @@ export class I18nModule extends ConfigurableModuleClass {
    * @returns Dynamic module configuration
    */
   static override forRoot(options: typeof OPTIONS_TYPE = {}): DynamicModule {
-    return {
-      ...this.with(super.forRoot(options)),
-    };
+    return super.forRoot(options);
   }
 
   /**
@@ -52,42 +76,7 @@ export class I18nModule extends ConfigurableModuleClass {
   static override forRootAsync(
     options: typeof ASYNC_OPTIONS_TYPE,
   ): DynamicModule {
-    return {
-      ...this.with(super.forRootAsync(options)),
-    };
-  }
-
-  /**
-   * Merges i18next init options with defaults.
-   * @param dynamicModule - Configured Nest dynamic module.
-   * @returns Dynamic module exposing the supplied provider.
-   * @internal
-   */
-  private static with(dynamicModule: DynamicModule): DynamicModule {
-    const provider: Provider<i18n> = {
-      provide: I18N,
-      inject: [MODULE_OPTIONS_TOKEN],
-      useFactory: async (moduleOptions: I18nModuleOptions) => {
-        await i18next.init({
-          backend: {
-            loadPath: path.join(process.cwd(), "locales/{{lng}}/{{ns}}.json"),
-            addPath: path.join(process.cwd(), "locales/{{lng}}/{{ns}}.json"),
-          },
-          fallbackLng: "en",
-          keySeparator: false,
-          interpolation: { escapeValue: false },
-          ...moduleOptions,
-        });
-
-        return i18next;
-      },
-    };
-
-    return {
-      ...dynamicModule,
-      providers: [...(dynamicModule.providers ?? []), provider],
-      exports: [...(dynamicModule.exports ?? []), provider],
-    };
+    return super.forRootAsync(options);
   }
 
   /**

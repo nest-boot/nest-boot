@@ -95,8 +95,9 @@ exports 只提供 `import` 入口，不再提供 CommonJS `require` 入口。
 - 全局共享配置模块（`CryptModule`、`GraphQLConnectionModule`、`HashModule`、`I18nModule`、
   `LoggerModule`、`MailerModule`、`RedisModule`、`MetricsModule`、`HealthCheckModule`、
   `StagedUploadModule`、`StorageModule` 与 `ViewModule`）统一将 `register()` /
-  `registerAsync()` 替换为 `forRoot()` / `forRootAsync()`。`ViewModule` 现在默认标记为
-  `@Global()`，请移除注册时传入的 `isGlobal` 选项。
+  `registerAsync()` 替换为 `forRoot()` / `forRootAsync()`。`I18nModule` 与 `ViewModule`
+  统一直接在模块类上标注 `@Global()`（同时支持零配置直接静态导入），请移除注册时传入的
+  `isGlobal` 选项。
 - 使用 `@nest-boot/mailer` 时，将 `nodemailer` 升级到 `^10.0.16`。
   Nodemailer 已自带 TypeScript 类型声明，请移除 `@types/nodemailer`。
 - 将 Apollo Playground 配置替换为 `graphiql`。

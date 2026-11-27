@@ -24,11 +24,16 @@ vi.mock("i18next-http-middleware", () => ({
 
 import type { MiddlewareManager } from "@nest-boot/middleware";
 import { RequestContextMiddleware } from "@nest-boot/request-context";
-import type { DynamicModule, FactoryProvider } from "@nestjs/common";
+import type { FactoryProvider } from "@nestjs/common";
+import {
+  GLOBAL_MODULE_METADATA,
+  MODULE_METADATA,
+} from "@nestjs/common/constants";
 
 import { I18N } from "./i18n.constants.js";
 import type { I18nMiddleware } from "./i18n.middleware.js";
 import { I18nModule } from "./i18n.module.js";
+import { MODULE_OPTIONS_TOKEN } from "./i18n.module-definition.js";
 import type { I18nModuleOptions } from "./interfaces/i18n-module-options.interface.js";
 
 describe("I18nModule", () => {
@@ -36,18 +41,29 @@ describe("I18nModule", () => {
     mocks.init.mockClear();
   });
 
-  it("registers globally and initializes i18next with defaults", async () => {
+  it("is decorated with @Global() and initializes i18next with defaults", async () => {
     const options: I18nModuleOptions = {
       lng: "de",
       resources: {
         de: { translation: { greeting: "Hallo" } },
       },
     };
-    const dynamicModule = I18nModule.forRoot(options);
-    const provider = getI18nProvider(dynamicModule.providers);
+    const provider = getI18nProvider();
 
-    expect(dynamicModule.global).toBe(true);
-    await provider.useFactory?.(options);
+    expect(Reflect.getMetadata(GLOBAL_MODULE_METADATA, I18nModule)).toBe(true);
+    await provider.useFactory();
+    expect(mocks.init).toHaveBeenCalledWith({
+      backend: {
+        addPath: expect.stringContaining("locales/{{lng}}/{{ns}}.json"),
+        loadPath: expect.stringContaining("locales/{{lng}}/{{ns}}.json"),
+      },
+      fallbackLng: "en",
+      interpolation: { escapeValue: false },
+      keySeparator: false,
+    });
+
+    mocks.init.mockClear();
+    await provider.useFactory(options);
     expect(mocks.init).toHaveBeenCalledWith({
       backend: {
         addPath: expect.stringContaining("locales/{{lng}}/{{ns}}.json"),
@@ -61,15 +77,31 @@ describe("I18nModule", () => {
     });
   });
 
-  it("supports zero-argument forRoot and non-global asynchronous registration", () => {
-    expect(I18nModule.forRoot().global).toBe(true);
-    const dynamicModule = I18nModule.forRootAsync({
-      isGlobal: false,
-      useFactory: () => Promise.resolve({ fallbackLng: "en" }),
-    });
+  it("registers synchronous and asynchronous options via forRoot and forRootAsync", () => {
+    const options: I18nModuleOptions = { fallbackLng: "en" };
+    const useFactory = () => Promise.resolve(options);
+    const defaultModule = I18nModule.forRoot();
+    const syncModule = I18nModule.forRoot(options);
+    const asyncModule = I18nModule.forRootAsync({ useFactory });
 
-    expect(dynamicModule.global).toBe(false);
-    expect(getI18nProvider(dynamicModule.providers).inject).toHaveLength(1);
+    expect(defaultModule.module).toBe(I18nModule);
+    expect(syncModule.providers).toEqual(
+      expect.arrayContaining([
+        {
+          provide: MODULE_OPTIONS_TOKEN,
+          useValue: options,
+        },
+      ]),
+    );
+    expect(asyncModule.providers).toEqual(
+      expect.arrayContaining([
+        {
+          inject: [],
+          provide: MODULE_OPTIONS_TOKEN,
+          useFactory,
+        },
+      ]),
+    );
   });
 
   it("registers i18n middleware after request context middleware", () => {
@@ -88,13 +120,14 @@ describe("I18nModule", () => {
 });
 
 /**
- * Returns factory provider that creates the internationalization options.
- * @param providers - Dependency injection providers to register.
- * @returns Factory provider that creates the internationalization options.
+ * Returns factory provider that initializes i18next on I18nModule.
+ * @returns Factory provider that initializes i18next.
  */
-function getI18nProvider(
-  providers: DynamicModule["providers"] | undefined,
-): FactoryProvider<I18nModuleOptions> {
+function getI18nProvider(): FactoryProvider<I18nModuleOptions> {
+  const providers = Reflect.getMetadata(
+    MODULE_METADATA.PROVIDERS,
+    I18nModule,
+  ) as unknown[] | undefined;
   const provider = providers?.find(
     (candidate): candidate is FactoryProvider<I18nModuleOptions> =>
       typeof candidate === "object" &&

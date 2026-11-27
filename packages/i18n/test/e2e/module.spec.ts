@@ -4,6 +4,7 @@ import {
   type DynamicModule,
   Get,
   type INestApplication,
+  Module,
   type Type,
 } from "@nestjs/common";
 import { Test } from "@nestjs/testing";
@@ -32,11 +33,30 @@ interface TranslationResponse {
   requestScoped: string;
 }
 
+@Module({
+  controllers: [TranslationController],
+})
+class FeatureModule {}
+
 describe("I18nModule - e2e", () => {
   const apps: INestApplication[] = [];
 
   afterEach(async () => {
     await Promise.all(apps.splice(0).map((app) => app.close()));
+  });
+
+  it("supports direct static module import with global I18N injection", async () => {
+    const app = await createApp(I18nModule);
+
+    const response = await request(app.getHttpServer())
+      .get("/translations")
+      .expect(200);
+
+    expect(response.body).toEqual({
+      injected: "greeting",
+      language: "en",
+      requestScoped: "greeting",
+    });
   });
 
   it("detects the request language and exposes it through RequestContext", async () => {
@@ -79,8 +99,7 @@ describe("I18nModule - e2e", () => {
     i18nModule: DynamicModule | Type,
   ): Promise<INestApplication> {
     const moduleRef = await Test.createTestingModule({
-      controllers: [TranslationController],
-      imports: [i18nModule],
+      imports: [i18nModule, FeatureModule],
     }).compile();
     const app = moduleRef.createNestApplication();
     apps.push(app);

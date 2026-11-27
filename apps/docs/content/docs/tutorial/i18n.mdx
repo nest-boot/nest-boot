@@ -15,6 +15,8 @@ pnpm add @nest-boot/i18n i18next i18next-fs-backend i18next-http-middleware
 
 ## Basic Usage
 
+`I18nModule` is global. Import `I18nModule` directly to use the defaults, or configure it once in the root module with `forRoot()` / `forRootAsync()`:
+
 ```typescript
 import { Module } from "@nestjs/common";
 import { I18nModule } from "@nest-boot/i18n";
