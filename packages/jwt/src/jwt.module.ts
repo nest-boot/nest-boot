@@ -13,7 +13,6 @@ import {
 import { JwtService } from "./services/jwt.service.js";
 import { resolveJwksOptions } from "./utils/resolve-jwks-options.js";
 
-const JWKS_CONTROLLER_CONFIG = Symbol("JWKS_CONTROLLER_CONFIG");
 const UNSUPPORTED_ENHANCER_METADATA_KEYS = [
   "__guards__",
   "__interceptors__",
@@ -59,7 +58,7 @@ export class JwtModule extends ConfigurableModuleClass {
       providers: [
         ...(dynamicModule.providers ?? []),
         {
-          provide: JWKS_CONTROLLER_CONFIG,
+          provide: Symbol("JWKS_CONTROLLER"),
           inject: [MODULE_OPTIONS_TOKEN],
           useFactory: (options: JwtModuleOptions) => {
             const jwks = resolveJwksOptions(options.jwks);
