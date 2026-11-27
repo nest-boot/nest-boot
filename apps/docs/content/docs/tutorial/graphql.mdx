@@ -463,7 +463,7 @@ import { GraphQLRateLimitModule } from "@nest-boot/graphql-rate-limit";
 import { RedisModule } from "@nest-boot/redis";
 
 @Module({
-  imports: [RedisModule.register({}), GraphQLRateLimitModule],
+  imports: [RedisModule.forRoot({}), GraphQLRateLimitModule],
 })
 export class CommonModule {}
 ```
@@ -477,7 +477,7 @@ Driver selection follows this order:
 3. The shared client from a registered `RedisModule`.
 4. Process-local memory when no shared client is available.
 
-**Migration:** The rate limit module no longer reads `REDIS_URL`. Applications that previously set only this variable must register `RedisModule` to keep Redis-backed rate limiting. Explicit `connection` options are also no longer merged with environment configuration. To use environment or shared configuration, move connection options to `RedisModule.register()` or `registerAsync()` and omit the rate limit module's `connection`.
+**Migration:** The rate limit module no longer reads `REDIS_URL`. Applications that previously set only this variable must register `RedisModule` to keep Redis-backed rate limiting. Explicit `connection` options are also no longer merged with environment configuration. To use environment or shared configuration, move connection options to `RedisModule.forRoot()` or `forRootAsync()` and omit the rate limit module's `connection`.
 
 The memory driver is convenient for local development and single-process applications, but its buckets are not shared across processes or replicas. Use Redis or a custom distributed driver when limits must be global.
 

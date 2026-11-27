@@ -5,11 +5,11 @@ import { CryptModule, CryptService } from "../../src/index.js";
 const TEST_SECRET = "myTestSecretThatIsAtLeast32Chars!";
 
 describe("CryptService", () => {
-  describe("instance methods (via CryptModule.register)", () => {
+  describe("instance methods (via CryptModule.forRoot)", () => {
     let cryptService: CryptService;
     beforeEach(async () => {
       const moduleRef = await Test.createTestingModule({
-        imports: [CryptModule.register({ secret: TEST_SECRET })],
+        imports: [CryptModule.forRoot({ secret: TEST_SECRET })],
       }).compile();
       cryptService = moduleRef.get<CryptService>(CryptService);
     });

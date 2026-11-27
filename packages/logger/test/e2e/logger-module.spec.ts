@@ -47,7 +47,7 @@ describe("LoggerModule", () => {
   });
   it("should provide one configured pino-http middleware instance", async () => {
     const moduleRef = await Test.createTestingModule({
-      imports: [LoggerModule.register({ enabled: false })],
+      imports: [LoggerModule.forRoot({ enabled: false })],
     }).compile();
     expect(moduleRef.get(PINO_HTTP)).toBe(mockLoggerMiddleware);
     expect(mockPinoHttp).toHaveBeenCalledTimes(1);
@@ -61,7 +61,7 @@ describe("LoggerModule", () => {
     const customReceivedMessage = vi.fn(() => "unsupported-message");
     const moduleRef = await Test.createTestingModule({
       imports: [
-        LoggerModule.register({
+        LoggerModule.forRoot({
           customLevels: { audit: 35 },
           customProps,
           customReceivedMessage,
@@ -93,7 +93,7 @@ describe("LoggerModule", () => {
       };
     });
     const moduleRef = await Test.createTestingModule({
-      imports: [LoggerModule.registerAsync({ useFactory })],
+      imports: [LoggerModule.forRootAsync({ useFactory })],
     }).compile();
     expect(useFactory).toHaveBeenCalledTimes(1);
     expect(moduleRef.get(PINO_HTTP)).toBe(mockLoggerMiddleware);

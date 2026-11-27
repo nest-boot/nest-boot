@@ -43,7 +43,7 @@ describe("I18nModule", () => {
         de: { translation: { greeting: "Hallo" } },
       },
     };
-    const dynamicModule = I18nModule.register(options);
+    const dynamicModule = I18nModule.forRoot(options);
     const provider = getI18nProvider(dynamicModule.providers);
 
     expect(dynamicModule.global).toBe(true);
@@ -61,8 +61,9 @@ describe("I18nModule", () => {
     });
   });
 
-  it("supports non-global asynchronous registration", () => {
-    const dynamicModule = I18nModule.registerAsync({
+  it("supports zero-argument forRoot and non-global asynchronous registration", () => {
+    expect(I18nModule.forRoot().global).toBe(true);
+    const dynamicModule = I18nModule.forRootAsync({
       isGlobal: false,
       useFactory: () => Promise.resolve({ fallbackLng: "en" }),
     });

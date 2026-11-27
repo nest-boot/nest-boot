@@ -6,7 +6,7 @@ import { StagedUploadModule } from "../../src/index.js";
 
 const ConfigDynamicModule = ConfigModule.forRoot({ isGlobal: true });
 
-const StagedUploadDynamicModule = StagedUploadModule.registerAsync({
+const StagedUploadDynamicModule = StagedUploadModule.forRootAsync({
   useFactory: () => {
     return {
       permanentPath: "/accepted/files",

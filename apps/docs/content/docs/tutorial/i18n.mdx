@@ -21,7 +21,7 @@ import { I18nModule } from "@nest-boot/i18n";
 
 @Module({
   imports: [
-    I18nModule.register({
+    I18nModule.forRoot({
       fallbackLng: "en",
       supportedLngs: ["en", "zh"],
     }),

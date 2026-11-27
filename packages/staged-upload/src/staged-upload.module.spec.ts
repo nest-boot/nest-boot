@@ -4,7 +4,8 @@ import { MODULE_OPTIONS_TOKEN } from "./staged-upload.module-definition.js";
 describe("StagedUploadModule", () => {
   const options = {};
   it("should register synchronous options", () => {
-    const dynamicModule = StagedUploadModule.register(options);
+    expect(StagedUploadModule.forRoot().module).toBe(StagedUploadModule);
+    const dynamicModule = StagedUploadModule.forRoot(options);
     expect(dynamicModule.module).toBe(StagedUploadModule);
     expect(dynamicModule.providers).toEqual(
       expect.arrayContaining([
@@ -17,7 +18,7 @@ describe("StagedUploadModule", () => {
   });
   it("should register asynchronous options", () => {
     const useFactory = () => options;
-    const dynamicModule = StagedUploadModule.registerAsync({
+    const dynamicModule = StagedUploadModule.forRootAsync({
       useFactory,
     });
     expect(dynamicModule.module).toBe(StagedUploadModule);

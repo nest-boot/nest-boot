@@ -27,8 +27,8 @@ describe("Mailer shutdown", () => {
             registration === "direct"
               ? MailerModule
               : registration === "sync"
-                ? MailerModule.register(options)
-                : MailerModule.registerAsync({ useFactory: () => options }),
+                ? MailerModule.forRoot(options)
+                : MailerModule.forRootAsync({ useFactory: () => options }),
           ],
         }).compile();
         mailer = module.get<Mailer>(Mailer);

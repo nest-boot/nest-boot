@@ -73,7 +73,7 @@ describe("ViewModule HTTP integration", () => {
       extname: ".html",
     });
     const app = await createApp(
-      ViewModule.register({
+      ViewModule.forRoot({
         root: ["templates/"],
         partials: ["templates/includes/"],
         layouts: ["templates/layouts/"],
@@ -89,7 +89,7 @@ describe("ViewModule HTTP integration", () => {
 
   it("renders with asynchronously configured templates", async () => {
     const app = await createApp(
-      ViewModule.registerAsync({
+      ViewModule.forRootAsync({
         useFactory: () =>
           Promise.resolve({
             templates: {

@@ -31,7 +31,7 @@ import { StorageModule } from "@nest-boot/storage";
 import { Module } from "@nestjs/common";
 import { ConfigService } from "@nestjs/config";
 
-const StagedUploadDynamicModule = StagedUploadModule.registerAsync({
+const StagedUploadDynamicModule = StagedUploadModule.forRootAsync({
   inject: [ConfigService],
   useFactory: (configService: ConfigService) => ({
     url: configService.get("STAGED_UPLOAD_URL"),
@@ -167,7 +167,7 @@ import { Module } from "@nestjs/common";
 @Module({
   imports: [
     StorageModule,
-    StagedUploadModule.register({
+    StagedUploadModule.forRoot({
       temporaryPath: "/tmp",
       permanentPath: "/files",
       limits: [
@@ -186,7 +186,7 @@ export class AppModule {}
 
 `StagedUploadGraphQLModule` has no configuration of its own and does not import
 an unconfigured `StagedUploadModule`. The application must register
-`StagedUploadModule.register()` or `registerAsync()` once before the resolver
+`StagedUploadModule.forRoot()` or `forRootAsync()` once before the resolver
 can use its globally exported service.
 
 ### Mutation

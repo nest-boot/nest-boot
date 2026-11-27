@@ -38,9 +38,9 @@ export class I18nModule extends ConfigurableModuleClass {
    * @param options - i18next configuration options
    * @returns Dynamic module configuration
    */
-  static register(options: typeof OPTIONS_TYPE): DynamicModule {
+  static override forRoot(options: typeof OPTIONS_TYPE = {}): DynamicModule {
     return {
-      ...this.with(options, super.register(options)),
+      ...this.with(super.forRoot(options)),
     };
   }
 
@@ -49,23 +49,21 @@ export class I18nModule extends ConfigurableModuleClass {
    * @param options - Async configuration options
    * @returns Dynamic module configuration
    */
-  static registerAsync(options: typeof ASYNC_OPTIONS_TYPE): DynamicModule {
+  static override forRootAsync(
+    options: typeof ASYNC_OPTIONS_TYPE,
+  ): DynamicModule {
     return {
-      ...this.with(options, super.registerAsync(options)),
+      ...this.with(super.forRootAsync(options)),
     };
   }
 
   /**
    * Merges i18next init options with defaults.
-   * @param options - Configuration for this operation.
    * @param dynamicModule - Configured Nest dynamic module.
    * @returns Dynamic module exposing the supplied provider.
    * @internal
    */
-  private static with(
-    options: typeof OPTIONS_TYPE | typeof ASYNC_OPTIONS_TYPE,
-    dynamicModule: DynamicModule,
-  ): DynamicModule {
+  private static with(dynamicModule: DynamicModule): DynamicModule {
     const provider: Provider<i18n> = {
       provide: I18N,
       inject: [MODULE_OPTIONS_TOKEN],

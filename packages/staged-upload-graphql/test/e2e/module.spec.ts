@@ -17,7 +17,7 @@ class TestResolver {
 
 @Module({
   imports: [
-    StorageModule.register({
+    StorageModule.forRoot({
       accessKeyId: "access-key",
       bucket: "test-bucket",
       endpointUrl: "http://localhost:9000",
@@ -25,7 +25,7 @@ class TestResolver {
       region: "us-east-1",
       secretAccessKey: "secret-key",
     }),
-    StagedUploadModule.register({
+    StagedUploadModule.forRoot({
       limits: [{ fileSize: 1024, mimeTypes: ["image/*"] }],
     }),
     GraphQLModule.forRoot({

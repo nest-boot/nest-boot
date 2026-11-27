@@ -100,6 +100,12 @@ Queue job contracts now live in `readonly jobSchemas`, replacing BaseQueue's Dat
 
 ## Update related integrations
 
+- Replace `register()` and `registerAsync()` with `forRoot()` and `forRootAsync()`
+  on global application-wide modules (`CryptModule`, `GraphQLConnectionModule`,
+  `HashModule`, `I18nModule`, `LoggerModule`, `MailerModule`, `RedisModule`,
+  `MetricsModule`, `HealthCheckModule`, `StagedUploadModule`, `StorageModule`,
+  and `ViewModule`). `ViewModule` is now `@Global()` by default; remove any
+  `isGlobal` option passed during registration.
 - Upgrade `nodemailer` to `^10.0.16` when using `@nest-boot/mailer`.
   Nodemailer now includes TypeScript declarations; remove `@types/nodemailer`.
 - Replace Apollo Playground configuration with `graphiql`.

@@ -20,11 +20,11 @@ describe("CryptModule", () => {
     process.env = originalEnv;
   });
 
-  describe("register", () => {
+  describe("forRoot", () => {
     it("should throw error when secret is missing", async () => {
       await expect(
         Test.createTestingModule({
-          imports: [CryptModule.register({})],
+          imports: [CryptModule.forRoot()],
         }).compile(),
       ).rejects.toThrow("Crypt secret is required.");
     });
@@ -33,7 +33,7 @@ describe("CryptModule", () => {
       process.env.CRYPT_SECRET = TEST_SECRET;
 
       const moduleRef = await Test.createTestingModule({
-        imports: [CryptModule.register({})],
+        imports: [CryptModule.forRoot()],
       }).compile();
 
       const cryptService = moduleRef.get<CryptService>(CryptService);
@@ -45,7 +45,7 @@ describe("CryptModule", () => {
       process.env.APP_SECRET = TEST_SECRET;
 
       const moduleRef = await Test.createTestingModule({
-        imports: [CryptModule.register({})],
+        imports: [CryptModule.forRoot({})],
       }).compile();
 
       const cryptService = moduleRef.get<CryptService>(CryptService);
@@ -56,7 +56,7 @@ describe("CryptModule", () => {
     it("should throw error when secret is too short", async () => {
       await expect(
         Test.createTestingModule({
-          imports: [CryptModule.register({ secret: "short" })],
+          imports: [CryptModule.forRoot({ secret: "short" })],
         }).compile(),
       ).rejects.toThrow("Crypt secret must be at least 32 characters long.");
     });
@@ -67,17 +67,17 @@ describe("CryptModule", () => {
 
       await expect(
         Test.createTestingModule({
-          imports: [CryptModule.register({ secret: lowEntropySecret })],
+          imports: [CryptModule.forRoot({ secret: lowEntropySecret })],
         }).compile(),
       ).rejects.toThrow("Crypt secret appears low-entropy.");
     });
   });
 
-  describe("registerAsync", () => {
+  describe("forRootAsync", () => {
     it("should register module with async factory", async () => {
       const moduleRef = await Test.createTestingModule({
         imports: [
-          CryptModule.registerAsync({
+          CryptModule.forRootAsync({
             useFactory: () => ({
               secret: TEST_SECRET,
             }),

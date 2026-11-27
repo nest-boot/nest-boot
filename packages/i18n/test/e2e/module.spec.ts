@@ -40,7 +40,7 @@ describe("I18nModule - e2e", () => {
   });
 
   it("detects the request language and exposes it through RequestContext", async () => {
-    const app = await createApp(I18nModule.register(createOptions()));
+    const app = await createApp(I18nModule.forRoot(createOptions()));
 
     const response = await request(app.getHttpServer())
       .get("/translations")
@@ -56,7 +56,7 @@ describe("I18nModule - e2e", () => {
 
   it("initializes an asynchronously registered module", async () => {
     const useFactory = vi.fn(() => Promise.resolve(createOptions()));
-    const app = await createApp(I18nModule.registerAsync({ useFactory }));
+    const app = await createApp(I18nModule.forRootAsync({ useFactory }));
 
     const response = await request(app.getHttpServer())
       .get("/translations")

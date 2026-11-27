@@ -18,7 +18,7 @@ import {
  * import { GraphQLConnectionModule } from "@nest-boot/graphql-connection";
  *
  * @Module({
- *   imports: [GraphQLConnectionModule.register()],
+ *   imports: [GraphQLConnectionModule.forRoot()],
  * })
  * export class AppModule {}
  * ```
@@ -36,8 +36,8 @@ export class GraphQLConnectionModule extends ConfigurableModuleClass {
    * @param options - Configuration options
    * @returns Dynamic module configuration
    */
-  static override register(options: typeof OPTIONS_TYPE): DynamicModule {
-    return super.register(options);
+  static override forRoot(options: typeof OPTIONS_TYPE = {}): DynamicModule {
+    return super.forRoot(options);
   }
 
   /**
@@ -45,9 +45,9 @@ export class GraphQLConnectionModule extends ConfigurableModuleClass {
    * @param options - Async configuration options
    * @returns Dynamic module configuration
    */
-  static override registerAsync(
+  static override forRootAsync(
     options: typeof ASYNC_OPTIONS_TYPE,
   ): DynamicModule {
-    return super.registerAsync(options);
+    return super.forRootAsync(options);
   }
 }

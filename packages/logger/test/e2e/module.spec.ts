@@ -288,7 +288,7 @@ describe("LoggerModule - e2e", () => {
       };
     });
     const logger = await createLoggerFromModule(
-      LoggerModule.registerAsync({ useFactory }),
+      LoggerModule.forRootAsync({ useFactory }),
     );
 
     logger.log("outside request context");
@@ -337,7 +337,7 @@ describe("LoggerModule - e2e", () => {
   async function createConfiguredLogger(
     options: LoggerModuleOptions,
   ): Promise<Logger> {
-    return await createLoggerFromModule(LoggerModule.register(options));
+    return await createLoggerFromModule(LoggerModule.forRoot(options));
   }
 
   /**

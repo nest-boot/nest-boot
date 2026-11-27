@@ -67,7 +67,7 @@ credentials, leave them unset and use the standard credential provider chain.
 
 ### Explicit options
 
-Use `register()` when the application owns the configuration directly:
+Use `forRoot()` when the application owns the configuration directly:
 
 ```typescript
 import { StorageModule } from "@nest-boot/storage";
@@ -75,7 +75,7 @@ import { Module } from "@nestjs/common";
 
 @Module({
   imports: [
-    StorageModule.register({
+    StorageModule.forRoot({
       bucket: "uploads",
       endpointUrl: "http://localhost:9000",
       forcePathStyle: true,
@@ -89,7 +89,7 @@ import { Module } from "@nestjs/common";
 export class AppModule {}
 ```
 
-Use `registerAsync()` when another provider supplies the options:
+Use `forRootAsync()` when another provider supplies the options:
 
 ```typescript
 import { StorageModule } from "@nest-boot/storage";
@@ -98,7 +98,7 @@ import { Module } from "@nestjs/common";
 
 @Module({
   imports: [
-    StorageModule.registerAsync({
+    StorageModule.forRootAsync({
       imports: [ConfigModule],
       inject: [ConfigService],
       useFactory: (config: ConfigService) => ({
@@ -122,7 +122,7 @@ the returned URLs are reachable by their callers.
 For example, a local S3-compatible service can use:
 
 ```typescript
-StorageModule.register({
+StorageModule.forRoot({
   bucket: "uploads",
   endpointUrl: "http://rustfs:9000",
   forcePathStyle: true,
@@ -140,7 +140,7 @@ This is useful when the application can reach the storage service through a
 private network address while generated URLs must remain externally reachable.
 
 ```typescript
-StorageModule.register({
+StorageModule.forRoot({
   bucket: "uploads",
   endpointUrl: "https://storage.example.com",
   internalEndpointUrl: "http://rustfs:9000",
@@ -159,7 +159,7 @@ request. Some endpoints already identify a specific bucket. Set
 `bucketEndpoint: true` for this form so the bucket is not added again:
 
 ```typescript
-StorageModule.register({
+StorageModule.forRoot({
   bucket: "uploads",
   endpointUrl: "https://uploads.storage.example.com",
   bucketEndpoint: true,
@@ -169,7 +169,7 @@ StorageModule.register({
 Configure the internal endpoint independently when it uses a different form:
 
 ```typescript
-StorageModule.register({
+StorageModule.forRoot({
   bucket: "uploads",
   endpointUrl: "https://uploads.storage.example.com",
   bucketEndpoint: true,

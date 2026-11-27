@@ -32,7 +32,7 @@ import { RedisModule } from "@nest-boot/redis";
 
 @Module({
   imports: [
-    RedisModule.register({
+    RedisModule.forRoot({
       host: "redis.internal",
       port: 6379,
       password: "secret",

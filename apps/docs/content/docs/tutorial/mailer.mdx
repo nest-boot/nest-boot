@@ -50,8 +50,8 @@ import { MailerModule } from "@nest-boot/mailer";
 export class AppModule {}
 ```
 
-For explicit connection configuration, use `MailerModule.register()` or
-`MailerModule.registerAsync()`; explicit options take precedence over all
+For explicit connection configuration, use `MailerModule.forRoot()` or
+`MailerModule.forRootAsync()`; explicit options take precedence over all
 connection environment variables. `SMTP_FROM` remains the default sender and
 can be overridden by `sendMail({ from })`.
 

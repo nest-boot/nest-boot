@@ -62,7 +62,7 @@ Access Key 和 Secret Key。显式传入的模块选项优先于环境变量。�
 
 ### 显式配置
 
-应用直接持有配置时，使用 `register()`：
+应用直接持有配置时，使用 `forRoot()`：
 
 ```typescript
 import { StorageModule } from "@nest-boot/storage";
@@ -70,7 +70,7 @@ import { Module } from "@nestjs/common";
 
 @Module({
   imports: [
-    StorageModule.register({
+    StorageModule.forRoot({
       bucket: "uploads",
       endpointUrl: "http://localhost:9000",
       forcePathStyle: true,
@@ -84,7 +84,7 @@ import { Module } from "@nestjs/common";
 export class AppModule {}
 ```
 
-配置由其他 provider 提供时，使用 `registerAsync()`：
+配置由其他 provider 提供时，使用 `forRootAsync()`：
 
 ```typescript
 import { StorageModule } from "@nest-boot/storage";
@@ -93,7 +93,7 @@ import { Module } from "@nestjs/common";
 
 @Module({
   imports: [
-    StorageModule.registerAsync({
+    StorageModule.forRootAsync({
       imports: [ConfigModule],
       inject: [ConfigService],
       useFactory: (config: ConfigService) => ({
@@ -117,7 +117,7 @@ export class AppModule {}
 例如，本地 S3 兼容服务可以使用以下配置：
 
 ```typescript
-StorageModule.register({
+StorageModule.forRoot({
   bucket: "uploads",
   endpointUrl: "http://rustfs:9000",
   forcePathStyle: true,
@@ -133,7 +133,7 @@ StorageModule.register({
 可访问时，可以分别配置两个 Endpoint。
 
 ```typescript
-StorageModule.register({
+StorageModule.forRoot({
   bucket: "uploads",
   endpointUrl: "https://storage.example.com",
   internalEndpointUrl: "http://rustfs:9000",
@@ -150,7 +150,7 @@ Endpoint 通常指向 S3 服务，客户端会在每个请求中添加 `bucket`�
 指向一个具体 bucket，请设置 `bucketEndpoint: true`，避免再次添加 bucket：
 
 ```typescript
-StorageModule.register({
+StorageModule.forRoot({
   bucket: "uploads",
   endpointUrl: "https://uploads.storage.example.com",
   bucketEndpoint: true,
@@ -160,7 +160,7 @@ StorageModule.register({
 内部 Endpoint 使用不同形式时，可以独立配置：
 
 ```typescript
-StorageModule.register({
+StorageModule.forRoot({
   bucket: "uploads",
   endpointUrl: "https://uploads.storage.example.com",
   bucketEndpoint: true,

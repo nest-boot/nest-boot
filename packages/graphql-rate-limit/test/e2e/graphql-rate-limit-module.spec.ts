@@ -40,7 +40,7 @@ describe("GraphQLRateLimitModule", () => {
             ? GraphQLRateLimitModule.forRootAsync({ useFactory: () => ({}) })
             : GraphQLRateLimitModule;
       const moduleRef = await Test.createTestingModule({
-        imports: [RedisModule.register({}), rateLimitModule],
+        imports: [RedisModule.forRoot(), rateLimitModule],
       })
         .overrideProvider(Redis)
         .useValue(redis)

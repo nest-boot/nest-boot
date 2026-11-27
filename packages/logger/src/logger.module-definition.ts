@@ -13,4 +13,6 @@ export const {
   MODULE_OPTIONS_TOKEN,
   OPTIONS_TYPE,
   ASYNC_OPTIONS_TYPE,
-} = new ConfigurableModuleBuilder<LoggerModuleOptions>().build();
+} = new ConfigurableModuleBuilder<LoggerModuleOptions>()
+  .setClassMethodName("forRoot")
+  .build();

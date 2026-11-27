@@ -27,7 +27,7 @@ import { StorageModule } from "@nest-boot/storage";
 import { Module } from "@nestjs/common";
 import { ConfigService } from "@nestjs/config";
 
-const StagedUploadDynamicModule = StagedUploadModule.registerAsync({
+const StagedUploadDynamicModule = StagedUploadModule.forRootAsync({
   inject: [ConfigService],
   useFactory: (configService: ConfigService) => ({
     url: configService.get("STAGED_UPLOAD_URL"),
@@ -153,7 +153,7 @@ import { Module } from "@nestjs/common";
 @Module({
   imports: [
     StorageModule,
-    StagedUploadModule.register({
+    StagedUploadModule.forRoot({
       temporaryPath: "/tmp",
       permanentPath: "/files",
       limits: [
@@ -171,8 +171,8 @@ export class AppModule {}
 ```
 
 `StagedUploadGraphQLModule` 没有独立配置，也不会导入一个未配置的
-`StagedUploadModule`。应用必须先通过 `StagedUploadModule.register()` 或
-`registerAsync()` 注册一次全局服务，resolver 才能使用它。
+`StagedUploadModule`。应用必须先通过 `StagedUploadModule.forRoot()` 或
+`forRootAsync()` 注册一次全局服务，resolver 才能使用它。
 
 ### Mutation
 

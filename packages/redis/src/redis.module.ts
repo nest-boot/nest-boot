@@ -26,10 +26,9 @@ import { loadConfigFromEnv } from "./utils/load-config-from-env.util.js";
  *
  * @Module({
  *   imports: [
- *     RedisModule.register({
+ *     RedisModule.forRoot({
  *       host: 'localhost',
  *       port: 6379,
- *       isGlobal: true,
  *     }),
  *   ],
  * })
@@ -72,11 +71,11 @@ export class RedisModule
 {
   /**
    * Registers the RedisModule with the given options.
-   * @param options - Redis connection options and isGlobal flag
+   * @param options - Redis connection options
    * @returns Dynamic module configuration
    */
-  static override register(options: typeof OPTIONS_TYPE): DynamicModule {
-    return super.register(options);
+  static override forRoot(options: typeof OPTIONS_TYPE = {}): DynamicModule {
+    return super.forRoot(options);
   }
 
   /**
@@ -84,10 +83,10 @@ export class RedisModule
    * @param options - Async configuration options
    * @returns Dynamic module configuration
    */
-  static override registerAsync(
+  static override forRootAsync(
     options: typeof ASYNC_OPTIONS_TYPE,
   ): DynamicModule {
-    return super.registerAsync(options);
+    return super.forRootAsync(options);
   }
 
   /**

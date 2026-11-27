@@ -1,8 +1,8 @@
 import { GraphQLConnectionModule } from "./graphql-connection.module.js";
 
 describe("GraphQLConnectionModule", () => {
-  it("registers module options", () => {
-    const module = GraphQLConnectionModule.register({});
+  it("registers module options with forRoot", () => {
+    const module = GraphQLConnectionModule.forRoot();
 
     expect(module.module).toBe(GraphQLConnectionModule);
     expect(module.providers).toEqual([
@@ -12,8 +12,8 @@ describe("GraphQLConnectionModule", () => {
     ]);
   });
 
-  it("registers async options", () => {
-    const module = GraphQLConnectionModule.registerAsync({
+  it("registers async options with forRootAsync", () => {
+    const module = GraphQLConnectionModule.forRootAsync({
       useFactory: () => ({}),
     });
 

@@ -36,7 +36,7 @@ const mailerProvider: Provider<Mailer> = {
  * Global email sending module powered by Nodemailer.
  *
  * Import the module directly to configure SMTP from environment variables, or
- * use {@link MailerModule.register} and {@link MailerModule.registerAsync} for
+ * use {@link MailerModule.forRoot} and {@link MailerModule.forRootAsync} for
  * explicit Nodemailer transport options.
  * Closes the transport when the Nest application shuts down.
  */
@@ -54,8 +54,8 @@ export class MailerModule
    * @param options - Nodemailer transport configuration options
    * @returns Dynamic module configuration
    */
-  static override register(options: typeof OPTIONS_TYPE): DynamicModule {
-    return super.register(options);
+  static override forRoot(options: typeof OPTIONS_TYPE = {}): DynamicModule {
+    return super.forRoot(options);
   }
 
   /**
@@ -63,10 +63,10 @@ export class MailerModule
    * @param options - Async configuration options
    * @returns Dynamic module configuration
    */
-  static override registerAsync(
+  static override forRootAsync(
     options: typeof ASYNC_OPTIONS_TYPE,
   ): DynamicModule {
-    return super.registerAsync(options);
+    return super.forRootAsync(options);
   }
 
   /**

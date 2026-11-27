@@ -26,7 +26,7 @@ const storageProvider: Provider<Storage> = {
  * Global module that provides an S3-backed {@link Storage} service.
  *
  * Import the module directly to read the supported S3 environment variables,
- * or use {@link StorageModule.register} and {@link StorageModule.registerAsync}
+ * or use {@link StorageModule.forRoot} and {@link StorageModule.forRootAsync}
  * for explicit configuration. The AWS SDK clients are private implementation
  * details owned by {@link Storage}.
  */
@@ -38,8 +38,8 @@ export class StorageModule extends ConfigurableModuleClass {
    * @param options - Storage configuration
    * @returns Dynamic module configuration
    */
-  static override register(options: typeof OPTIONS_TYPE): DynamicModule {
-    return super.register(options);
+  static override forRoot(options: typeof OPTIONS_TYPE = {}): DynamicModule {
+    return super.forRoot(options);
   }
 
   /**
@@ -47,9 +47,9 @@ export class StorageModule extends ConfigurableModuleClass {
    * @param options - Async configuration options
    * @returns Dynamic module configuration
    */
-  static override registerAsync(
+  static override forRootAsync(
     options: typeof ASYNC_OPTIONS_TYPE,
   ): DynamicModule {
-    return super.registerAsync(options);
+    return super.forRootAsync(options);
   }
 }

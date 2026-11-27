@@ -29,9 +29,9 @@ describe("Redis health HTTP integration", () => {
   ) {
     const redisModule =
       registration === "sync"
-        ? RedisModule.register({ db: 0 })
+        ? RedisModule.forRoot({ db: 0 })
         : registration === "async"
-          ? RedisModule.registerAsync({ useFactory: () => ({ db: 0 }) })
+          ? RedisModule.forRootAsync({ useFactory: () => ({ db: 0 }) })
           : RedisModule;
     const module = await Test.createTestingModule({
       imports: [redisModule, ...(enabled ? [HealthCheckModule] : [])],

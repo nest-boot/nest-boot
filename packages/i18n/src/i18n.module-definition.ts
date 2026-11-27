@@ -8,6 +8,7 @@ export const {
   OPTIONS_TYPE,
   ASYNC_OPTIONS_TYPE,
 } = new ConfigurableModuleBuilder<I18nModuleOptions>()
+  .setClassMethodName("forRoot")
   .setExtras(
     {
       isGlobal: true,

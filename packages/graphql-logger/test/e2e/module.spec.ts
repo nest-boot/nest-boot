@@ -42,7 +42,7 @@ describe("GraphQLLoggerModule - e2e", () => {
     const assign = vi.fn();
     const moduleRef = await Test.createTestingModule({
       imports: [
-        LoggerModule.register({ enabled: false }),
+        LoggerModule.forRoot({ enabled: false }),
         GraphQLModule.forRoot({
           autoSchemaFile: true,
           graphiql: false,

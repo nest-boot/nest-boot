@@ -9,11 +9,11 @@ const TEST_SECRET_ALT = "anotherSecretThatIsAtLeast32Char";
 
 describe("HashService", () => {
   const globalSecret = TEST_SECRET;
-  describe("instance methods (via HashModule.register)", () => {
+  describe("instance methods (via HashModule.forRoot)", () => {
     let hashService: HashService;
     beforeEach(async () => {
       const moduleRef = await Test.createTestingModule({
-        imports: [HashModule.register({ secret: globalSecret })],
+        imports: [HashModule.forRoot({ secret: globalSecret })],
       }).compile();
       hashService = moduleRef.get<HashService>(HashService);
     });

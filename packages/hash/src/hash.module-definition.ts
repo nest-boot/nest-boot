@@ -7,4 +7,6 @@ export const {
   MODULE_OPTIONS_TOKEN,
   OPTIONS_TYPE,
   ASYNC_OPTIONS_TYPE,
-} = new ConfigurableModuleBuilder<HashModuleOptions>().build();
+} = new ConfigurableModuleBuilder<HashModuleOptions>()
+  .setClassMethodName("forRoot")
+  .build();

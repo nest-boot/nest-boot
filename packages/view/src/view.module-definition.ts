@@ -8,13 +8,5 @@ export const {
   OPTIONS_TYPE,
   ASYNC_OPTIONS_TYPE,
 } = new ConfigurableModuleBuilder<ViewModuleOptions>()
-  .setExtras(
-    {
-      isGlobal: false,
-    },
-    (definition, extras) => ({
-      ...definition,
-      global: extras.isGlobal,
-    }),
-  )
+  .setClassMethodName("forRoot")
   .build();
