@@ -20,8 +20,8 @@ coverage:
     patch:
       default: false
       packages:
-        target: auto
-        threshold: 1%
+        target: 95%
+        threshold: 0%
         paths:
           - "packages/"
       examples:
