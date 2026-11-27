@@ -1,7 +1,5 @@
 ---
-"@nest-boot/common": patch
-"@nest-boot/jwt": patch
 "@nest-boot/auth": minor
 ---
 
-Extract `Public` and `IS_PUBLIC_KEY` into a new `@nest-boot/common` package alongside `createDynamicController` and `withDynamicController`, and add a standalone `@nest-boot/jwt` module backed by `jose` with mandatory database-backed signing key rotation and a JWKS controller defaulting `jwks.decorators` to `[Public()]`.
+Extract `Public` and `IS_PUBLIC_KEY` from `@nest-boot/auth` into `@nest-boot/common` alongside `createDynamicController` and `withDynamicController`, and add the standalone `@nest-boot/jwt` module starting at `8.0.0`.
