@@ -1,3 +1,4 @@
+import { IS_PUBLIC_KEY, Public } from "@nest-boot/common";
 import { toZodSchema, type ZodClass } from "@nest-boot/validator";
 
 import { AuthApiKey } from "./api-key/decorators/auth-api-key.decorator.js";
@@ -6,14 +7,12 @@ import { UserApiKeyService } from "./api-key/services/user-api-key.service.js";
 import { WorkspaceApiKeyService } from "./api-key/services/workspace-api-key.service.js";
 import { AuthAbility } from "./common/auth.ability.js";
 import { Can } from "./common/decorators/can.decorator.js";
-import { Public } from "./common/decorators/public.decorator.js";
 import { authorize } from "./common/utils/authorize.util.js";
 import { can } from "./common/utils/can.util.js";
 import { getAuthAbility } from "./common/utils/get-auth-ability.util.js";
 import { AuthGuard } from "./core/auth.guard.js";
 import { AuthMiddleware } from "./core/auth.middleware.js";
 import { AuthModule } from "./core/auth.module.js";
-import { IS_PUBLIC_KEY } from "./core/constants/auth.constants.js";
 import { Account } from "./core/entities/account.entity.js";
 import { Session } from "./core/entities/session.entity.js";
 import { User } from "./core/entities/user.entity.js";

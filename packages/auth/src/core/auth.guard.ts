@@ -1,4 +1,5 @@
 import type { Subject } from "@casl/ability";
+import { IS_PUBLIC_KEY } from "@nest-boot/common";
 import { RequestContext } from "@nest-boot/request-context";
 import type { CanActivate, ExecutionContext } from "@nestjs/common";
 import { Injectable, UnauthorizedException } from "@nestjs/common";
@@ -18,7 +19,6 @@ import type { RouteArgumentMetadataValue } from "../common/interfaces/route-argu
 import { can } from "../common/utils/can.util.js";
 import { getAuthAbility } from "../common/utils/get-auth-ability.util.js";
 import { AuthContext } from "./auth-context.js";
-import { IS_PUBLIC_KEY } from "./constants/auth.constants.js";
 import { Session } from "./entities/session.entity.js";
 import type { CanSubjectCallback } from "./types/can-subject-callback.type.js";
 import type { RouteArgumentMetadata } from "./types/route-argument-metadata.type.js";

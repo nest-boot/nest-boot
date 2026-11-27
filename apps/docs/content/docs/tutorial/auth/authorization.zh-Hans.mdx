@@ -133,6 +133,8 @@ export class CommonModule {}
 `403 Forbidden`。
 
 ```typescript
+import { Public } from "@nest-boot/common";
+
 @Public()
 @Query(() => String)
 health(): string {

@@ -142,6 +142,8 @@ Unauthenticated access to a protected route returns `401 Unauthorized`;
 authenticated requests that fail a permission check return `403 Forbidden`.
 
 ```typescript
+import { Public } from "@nest-boot/common";
+
 @Public()
 @Query(() => String)
 health(): string {

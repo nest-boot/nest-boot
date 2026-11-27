@@ -1,3 +1,4 @@
+import { Public } from "@nest-boot/common";
 import {
   Args,
   ID,
@@ -9,7 +10,6 @@ import {
 } from "@nest-boot/graphql";
 import { BadRequestException } from "@nestjs/common";
 
-import { Public } from "../../common/decorators/public.decorator.js";
 import { filterPermissionValues } from "../../common/utils/filter-permission-values.util.js";
 import { User } from "../../core/entities/user.entity.js";
 import { AuthWorkspaceMember } from "../decorators/auth-workspace-member.decorator.js";

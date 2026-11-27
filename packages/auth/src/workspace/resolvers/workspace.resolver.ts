@@ -1,3 +1,4 @@
+import { Public } from "@nest-boot/common";
 import {
   Args,
   ID,
@@ -14,7 +15,6 @@ import {
 } from "@nest-boot/graphql-connection";
 import { BadRequestException } from "@nestjs/common";
 
-import { Public } from "../../common/decorators/public.decorator.js";
 import { AuthUser } from "../../core/decorators/auth-user.decorator.js";
 import { User } from "../../core/entities/user.entity.js";
 import {
