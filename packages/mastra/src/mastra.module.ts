@@ -23,6 +23,7 @@ import {
   SensitiveDataFilter,
 } from "@mastra/observability";
 import { PostgresStore } from "@mastra/pg";
+import { createDynamicController } from "@nest-boot/common";
 import {
   type DynamicModule,
   Global,
@@ -30,10 +31,12 @@ import {
   type MiddlewareConsumer,
   Module,
   type NestModule,
+  Optional,
   type Provider,
   RequestMethod,
+  type Type,
 } from "@nestjs/common";
-import { DiscoveryModule, ModulesContainer, RouterModule } from "@nestjs/core";
+import { DiscoveryModule } from "@nestjs/core";
 import { omit } from "lodash-es";
 
 import { MastraController } from "./mastra.controller.js";
@@ -43,17 +46,28 @@ import {
   ConfigurableModuleClass,
   MASTRA_MODULE_OPTIONS,
   type MastraModuleOptions,
-  normalizeMastraApiOptions,
+  normalizeMastraServerOptions,
   normalizeMastraStudioOptions,
   type OPTIONS_TYPE,
   resolveMastraStudioBasePath,
 } from "./mastra.module-definition.js";
 import { MastraStudioMiddleware } from "./mastra-studio.middleware.js";
+import { resolveMastraControllerOptions } from "./resolve-mastra-controller-options.util.js";
 
-const MASTRA_ROUTER_BINDING = Symbol("MASTRA_ROUTER_BINDING");
+const MASTRA_CONTROLLER_TYPE = Symbol("MASTRA_CONTROLLER_TYPE");
 
 const POSTGRES_PROTOCOLS = new Set(["postgres:", "postgresql:"]);
 const HTTP_PROTOCOLS = new Set(["http:", "https:"]);
+const UNSUPPORTED_SERVER_KEYS = [
+  "port",
+  "host",
+  "apiRoutes",
+  "middleware",
+  "cors",
+  "apiPrefix",
+  "auth",
+  "customRouteAuthConfig",
+] as const;
 
 /**
  * Resolves a PostgreSQL connection string from `MASTRA_DATABASE_URL ?? DATABASE_URL`
@@ -196,21 +210,23 @@ function createDefaultMastraObservability(): Observability {
  * @returns Core `Mastra` constructor config
  */
 function extractMastraCoreConfig(options: MastraModuleOptions): MastraConfig {
-  if (options.server !== undefined) {
-    throw new Error(
-      "MastraModule does not support server configuration. Configure HTTP routes, authentication, middleware, and CORS through NestJS instead.",
-    );
-  }
-  if (typeof options.api === "object") {
-    for (const key of ["auth", "customRouteAuthConfig"] as const) {
-      if (options.api[key] !== undefined) {
+  const { enabled: serverEnabled } = normalizeMastraServerOptions(
+    options.server,
+  );
+  normalizeMastraStudioOptions(options.studio, serverEnabled);
+  resolveMastraControllerOptions(options.server);
+
+  if (options.server && typeof options.server === "object") {
+    const rawServer = options.server as Record<string, unknown>;
+    for (const key of UNSUPPORTED_SERVER_KEYS) {
+      if (rawServer[key] !== undefined) {
         throw new Error(
-          `MastraModule does not support api.${key}. Configure authentication and custom routes through NestJS instead.`,
+          `MastraModule does not support server.${key}. Configure HTTP server, CORS, authentication, and custom routes through NestJS instead.`,
         );
       }
     }
   }
-  const mastraConfig = omit(options, ["server", "api", "studio"]);
+  const mastraConfig = omit(options, ["server", "studio"]);
 
   const storage = mastraConfig.storage ?? createDefaultMastraStorage();
   const observability =
@@ -224,22 +240,21 @@ function extractMastraCoreConfig(options: MastraModuleOptions): MastraConfig {
 }
 
 /**
- * Registers Mastra Studio and API body-parsing middlewares according to resolved options.
+ * Registers Mastra Studio and server body-parsing middlewares according to resolved options.
  * @param consumer - NestJS middleware consumer
  * @param options - Resolved Mastra module options
- * @param mountApiController - Whether `MastraController` is registered on the module
+ * @param controllerType - Dynamic `MastraController` subclass registered on the module, if any
  */
 function configureMastraMiddlewares(
   consumer: MiddlewareConsumer,
   options: MastraModuleOptions,
-  mountApiController: boolean,
+  controllerType?: Type<MastraController>,
 ): void {
-  const { enabled: apiEnabled, serverOptions } = normalizeMastraApiOptions(
-    options.api,
-  );
+  const { enabled: serverEnabled, serverOptions } =
+    normalizeMastraServerOptions(options.server);
   const studioOptions = normalizeMastraStudioOptions(
     options.studio,
-    apiEnabled,
+    serverEnabled,
   );
 
   if (studioOptions.enabled) {
@@ -256,10 +271,10 @@ function configureMastraMiddlewares(
     );
   }
 
-  if (mountApiController && apiEnabled) {
+  if (controllerType && serverEnabled) {
     consumer
       .apply(BodyLimitMiddleware, JsonBodyMiddleware)
-      .forRoutes(MastraController);
+      .forRoutes(controllerType);
   }
 }
 
@@ -285,7 +300,7 @@ const MASTRA_SHARED_PROVIDERS: Provider[] = [
       mastra: Mastra,
       options: MastraModuleOptions,
     ): MastraCoreModuleOptions => ({
-      ...normalizeMastraApiOptions(options.api).serverOptions,
+      ...normalizeMastraServerOptions(options.server).serverOptions,
       mastra,
       // NestJS guards own authorization; disable the upstream server auth layer.
       auth: { enabled: false },
@@ -314,69 +329,21 @@ const MASTRA_SHARED_EXPORTS = [
   MastraService,
 ];
 
+export type MastraModuleAsyncOptions = typeof ASYNC_OPTIONS_TYPE;
+
 /**
- * Headless Mastra module used when `api` routes are explicitly disabled, keeping
- * `Mastra`, `MastraManager` auto-discovery, and optional Studio middleware active
- * without registering `MastraController`.
+ * Global NestJS-native Mastra module.
+ *
+ * Runs in headless mode by default (sharing a single `Mastra` instance and
+ * automatically discovering all singleton `BaseAgent` / `Agent` and
+ * `BaseWorkflow` / `Workflow` providers). When `server` is enabled via `forRoot`
+ * or `forRootAsync`, mounts a dynamic `MastraController` at `server.prefix`
+ * (defaulting to `/api/mastra`) and bundled Mastra Studio at `${prefix}/studio`.
  */
 @Global()
 @Module({
   imports: [DiscoveryModule],
   providers: MASTRA_SHARED_PROVIDERS,
-  exports: MASTRA_SHARED_EXPORTS,
-})
-class MastraHeadlessModule implements NestModule {
-  constructor(
-    @Inject(MASTRA_MODULE_OPTIONS)
-    private readonly options: MastraModuleOptions,
-  ) {}
-
-  configure(consumer: MiddlewareConsumer): void {
-    configureMastraMiddlewares(consumer, this.options, false);
-  }
-}
-
-export type MastraModuleAsyncOptions = typeof ASYNC_OPTIONS_TYPE & {
-  /**
-   * Set to `false` to skip registering `MastraController` statically when using
-   * `forRootAsync`.
-   */
-  api?: boolean;
-};
-
-/**
- * Global NestJS-native Mastra module.
- *
- * Reuses `@mastra/nestjs` services, interceptors, and filters with a local
- * `MastraController` mounted at `api.prefix` (defaulting to `/api/mastra`),
- * serves bundled Mastra Studio via middleware at `${prefix}/studio`, shares a
- * single `Mastra` instance, and automatically discovers all singleton
- * `BaseAgent` (and Mastra `Agent`) and `BaseWorkflow` (and Mastra `Workflow`)
- * providers.
- */
-@Global()
-@Module({
-  imports: [DiscoveryModule],
-  controllers: [MastraController],
-  providers: [
-    ...MASTRA_SHARED_PROVIDERS,
-    {
-      provide: MASTRA_ROUTER_BINDING,
-      inject: [ModulesContainer, MASTRA_MODULE_OPTIONS],
-      useFactory: (
-        modulesContainer: ModulesContainer,
-        options: MastraModuleOptions,
-      ) => {
-        const { serverOptions } = normalizeMastraApiOptions(options.api);
-        return new RouterModule(modulesContainer, [
-          {
-            path: serverOptions.prefix,
-            module: MastraModule,
-          },
-        ]);
-      },
-    },
-  ],
   exports: MASTRA_SHARED_EXPORTS,
 })
 export class MastraModule
@@ -386,54 +353,67 @@ export class MastraModule
   constructor(
     @Inject(MASTRA_MODULE_OPTIONS)
     private readonly options: MastraModuleOptions,
+    @Optional()
+    @Inject(MASTRA_CONTROLLER_TYPE)
+    private readonly controllerType?: Type<MastraController>,
   ) {
     super();
   }
 
   /**
-   * Configures `MastraModule` synchronously. Skips registering `MastraController`
-   * when `options.api` is disabled (`false` or `{ enabled: false }`).
+   * Configures `MastraModule` synchronously. Headless unless `options.server` is
+   * enabled (`true` or an options object with `enabled !== false`).
    * @param options - Synchronous Mastra module options
    * @returns Configured dynamic module
    */
-  static override forRoot(options: typeof OPTIONS_TYPE): DynamicModule {
+  static override forRoot(options: typeof OPTIONS_TYPE = {}): DynamicModule {
     const dynamicModule = super.forRoot(options);
-    if (!normalizeMastraApiOptions(options.api).enabled) {
-      return {
-        ...dynamicModule,
-        module: MastraHeadlessModule,
-      };
-    }
-    return dynamicModule;
+    return normalizeMastraServerOptions(options.server).enabled
+      ? this.withMastraController(dynamicModule)
+      : dynamicModule;
   }
 
   /**
-   * Configures `MastraModule` asynchronously. Pass `api: false` on the async
-   * options object to skip registering `MastraController` statically, or return
-   * `{ api: false }` from the factory to disable API handling at runtime.
+   * Configures `MastraModule` asynchronously. Headless unless the resolved
+   * options enable `server` (`true` or an options object with `enabled !== false`).
    * @param options - Asynchronous Mastra module options
    * @returns Configured dynamic module
    */
   static override forRootAsync(
     options: MastraModuleAsyncOptions,
   ): DynamicModule {
-    const { api, ...asyncOptions } = options;
-    const dynamicModule = super.forRootAsync(asyncOptions);
-    if (api === false) {
-      return {
-        ...dynamicModule,
-        module: MastraHeadlessModule,
-      };
-    }
-    return dynamicModule;
+    return this.withMastraController(super.forRootAsync(options));
+  }
+
+  private static withMastraController(
+    dynamicModule: DynamicModule,
+  ): DynamicModule {
+    const { controller, provider } = createDynamicController(MastraController, {
+      inject: [MASTRA_MODULE_OPTIONS],
+      useFactory: (options: MastraModuleOptions) =>
+        resolveMastraControllerOptions(options.server),
+    });
+
+    return {
+      ...dynamicModule,
+      controllers: [controller],
+      providers: [
+        ...(dynamicModule.providers ?? []),
+        provider,
+        {
+          provide: MASTRA_CONTROLLER_TYPE,
+          useExisting: provider.provide,
+        },
+      ],
+    };
   }
 
   /**
    * Mounts Mastra Studio middleware at `${prefix}/studio` and Mastra JSON/body-limit
-   * middleware scoped to `MastraController`.
+   * middleware scoped to the dynamic `MastraController` subclass when enabled.
    * @param consumer - NestJS middleware consumer
    */
   configure(consumer: MiddlewareConsumer): void {
-    configureMastraMiddlewares(consumer, this.options, true);
+    configureMastraMiddlewares(consumer, this.options, this.controllerType);
   }
 }

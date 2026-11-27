@@ -1,8 +1,9 @@
-import { Controller, Get, Res } from "@nestjs/common";
+import { Controller, Get, Res, VERSION_NEUTRAL } from "@nestjs/common";
 import { HttpAdapterHost } from "@nestjs/core";
 import { Registry, type RegistryContentType } from "prom-client";
 
-@Controller("/metrics")
+/** Exposes Prometheus metrics collected in the module registry. */
+@Controller({ path: "/metrics", version: VERSION_NEUTRAL })
 export class MetricsController {
   constructor(
     private readonly registry: Registry<RegistryContentType>,

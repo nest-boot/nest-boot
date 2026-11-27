@@ -4,7 +4,7 @@ import type { JSONWebKeySet } from "jose";
 import { JwtService } from "../services/jwt.service.js";
 
 /** Publishes verification keys at the application's public JWKS URL. */
-@Controller({ version: VERSION_NEUTRAL })
+@Controller({ path: "/.well-known/jwks.json", version: VERSION_NEUTRAL })
 export class JwksController {
   constructor(private readonly jwt: JwtService) {}
 

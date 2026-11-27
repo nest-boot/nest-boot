@@ -1,5 +1,4 @@
 import { ConfigurableModuleBuilder } from "@nestjs/common";
-import { RegistryContentType } from "prom-client";
 
 import { type MetricsModuleOptions } from "./metrics-module-options.interface.js";
 
@@ -8,6 +7,6 @@ export const {
   MODULE_OPTIONS_TOKEN,
   OPTIONS_TYPE,
   ASYNC_OPTIONS_TYPE,
-} = new ConfigurableModuleBuilder<
-  MetricsModuleOptions<RegistryContentType>
->().build();
+} = new ConfigurableModuleBuilder<MetricsModuleOptions>()
+  .setClassMethodName("forRoot")
+  .build();

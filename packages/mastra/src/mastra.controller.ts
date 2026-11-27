@@ -1,4 +1,3 @@
-import { Mastra } from "@mastra/core/mastra";
 import {
   MASTRA_OPTIONS,
   MastraExceptionFilter,
@@ -11,7 +10,6 @@ import {
   StreamingInterceptor,
   TracingInterceptor,
 } from "@mastra/nestjs";
-import { Can } from "@nest-boot/auth";
 import {
   All,
   Controller,
@@ -23,14 +21,16 @@ import {
   Res,
   UseFilters,
   UseInterceptors,
+  VERSION_NEUTRAL,
 } from "@nestjs/common";
 import { ApplicationConfig } from "@nestjs/core";
 import type { Request, Response } from "express";
 
 import {
+  DEFAULT_MASTRA_SERVER_PREFIX,
   MASTRA_MODULE_OPTIONS,
   type MastraModuleOptions,
-  normalizeMastraApiOptions,
+  normalizeMastraServerOptions,
 } from "./mastra.module-definition.js";
 
 const DANGEROUS_QUERY_KEYS = new Set(["__proto__", "prototype", "constructor"]);
@@ -144,8 +144,7 @@ function parseQueryParams(query: Request["query"]): Record<string, unknown> {
  * (default `/api/mastra`), reusing `@mastra/nestjs` services and interceptors while
  * keeping full control over NestJS routing, guards, and authorization.
  */
-@Controller()
-@Can("manage", Mastra)
+@Controller({ path: DEFAULT_MASTRA_SERVER_PREFIX, version: VERSION_NEUTRAL })
 @UseInterceptors(
   RequestTrackingInterceptor,
   TracingInterceptor,
@@ -153,7 +152,7 @@ function parseQueryParams(query: Request["query"]): Record<string, unknown> {
 )
 @UseFilters(MastraExceptionFilter)
 export class MastraController {
-  private readonly apiEnabled: boolean;
+  private readonly serverEnabled: boolean;
 
   constructor(
     @Inject(MASTRA_MODULE_OPTIONS)
@@ -165,7 +164,9 @@ export class MastraController {
     private readonly throttleGuard: MastraThrottleGuard,
     @Optional() private readonly applicationConfig?: ApplicationConfig,
   ) {
-    this.apiEnabled = normalizeMastraApiOptions(moduleOptions.api).enabled;
+    this.serverEnabled = normalizeMastraServerOptions(
+      moduleOptions.server,
+    ).enabled;
   }
 
   /**
@@ -182,7 +183,7 @@ export class MastraController {
     const requestPath = req.path;
     const method = req.method.toUpperCase();
 
-    if (!this.apiEnabled) {
+    if (!this.serverEnabled) {
       throw new NotFoundException(`Route not found: ${method} ${requestPath}`);
     }
     const routePath = getMastraRoutePath(

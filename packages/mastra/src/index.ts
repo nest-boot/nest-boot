@@ -44,14 +44,14 @@ export {
   type MastraModuleAsyncOptions,
 } from "./mastra.module.js";
 export {
-  DEFAULT_MASTRA_API_PREFIX,
+  DEFAULT_MASTRA_SERVER_PREFIX,
   MASTRA_MODULE_OPTIONS,
-  type MastraApiOptions,
   type MastraModuleOptions,
   type MastraServerModuleOptions,
+  type MastraServerOptions,
   type MastraStudioOptions,
-  normalizeMastraApiOptions,
+  normalizeMastraServerOptions,
   normalizeMastraStudioOptions,
-  resolveMastraApiPrefix,
+  resolveMastraServerPrefix,
   resolveMastraStudioBasePath,
 } from "./mastra.module-definition.js";

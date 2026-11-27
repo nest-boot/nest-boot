@@ -1,8 +1,22 @@
 # @nest-boot/jwt
 
-Registers a database-backed JWT signer and a public JWKS controller. Import
-`JwtModule` alongside the application's `DatabaseModule` and generate a migration
-for the `jwk` table.
+Registers a database-backed JWT signer and a public JWKS controller. Both direct
+`JwtModule` imports and `JwtModule.forRoot` / `JwtModule.forRootAsync` require
+`DatabaseModule` and a migration for the `jwk` table:
+
+```ts
+import { DatabaseModule } from "@nest-boot/database";
+import { JwtModule } from "@nest-boot/jwt";
+import { Module } from "@nestjs/common";
+
+@Module({
+  imports: [DatabaseModule.forRoot({ entities: [] }), JwtModule],
+})
+export class AppModule {}
+```
+
+Use `JwtModule.forRoot` or `JwtModule.forRootAsync` to customize the issuer,
+secret, or JWKS endpoint:
 
 ```ts
 JwtModule.forRoot({
@@ -11,7 +25,7 @@ JwtModule.forRoot({
 ```
 
 The issuer defaults to `AUTH_URL`, then `APP_URL`. The encryption secret defaults
-to `JWT_SECRET`, then `AUTH_SECRET`, then `APP_SECRET`. Set `issuer` or `secret`
+to `JWT_SECRET`, then `APP_SECRET`. Set `issuer` or `secret`
 to override these values. Every application instance must use the same issuer
 and strong encryption secret.
 

@@ -39,9 +39,11 @@
     "test:watch": "vitest",
     "test:debug": "vitest --inspect-brk --no-file-parallelism"
   },
+  "dependencies": {
+    "@nest-boot/common": "workspace:^"
+  },
   "devDependencies": {
     "@nest-boot/eslint": "workspace:^",
-    "@nest-boot/middleware": "workspace:^",
     "@nest-boot/tsconfig": "workspace:^",
     "@nestjs/common": "^12.6.2",
     "@nestjs/core": "^12.6.2",
@@ -60,9 +62,8 @@
     "vitest": "^5.1.1"
   },
   "peerDependencies": {
-    "@nest-boot/middleware": "workspace:^",
-    "@nestjs/common": "^12.0.0",
-    "@nestjs/core": "^12.0.0",
+    "@nestjs/common": "^12.6.0",
+    "@nestjs/core": "^12.6.0",
     "@nestjs/terminus": "^12.0.0",
     "reflect-metadata": "^0.2.2",
     "rxjs": "^7.0.0"

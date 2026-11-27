@@ -12,6 +12,7 @@ import { MastraStorageExporter, Observability } from "@mastra/observability";
 import { ObservabilityPG, PostgresStore } from "@mastra/pg";
 import { CAN_METADATA } from "@nest-boot/auth";
 import { Injectable, Module, Scope } from "@nestjs/common";
+import { ModulesContainer } from "@nestjs/core";
 import { Test } from "@nestjs/testing";
 import { expectTypeOf } from "vitest";
 import { z } from "zod";
@@ -22,13 +23,13 @@ import {
   type BaseStepOptions,
   BaseWorkflow,
   type BaseWorkflowOptions,
-  DEFAULT_MASTRA_API_PREFIX,
+  DEFAULT_MASTRA_SERVER_PREFIX,
   MastraController,
   MastraManager,
   MastraModule,
-  normalizeMastraApiOptions,
+  normalizeMastraServerOptions,
   normalizeMastraStudioOptions,
-  resolveMastraApiPrefix,
+  resolveMastraServerPrefix,
   resolveMastraStudioBasePath,
   type StepInput,
   type StepOutput,
@@ -225,13 +226,12 @@ describe("MastraModule", () => {
       const customWorkflow = moduleRef.get(CustomIdWorkflow);
 
       expect(mastraService.getMastra()).toBe(mastra);
-      expect(mastraService.getOptions().prefix).toBe(DEFAULT_MASTRA_API_PREFIX);
-
-      const canMetadata = Reflect.getMetadata(
-        CAN_METADATA,
-        MastraController,
-      ) as { action: string; subject: unknown }[];
-      expect(canMetadata).toEqual([{ action: "manage", subject: Mastra }]);
+      expect(mastraService.getOptions().prefix).toBe(
+        DEFAULT_MASTRA_SERVER_PREFIX,
+      );
+      expect(() =>
+        moduleRef.get(MastraController, { strict: false }),
+      ).toThrow();
 
       expect(writerAgent).toBeInstanceOf(BaseAgent);
       expect(writerAgent).toBeInstanceOf(MastraAgent);
@@ -301,6 +301,7 @@ describe("MastraModule", () => {
     const syncModuleRef = await Test.createTestingModule({
       imports: [
         MastraModule.forRoot({
+          server: true,
           agents: {
             "preconfigured-agent": preconfiguredAgent,
           },
@@ -313,6 +314,17 @@ describe("MastraModule", () => {
     await syncModuleRef.init();
 
     try {
+      const modulesContainer = syncModuleRef.get(ModulesContainer);
+      const controllerWrapper = [...modulesContainer.values()]
+        .flatMap((mod) => [...mod.controllers.values()])
+        .find((wrapper) => wrapper.instance instanceof MastraController);
+      expect(controllerWrapper?.metatype).toBeDefined();
+      const canMetadata = Reflect.getMetadata(
+        CAN_METADATA,
+        controllerWrapper?.metatype as object,
+      ) as { action: string; subject: unknown }[];
+      expect(canMetadata).toEqual([{ action: "manage", subject: Mastra }]);
+
       const mastra = syncModuleRef.get(Mastra);
       expect(mastra.getAgent("preconfigured-agent")).toBe(preconfiguredAgent);
       expect(
@@ -683,12 +695,21 @@ describe("MastraModule", () => {
     }
   });
 
-  it("normalizes module options, supports static forRootAsync api: false, preconfigured workflows, and workflow onError", async () => {
-    expect(resolveMastraApiPrefix("/")).toBe("/api");
+  it("normalizes module options, supports static forRootAsync server: false, preconfigured workflows, and workflow onError", async () => {
+    expect(resolveMastraServerPrefix("/")).toBe("/api");
     expect(resolveMastraStudioBasePath("/custom")).toBe("/custom/studio");
-    expect(normalizeMastraApiOptions(false)).toEqual({
+    expect(normalizeMastraServerOptions()).toEqual({
       enabled: false,
-      serverOptions: { prefix: DEFAULT_MASTRA_API_PREFIX },
+      serverOptions: { prefix: DEFAULT_MASTRA_SERVER_PREFIX },
+    });
+    expect(normalizeMastraServerOptions(true)).toEqual({
+      enabled: true,
+      serverOptions: { prefix: DEFAULT_MASTRA_SERVER_PREFIX },
+    });
+    expect(normalizeMastraStudioOptions()).toEqual({
+      enabled: false,
+      hideCloudCta: true,
+      telemetryDisabled: true,
     });
     expect(normalizeMastraStudioOptions(true, false)).toEqual({
       enabled: true,
@@ -700,6 +721,38 @@ describe("MastraModule", () => {
       hideCloudCta: true,
       telemetryDisabled: true,
     });
+    expect(() => normalizeMastraServerOptions("false" as never)).toThrow(
+      "Mastra server option must be a boolean or an options object",
+    );
+    await expect(
+      Test.createTestingModule({
+        imports: [
+          MastraModule.forRootAsync({
+            useFactory: () => ({ server: null as never }),
+          }),
+        ],
+      }).compile(),
+    ).rejects.toThrow(
+      "Mastra server option must be a boolean or an options object",
+    );
+    expect(() =>
+      normalizeMastraServerOptions({ enabled: "false" as never }),
+    ).toThrow("Mastra server.enabled must be a boolean");
+    expect(() =>
+      normalizeMastraServerOptions({ prefix: 123 as never }),
+    ).toThrow("Mastra server.prefix must be a string");
+    expect(() => normalizeMastraStudioOptions("false" as never)).toThrow(
+      "Mastra studio option must be a boolean or an options object",
+    );
+    expect(() =>
+      normalizeMastraStudioOptions({ enabled: "false" as never }),
+    ).toThrow("Mastra studio.enabled must be a boolean");
+    expect(() =>
+      normalizeMastraStudioOptions({ hideCloudCta: "false" as never }),
+    ).toThrow("Mastra studio.hideCloudCta must be a boolean");
+    expect(() =>
+      normalizeMastraStudioOptions({ telemetryDisabled: "false" as never }),
+    ).toThrow("Mastra studio.telemetryDisabled must be a boolean");
 
     @Injectable()
     class FailingStep extends BaseStep({
@@ -738,7 +791,6 @@ describe("MastraModule", () => {
     const moduleRef = await Test.createTestingModule({
       imports: [
         MastraModule.forRootAsync({
-          api: false,
           useFactory: () => ({
             workflows: {
               "preconfigured-workflow": preconfiguredWorkflow,

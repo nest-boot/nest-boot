@@ -28,7 +28,7 @@ import express, {
 import {
   MASTRA_MODULE_OPTIONS,
   type MastraModuleOptions,
-  normalizeMastraApiOptions,
+  normalizeMastraServerOptions,
   normalizeMastraStudioOptions,
   resolveMastraStudioBasePath,
 } from "./mastra.module-definition.js";
@@ -138,12 +138,11 @@ export class MastraStudioMiddleware
    * @returns Mounted Studio router, or null when Studio is unavailable
    */
   private createRouter(): Router | null {
-    const { enabled: apiEnabled, serverOptions } = normalizeMastraApiOptions(
-      this.options.api,
-    );
+    const { enabled: serverEnabled, serverOptions } =
+      normalizeMastraServerOptions(this.options.server);
     const studioOptions = normalizeMastraStudioOptions(
       this.options.studio,
-      apiEnabled,
+      serverEnabled,
     );
 
     if (!studioOptions.enabled) {
