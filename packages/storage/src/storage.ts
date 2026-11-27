@@ -36,19 +36,20 @@ import {
   type StorageTemporaryUploadUrlOptions,
   type StorageTemporaryUrlOptions,
 } from "./interfaces/storage-url-options.interface.js";
+import { normalizeStoragePath } from "./utils/normalize-storage-path.util.js";
 
 const MAX_DELETE_OBJECTS = 1000;
 const MAX_SINGLE_COPY_SIZE = 5 * 1024 * 1024 * 1024;
 
 /** File storage backed by an S3-compatible object store. */
 export class Storage {
-  private readonly bucket: string;
+  readonly bucket: string;
   private readonly client: S3Client;
   private readonly clientBucket: string;
   private readonly endpointUrl?: string;
   private readonly internalClient: S3Client;
   private readonly internalClientBucket: string;
-  private readonly rootPath: string;
+  readonly rootPath: string;
 
   /**
    * Creates a Storage service.
@@ -89,7 +90,7 @@ export class Storage {
 
     this.bucket = options.bucket;
     this.endpointUrl = endpointUrl;
-    this.rootPath = normalizePath(options.rootPath ?? "");
+    this.rootPath = normalizeStoragePath(options.rootPath ?? "");
 
     this.client = new S3Client(
       createS3ClientConfig(options, endpointUrl, bucketEndpoint),
@@ -555,7 +556,7 @@ export class Storage {
     directory = "",
     options: StorageListEntriesOptions = {},
   ): Promise<StorageEntry[]> {
-    const base = normalizePath(directory);
+    const base = normalizeStoragePath(directory);
     const baseDepth = base ? base.split("/").length : 0;
     const entries = new Map<string, StorageEntry>();
 
@@ -641,7 +642,7 @@ export class Storage {
   }
 
   private objectKey(path: string): string {
-    const relative = normalizePath(path);
+    const relative = normalizeStoragePath(path);
     if (!relative) {
       throw new TypeError("Storage path must not be empty");
     }
@@ -650,7 +651,7 @@ export class Storage {
   }
 
   private directoryPrefix(directory: string): string {
-    const relative = normalizePath(directory);
+    const relative = normalizeStoragePath(directory);
     const prefix = [this.rootPath, relative].filter(Boolean).join("/");
     return prefix ? `${prefix}/` : "";
   }
@@ -754,28 +755,6 @@ function normalizeBucketEndpointUrl(
   const url = new URL(endpointUrl);
   url.pathname = url.pathname.replace(/\/+$/, "");
   return url.toString();
-}
-
-/**
- * Returns storage path with redundant separators and dot segments normalized.
- * @param path - Path to normalize or access.
- * @returns Storage path with redundant separators and dot segments normalized.
- */
-function normalizePath(path: string): string {
-  const parts = path.replaceAll("\\", "/").split("/");
-  const normalized: string[] = [];
-
-  for (const part of parts) {
-    if (!part || part === ".") {
-      continue;
-    }
-    if (part === "..") {
-      throw new TypeError("Storage paths must not contain '..' segments");
-    }
-    normalized.push(part);
-  }
-
-  return normalized.join("/");
 }
 
 /**

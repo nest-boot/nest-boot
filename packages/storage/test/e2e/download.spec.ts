@@ -1,5 +1,11 @@
 import { JwtService } from "@nest-boot/jwt";
-import { Controller, Get, Global, Module } from "@nestjs/common";
+import {
+  Controller,
+  Get,
+  Global,
+  Module,
+  VersioningType,
+} from "@nestjs/common";
 import { Test } from "@nestjs/testing";
 
 import {
@@ -8,7 +14,7 @@ import {
   StorageModule,
 } from "../../src/index.js";
 
-it("keeps storage usable when the app has no JwtModule", async () => {
+it("keeps storage usable and returns 404 when the app has no JwtModule", async () => {
   const module = await Test.createTestingModule({
     imports: [StorageModule.register({ bucket: "files" })],
   }).compile();
@@ -26,16 +32,45 @@ it("keeps storage usable when the app has no JwtModule", async () => {
 });
 
 it.each([
-  StorageModule.register({ bucket: "files", download: { enabled: false } }),
-  StorageModule.registerAsync({
-    useFactory: () => ({
-      bucket: "files",
-      download: { enabled: false, baseURL: "unused" },
-    }),
-  }),
+  {
+    label: "without JwtModule (direct)",
+    factory: () => {
+      vi.stubEnv("STORAGE_BUCKET", "files");
+      return StorageModule;
+    },
+    expectedError: "Storage download links require JwtModule",
+  },
+  {
+    label: "without JwtModule (sync)",
+    factory: () => StorageModule.register({ bucket: "files" }),
+    expectedError: "Storage download links require JwtModule",
+  },
+  {
+    label: "without JwtModule (async)",
+    factory: () =>
+      StorageModule.registerAsync({ useFactory: () => ({ bucket: "files" }) }),
+    expectedError: "Storage download links require JwtModule",
+  },
+  {
+    label: "when explicitly disabled (sync)",
+    factory: () =>
+      StorageModule.register({ bucket: "files", download: { enabled: false } }),
+    expectedError: "Storage downloads are disabled",
+  },
+  {
+    label: "when explicitly disabled (async)",
+    factory: () =>
+      StorageModule.registerAsync({
+        useFactory: () => ({
+          bucket: "files",
+          download: { enabled: false, baseURL: "unused" },
+        }),
+      }),
+    expectedError: "Storage downloads are disabled",
+  },
 ])(
-  "leaves the download path free when explicitly disabled",
-  async (storageModule) => {
+  "leaves the download path free $label",
+  async ({ factory, expectedError }) => {
     @Controller("files")
     class CustomStorageController {
       @Get("*key")
@@ -48,7 +83,7 @@ it.each([
     class CustomStorageModule {}
 
     const module = await Test.createTestingModule({
-      imports: [storageModule, CustomStorageModule],
+      imports: [factory(), CustomStorageModule],
     }).compile();
     const app = module.createNestApplication();
     try {
@@ -58,27 +93,51 @@ it.each([
       await expect(response.json()).resolves.toEqual({ custom: true });
       await expect(
         app.get(StorageDownloadService).createUrl("file.txt", "user:42"),
-      ).rejects.toThrow("Storage downloads are disabled");
+      ).rejects.toThrow(expectedError);
     } finally {
       await app.close();
+      vi.unstubAllEnvs();
     }
   },
 );
 
 it.each([
-  { registration: "direct", path: undefined, route: "files" },
-  { registration: "sync", path: "/media/download/", route: "media/download" },
-  { registration: "async", path: "assets/signed", route: "assets/signed" },
+  {
+    registration: "direct",
+    path: undefined,
+    route: "files",
+    excluded: false,
+  },
+  {
+    registration: "sync",
+    path: "/media/download/",
+    route: "media/download",
+    excluded: false,
+  },
+  {
+    registration: "async",
+    path: "assets/signed",
+    route: "assets/signed",
+    excluded: true,
+  },
 ] as const)(
-  "mounts the $registration download route at $route under the host prefix",
-  async ({ registration, path: configuredPath, route }) => {
+  "mounts the $registration download route at $route (excluded: $excluded) and stays version-neutral",
+  async ({ registration, path: configuredPath, route, excluded }) => {
     vi.stubEnv("STORAGE_BUCKET", "files");
     const prefix = registration === "direct" ? "" : "gateway/api";
+    const rootPath = registration === "async" ? "tenant-a" : "";
     const key = "nested/image #? %.png";
     const exp = Math.floor(Date.now() / 1000) + 75;
+    const expectedPayload = {
+      bucket: "files",
+      ...(rootPath ? { rootPath } : {}),
+      key,
+    };
     const jwt = {
       sign: vi.fn<JwtService["sign"]>().mockResolvedValue("signed-token"),
-      verify: vi.fn<JwtService["verify"]>().mockResolvedValue({ key, exp }),
+      verify: vi
+        .fn<JwtService["verify"]>()
+        .mockResolvedValue({ ...expectedPayload, exp }),
     };
     const storage = {
       createTemporaryUrl: vi
@@ -97,6 +156,7 @@ it.each([
 
     const options = {
       bucket: "files",
+      ...(rootPath ? { rootPath } : {}),
       download: {
         baseURL: "https://downloads.example.com",
         path: configuredPath,
@@ -118,26 +178,44 @@ it.each([
     const app = module.createNestApplication();
     try {
       const downloads = app.get(StorageDownloadService);
+      app.enableVersioning({
+        type: VersioningType.URI,
+        defaultVersion: "1",
+      });
       if (prefix) {
-        app.setGlobalPrefix(prefix);
+        app.setGlobalPrefix(
+          prefix,
+          excluded ? { exclude: [`${route}/{*key}`] } : undefined,
+        );
       }
       await app.listen(0, "127.0.0.1");
       const link = await downloads.createUrl(key, "user:42");
-      const path = `${prefix ? `/${prefix}` : ""}/${route}/nested/image%20%23%3F%20%25.png`;
+      const effectivePrefix = prefix && !excluded ? `/${prefix}` : "";
+      const path = `${effectivePrefix}/${route}/nested/image%20%23%3F%20%25.png`;
       expect(link).toBe(
         `${registration === "direct" ? "" : options.download.baseURL}${path}?token=signed-token`,
       );
       expect(downloads.keyFromUrl(link)).toBe(key);
       expect(downloads.keyFromUrl(`${path}?token=signed-token`)).toBe(key);
-      expect(jwt.sign).toHaveBeenCalledWith(
-        { key },
-        {
-          type: "storage-download+jwt",
-          audience: "storage-download",
-          subject: "user:42",
-          expiresIn: 3600,
-        },
-      );
+      if (registration === "direct") {
+        expect(
+          downloads.keyFromUrl(
+            `https://api.example.com${path}?token=signed-token`,
+          ),
+        ).toBe(key);
+      } else {
+        expect(
+          downloads.keyFromUrl(
+            `https://other.example.com${path}?token=signed-token`,
+          ),
+        ).toBeUndefined();
+      }
+      expect(jwt.sign).toHaveBeenCalledWith(expectedPayload, {
+        type: "storage-download+jwt",
+        audience: "storage-download",
+        subject: "user:42",
+        expiresIn: 3600,
+      });
 
       const url = new URL(`${path}?token=signed-token`, await app.getUrl());
       const response = await fetch(url, { redirect: "manual" });
@@ -149,6 +227,15 @@ it.each([
         );
         expect((await fetch(defaultRoute)).status).toBe(404);
         expect(downloads.keyFromUrl(defaultRoute.pathname)).toBeUndefined();
+      }
+      if (excluded) {
+        const prefixedUrl = new URL(
+          `/${prefix}/${route}/nested/image%20%23%3F%20%25.png?token=signed-token`,
+          await app.getUrl(),
+        );
+        expect((await fetch(prefixedUrl, { redirect: "manual" })).status).toBe(
+          404,
+        );
       }
       expect(response.headers.get("location")).toBe(
         "https://files.example.com/image.png?signature=example",
@@ -170,6 +257,21 @@ it.each([
       const wrongKey = new URL(url);
       wrongKey.pathname = wrongKey.pathname.replace("image", "other");
       expect((await fetch(wrongKey, { redirect: "manual" })).status).toBe(401);
+
+      jwt.verify.mockResolvedValueOnce({
+        ...expectedPayload,
+        bucket: "other-bucket",
+        exp,
+      });
+      expect((await fetch(url, { redirect: "manual" })).status).toBe(401);
+
+      jwt.verify.mockResolvedValueOnce({
+        ...expectedPayload,
+        rootPath: "other-root",
+        exp,
+      });
+      expect((await fetch(url, { redirect: "manual" })).status).toBe(401);
+
       expect(storage.createTemporaryUrl).toHaveBeenCalledTimes(1);
       await expect(
         downloads.createUrl("nested/../private.png", "user:42"),

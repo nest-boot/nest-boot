@@ -1,4 +1,9 @@
-import { withDynamicController } from "@nest-boot/common";
+import {
+  createDynamicController,
+  type DynamicControllerOptions,
+  withDynamicController,
+} from "@nest-boot/common";
+import { JwtService } from "@nest-boot/jwt";
 import {
   type DynamicModule,
   Global,
@@ -22,9 +27,46 @@ import { resolveStorageDownloadPath } from "./utils/resolve-storage-download-pat
 const storageProvider: Provider<Storage> = {
   provide: Storage,
   inject: [{ token: MODULE_OPTIONS_TOKEN, optional: true }],
-  useFactory: (options: StorageModuleOptions = {}): Storage =>
+  useFactory: (options?: StorageModuleOptions) =>
     new Storage(loadStorageOptionsFromEnv(options)),
 };
+
+/**
+ * Resolves the dynamic controller configuration for signed downloads.
+ * @param options - Storage module options, when provided.
+ * @param jwt - Optional JWT signer/verifier registered by the host application.
+ * @returns Dynamic controller mount options; omits the route when disabled or without JWT.
+ */
+function resolveDownloadControllerOptions(
+  options?: StorageModuleOptions,
+  jwt?: JwtService,
+): DynamicControllerOptions {
+  const download = options?.download;
+  if (download?.enabled === false) {
+    return { path: [] };
+  }
+  const path = resolveStorageDownloadPath(download?.path);
+  if (!jwt) {
+    return { path: [] };
+  }
+  return {
+    path,
+    decorators: download?.controllerDecorator
+      ? [download.controllerDecorator]
+      : [],
+  };
+}
+
+const directDownloadController = createDynamicController(
+  StorageDownloadController,
+  {
+    inject: [
+      { token: MODULE_OPTIONS_TOKEN, optional: true },
+      { token: JwtService, optional: true },
+    ],
+    useFactory: resolveDownloadControllerOptions,
+  },
+);
 
 @Global()
 @Module({ providers: [storageProvider], exports: [Storage] })
@@ -33,15 +75,17 @@ class StorageCoreModule extends ConfigurableModuleClass {}
 /**
  * Global module that provides an S3-backed {@link Storage} service.
  *
- * Import the module directly to read the supported S3 environment variables,
- * or use {@link StorageModule.forRoot} and {@link StorageModule.forRootAsync}
- * for explicit configuration. The AWS SDK clients are private implementation
- * details owned by {@link Storage}.
+ * Exports only {@link Storage} and {@link StorageDownloadService}; the raw S3
+ * client instances remain internal implementation details owned by {@link Storage}.
  */
 @Global()
 @Module({
-  controllers: [StorageDownloadController],
-  providers: [storageProvider, StorageDownloadService],
+  controllers: [directDownloadController.controller],
+  providers: [
+    storageProvider,
+    StorageDownloadService,
+    directDownloadController.provider,
+  ],
   exports: [Storage, StorageDownloadService],
 })
 export class StorageModule extends StorageCoreModule {
@@ -55,8 +99,8 @@ export class StorageModule extends StorageCoreModule {
   }
 
   /**
-   * Registers the StorageModule asynchronously.
-   * @param options - Async configuration options
+   * Registers the StorageModule using asynchronously resolved options.
+   * @param options - Async factory or provider options for storage configuration
    * @returns Dynamic module configuration
    */
   static override forRootAsync(
@@ -77,16 +121,8 @@ export class StorageModule extends StorageCoreModule {
       },
       StorageDownloadController,
       {
-        inject: [MODULE_OPTIONS_TOKEN],
-        useFactory: ({ download }: StorageModuleOptions) =>
-          download?.enabled === false
-            ? { path: [] }
-            : {
-                path: resolveStorageDownloadPath(download?.path),
-                decorators: download?.controllerDecorator
-                  ? [download.controllerDecorator]
-                  : [],
-              },
+        inject: [MODULE_OPTIONS_TOKEN, { token: JwtService, optional: true }],
+        useFactory: resolveDownloadControllerOptions,
       },
     );
   }

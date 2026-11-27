@@ -7,7 +7,8 @@
 The signed download route is enabled by default in `StorageModule`.
 `@nest-boot/jwt` is a peer dependency. Add `JwtModule.forRoot()` or
 `JwtModule.forRootAsync()` to enable signing and verification. Without JWT
-registration, storage operations remain available and download requests return 404.
+registration, storage operations remain available and the download route is
+not mounted.
 
 ```ts
 import { StorageModule } from "@nest-boot/storage";
@@ -17,13 +18,15 @@ StorageModule.register({ download: { baseURL: "https://api.example.com" } });
 
 Authorize access in your application before calling
 `StorageDownloadService.createUrl(key, subject)`. The generated URL points to
-`/files/*` under the app's Nest global prefix. Set `download.path`
-to use a different static route, such as `/media/download`. Add only the
-route path in this option. Nest supplies the global prefix, and the module
-appends the object key. Links are root-relative by default. Set
+`/files/*` under the app's Nest global prefix (honoring prefix exclusions and
+remaining version-neutral when URI or header versioning is enabled). Set
+`download.path` to use a different static route, such as `/media/download`. Add
+only the route path in this option. Nest supplies the global prefix, and the
+module appends the object key. Links are root-relative by default. Set
 `download.baseURL` to generate absolute links. The handler verifies the
-download token and object key, then redirects to an S3 presigned URL with the
-same expiration deadline. Both responses use `Cache-Control: no-store`.
+download token, storage bucket/root namespace, and object key, then redirects
+to an S3 presigned URL with the same expiration deadline. Both responses use
+`Cache-Control: no-store`.
 
 Tokens last one hour by default. Use `download.expiresIn` to set the lifetime in
 seconds. Hosts with a global authentication guard can supply their public

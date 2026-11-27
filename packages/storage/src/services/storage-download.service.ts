@@ -5,6 +5,7 @@ import {
   Injectable,
   NotFoundException,
   Optional,
+  RequestMethod,
   UnauthorizedException,
 } from "@nestjs/common";
 import { ApplicationConfig } from "@nestjs/core";
@@ -13,6 +14,8 @@ import type { StorageDownloadOptions } from "../interfaces/storage-download-opti
 import type { StorageModuleOptions } from "../interfaces/storage-module-options.interface.js";
 import { Storage } from "../storage.js";
 import { MODULE_OPTIONS_TOKEN } from "../storage.module-definition.js";
+import { loadStorageOptionsFromEnv } from "../utils/load-storage-options-from-env.util.js";
+import { normalizeStoragePath } from "../utils/normalize-storage-path.util.js";
 import { resolveStorageDownloadPath } from "../utils/resolve-storage-download-path.util.js";
 
 const scope = { type: "storage-download+jwt", audience: "storage-download" };
@@ -21,6 +24,8 @@ const maxPresignedLifetime = 7 * 24 * 60 * 60;
 /** Creates and exchanges JWT download links for S3 presigned URLs. */
 @Injectable()
 export class StorageDownloadService {
+  private readonly bucket: string;
+  private readonly rootPath: string;
   private readonly origin: string;
   private readonly path: string;
   private readonly expiresIn: number;
@@ -34,6 +39,17 @@ export class StorageDownloadService {
     @Inject(MODULE_OPTIONS_TOKEN)
     options?: StorageModuleOptions,
   ) {
+    const resolvedStorage = loadStorageOptionsFromEnv(options);
+    const partialStorage = this.storage as Partial<Storage> | undefined;
+    this.bucket = (
+      partialStorage?.bucket ??
+      resolvedStorage.bucket ??
+      ""
+    ).trim();
+    this.rootPath =
+      partialStorage?.rootPath ??
+      normalizeStoragePath(resolvedStorage.rootPath ?? "");
+
     const download = options?.download;
     this.options =
       download?.enabled === false ? { enabled: false } : (download ?? {});
@@ -70,6 +86,11 @@ export class StorageDownloadService {
     if (!this.jwt) {
       throw new Error("Storage download links require JwtModule");
     }
+    if (!this.bucket) {
+      throw new Error(
+        "Storage bucket is required; set STORAGE_BUCKET or register StorageModule with a bucket",
+      );
+    }
     if (
       !this.isObjectKey(key) ||
       this.options.resolveContentType?.(key) === null
@@ -77,7 +98,11 @@ export class StorageDownloadService {
       throw new BadRequestException("Invalid storage download key");
     }
     const token = await this.jwt.sign(
-      { key },
+      {
+        bucket: this.bucket,
+        ...(this.rootPath ? { rootPath: this.rootPath } : {}),
+        key,
+      },
       { ...scope, subject, expiresIn: this.expiresIn },
     );
     const encodedKey = key.split("/").map(encodeURIComponent).join("/");
@@ -94,16 +119,14 @@ export class StorageDownloadService {
     if (this.options.enabled === false) {
       return undefined;
     }
+    const pathname = this.extractPathname(url);
     const route = this.routePrefix();
-    const prefix = url.startsWith(route) ? route : `${this.origin}${route}`;
-    if (!url.startsWith(prefix)) {
+    if (!pathname?.startsWith(route)) {
       return undefined;
     }
 
     try {
-      const key = decodeURIComponent(
-        url.slice(prefix.length).split(/[?#]/, 1)[0],
-      );
+      const key = decodeURIComponent(pathname.slice(route.length));
       return this.isObjectKey(key) ? key : undefined;
     } catch {
       return undefined;
@@ -120,12 +143,17 @@ export class StorageDownloadService {
     if (this.options.enabled === false || !this.jwt) {
       throw new NotFoundException();
     }
-    if (typeof token !== "string" || !this.isObjectKey(key)) {
+    if (typeof token !== "string" || !this.bucket || !this.isObjectKey(key)) {
       throw new UnauthorizedException("Invalid file download");
     }
 
     const payload = await this.jwt.verify(token, scope);
-    if (payload.key !== key || payload.exp === undefined) {
+    if (
+      payload.bucket !== this.bucket ||
+      (payload.rootPath ?? "") !== this.rootPath ||
+      payload.key !== key ||
+      payload.exp === undefined
+    ) {
       throw new UnauthorizedException("Invalid file download");
     }
 
@@ -137,6 +165,7 @@ export class StorageDownloadService {
       throw new UnauthorizedException("Invalid file download");
     }
 
+    // S3 applies ResponseCacheControl to 200 OK responses; partial 206 responses follow stored object metadata.
     return await this.storage.createTemporaryUrl(key, {
       expiresIn,
       signingDate,
@@ -145,11 +174,39 @@ export class StorageDownloadService {
     });
   }
 
+  private extractPathname(url: string): string | undefined {
+    if (url.startsWith("/") && !url.startsWith("//")) {
+      return url.split(/[?#]/, 1)[0];
+    }
+    try {
+      const parsed = new URL(url);
+      if (parsed.protocol !== "http:" && parsed.protocol !== "https:") {
+        return undefined;
+      }
+      if (this.origin && parsed.origin !== this.origin) {
+        return undefined;
+      }
+      return parsed.pathname;
+    } catch {
+      return undefined;
+    }
+  }
+
   private routePrefix(): string {
     const prefix = this.applicationConfig
       .getGlobalPrefix()
       .replace(/^\/+|\/+$/g, "");
-    return prefix ? `/${prefix}/${this.path}/` : `/${this.path}/`;
+    const routePath = `/${this.path}/*key`;
+    const excluded = this.applicationConfig
+      .getGlobalPrefixOptions()
+      .exclude?.some(
+        (route) =>
+          (route.requestMethod === RequestMethod.ALL ||
+            (route.requestMethod as number) === -1 ||
+            route.requestMethod === RequestMethod.GET) &&
+          route.pathRegex.test(routePath),
+      );
+    return prefix && !excluded ? `/${prefix}/${this.path}/` : `/${this.path}/`;
   }
 
   private isObjectKey(key: string): boolean {
