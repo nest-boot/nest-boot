@@ -16,7 +16,7 @@ it("keeps storage usable when the app has no JwtModule", async () => {
   try {
     await app.listen(0, "127.0.0.1");
     const response = await fetch(
-      `${await app.getUrl()}/storage/download/file.txt`,
+      `${await app.getUrl()}/files/download/file.txt`,
     );
     expect(response.status).toBe(404);
     await expect(
@@ -38,7 +38,7 @@ it.each([
 ])(
   "leaves the download path free when explicitly disabled",
   async (storageModule) => {
-    @Controller("storage/download")
+    @Controller("files/download")
     class CustomStorageController {
       @Get("*key")
       getFile(): { custom: boolean } {
@@ -56,7 +56,7 @@ it.each([
     try {
       await app.listen(0, "127.0.0.1");
       const response = await fetch(
-        `${await app.getUrl()}/storage/download/file.txt`,
+        `${await app.getUrl()}/files/download/file.txt`,
       );
       expect(response.status).toBe(200);
       await expect(response.json()).resolves.toEqual({ custom: true });
@@ -70,8 +70,8 @@ it.each([
 );
 
 it.each([
-  { registration: "direct", path: undefined, route: "storage/download" },
-  { registration: "sync", path: "/files/download/", route: "files/download" },
+  { registration: "direct", path: undefined, route: "files/download" },
+  { registration: "sync", path: "/media/download/", route: "media/download" },
   { registration: "async", path: "assets/signed", route: "assets/signed" },
 ] as const)(
   "mounts the $registration download route at $route under the host prefix",
@@ -148,7 +148,7 @@ it.each([
       expect(response.status).toBe(302);
       if (registration !== "direct") {
         const defaultRoute = new URL(
-          `/${prefix}/storage/download/file.txt`,
+          `/${prefix}/files/download/file.txt`,
           await app.getUrl(),
         );
         expect((await fetch(defaultRoute)).status).toBe(404);
