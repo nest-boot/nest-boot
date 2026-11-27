@@ -1628,11 +1628,11 @@ describe("BaseTool Guard authorization and exposure filtering", () => {
         super();
       }
 
-      async execute(input: { recursed?: boolean }) {
+      async execute(input: {
+        recursed?: boolean;
+      }): Promise<{ nested: boolean }> {
         if (!input.recursed) {
-          return (await this.execute({ recursed: true })) as {
-            nested: boolean;
-          };
+          return await this.execute({ recursed: true });
         }
         const res = await this.leaf.execute();
         return { nested: "leaf" in res && res.leaf };
