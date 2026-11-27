@@ -9,6 +9,8 @@ import {
 
 /**
  * Resolves route path and class decorators for the dynamic `MastraController`.
+ * Defaults to `@Can("manage", Mastra)`, enforced by the host app's `AuthModule` (`APP_GUARD`)
+ * or replaceable via `server.decorators` in apps using custom NestJS guards without `AuthModule`.
  * @param server - Raw `server` module option.
  * @returns Validated dynamic controller options with `[Can("manage", Mastra)]` default.
  */

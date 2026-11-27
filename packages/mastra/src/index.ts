@@ -55,9 +55,3 @@ export {
   resolveMastraServerPrefix,
   resolveMastraStudioBasePath,
 } from "./mastra.module-definition.js";
-export {
-  filterAccessibleTools,
-  type FilterAccessibleToolsOptions,
-  MASTRA_TOOL_DISCOVERY_CONTEXT_TYPE,
-  MASTRA_TOOL_EXECUTION_CONTEXT_TYPE,
-} from "./tool-guard.js";
