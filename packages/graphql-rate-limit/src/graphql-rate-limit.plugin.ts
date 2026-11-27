@@ -5,14 +5,13 @@ import {
   type BaseContext,
   type GraphQLRequestListener,
 } from "@apollo/server";
-import { ApolloServerErrorCode } from "@apollo/server/errors";
 import {
   type FieldComplexityEstimatorArgs,
   GraphQLSchemaHost,
   GraphQLTooManyRequestsError,
 } from "@nest-boot/graphql";
 import { Plugin } from "@nestjs/apollo";
-import { HttpStatus, Inject } from "@nestjs/common";
+import { Inject } from "@nestjs/common";
 import { ModuleRef } from "@nestjs/core";
 import { collectFields } from "graphql/execution/collectFields.js";
 import {
@@ -177,40 +176,6 @@ function isVariableCoercionError(error: unknown): error is GraphQLError {
   );
 }
 
-/**
- * Preserves Apollo Server's user-input classification for variable coercion errors.
- * @param error - The error thrown while coercing operation variables.
- * @returns A classified `GraphQLError`, or the original error when unrelated.
- */
-function normalizeVariableCoercionError(error: unknown): unknown {
-  if (!isVariableCoercionError(error)) {
-    return error;
-  }
-
-  const http =
-    typeof error.extensions.http === "object" && error.extensions.http !== null
-      ? error.extensions.http
-      : undefined;
-
-  return new GraphQLError(error.message, {
-    nodes: error.nodes,
-    source: error.source,
-    positions: error.positions,
-    originalError: error.originalError ?? error,
-    extensions: {
-      ...error.extensions,
-      code: error.extensions.code ?? ApolloServerErrorCode.BAD_USER_INPUT,
-      http: {
-        ...http,
-        status:
-          http && "status" in http && typeof http.status === "number"
-            ? http.status
-            : HttpStatus.BAD_REQUEST,
-      },
-    },
-  });
-}
-
 @Plugin()
 export class GraphQLRateLimitPlugin implements ApolloServerPlugin {
   private readonly defaultEstimator: ComplexityEstimator;
@@ -254,14 +219,20 @@ export class GraphQLRateLimitPlugin implements ApolloServerPlugin {
       requestedQueryCost: 0,
       actualQueryCost: 0,
     };
+    let deferredVariableError: GraphQLError | undefined;
+    let reserved = false;
 
     return {
       didResolveOperation: async (args) => {
         const { request, document, operation } = args;
+        if (!operation) {
+          return;
+        }
+
         try {
           let query = document;
           let mutationSelections: Set<FieldNode> | undefined;
-          if (operation?.operation === OperationTypeNode.MUTATION) {
+          if (operation.operation === OperationTypeNode.MUTATION) {
             const selections = collectMutationSelections(
               schema,
               document,
@@ -296,7 +267,13 @@ export class GraphQLRateLimitPlugin implements ApolloServerPlugin {
             ],
           });
         } catch (error) {
-          throw normalizeVariableCoercionError(error);
+          // Let Apollo's execution pipeline coerce variables so all BAD_USER_INPUT
+          // errors, their order, and HTTP status handling match unthrottled requests.
+          if (isVariableCoercionError(error)) {
+            deferredVariableError = error;
+            return;
+          }
+          throw error;
         }
 
         if (cost.requestedQueryCost > maxComplexity) {
@@ -318,8 +295,21 @@ export class GraphQLRateLimitPlugin implements ApolloServerPlugin {
         if (blocked) {
           throw new GraphQLTooManyRequestsError();
         }
+
+        reserved = true;
       },
       executionDidStart: async () => {
+        if (!reserved) {
+          const error = deferredVariableError;
+          return error
+            ? {
+                willResolveField: () => {
+                  throw error;
+                },
+              }
+            : undefined;
+        }
+
         return {
           willResolveField: ({ args, info }) => {
             const parentTypeFields = info.parentType.getFields();
@@ -352,6 +342,7 @@ export class GraphQLRateLimitPlugin implements ApolloServerPlugin {
       },
       willSendResponse: async (request): Promise<void> => {
         if (
+          reserved &&
           request.response.body.kind === "single" &&
           "data" in request.response.body.singleResult
         ) {

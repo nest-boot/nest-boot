@@ -41,6 +41,15 @@ class CreateSkillInput {
   owner!: SkillOwnerInput;
 }
 
+@InputType()
+class CreateDetailedSkillInput {
+  @Field(() => SkillOwnerInput)
+  owner!: SkillOwnerInput;
+
+  @Field(() => String)
+  name!: string;
+}
+
 const createSkillResolver = vi.fn(() => "skill-1");
 
 @ObjectType()
@@ -180,6 +189,14 @@ class TestResolver {
   @Mutation(() => ID)
   createSkill(
     @Args("input", { type: () => CreateSkillInput }) _input: CreateSkillInput,
+  ): string {
+    return createSkillResolver();
+  }
+
+  @Mutation(() => ID)
+  createDetailedSkill(
+    @Args("input", { type: () => CreateDetailedSkillInput })
+    _input: CreateDetailedSkillInput,
   ): string {
     return createSkillResolver();
   }
@@ -473,64 +490,80 @@ describe("GraphQLRateLimitModule - e2e", () => {
     });
   });
 
-  it("returns HTTP 400 BAD_USER_INPUT for invalid variables without calling resolvers or charging points", async () => {
+  it("preserves Apollo responses for invalid variables and unresolved operations without calling resolvers or charging points", async () => {
     createSkillResolver.mockClear();
-    const app = await createApp(
+    const baselineApp = await createApp();
+    const rateLimitedApp = await createApp(
       GraphQLRateLimitModule.forRoot({
+        maxComplexity: 10,
         defaultComplexity: 10,
         maximumAvailable: 10,
         restoreRate: 1,
         getId: () => "client",
       }),
     );
-    apps.push(app);
-    const http = request(app.getHttpServer());
+    apps.push(baselineApp, rateLimitedApp);
+    const baselineHttp = request(baselineApp.getHttpServer());
+    const rateLimitedHttp = request(rateLimitedApp.getHttpServer());
     const createSkillMutation = /* GraphQL */ `
       mutation CreateSkill($input: CreateSkillInput!) {
         createSkill(input: $input)
       }
     `;
+    const createDetailedSkillMutation = /* GraphQL */ `
+      mutation CreateDetailedSkill($input: CreateDetailedSkillInput!) {
+        createDetailedSkill(input: $input)
+      }
+    `;
 
-    for (const [query, variables, expectedMessage] of [
-      [
-        createSkillMutation,
-        { input: {} },
-        'Variable "$input" got invalid value {}; Field "owner" of required type "SkillOwnerInput!" was not provided.',
-      ],
-      [
-        createSkillMutation,
-        {},
-        'Variable "$input" of required type "CreateSkillInput!" was not provided.',
-      ],
-      [
-        createSkillMutation,
-        { input: null },
-        'Variable "$input" of non-null type "CreateSkillInput!" must not be null.',
-      ],
-      [
-        "mutation Update($include: Boolean!) { updateStatus @include(if: $include) }",
-        { include: null },
-        'Variable "$include" of non-null type "Boolean!" must not be null.',
-      ],
-    ] as const) {
-      const response = await http
-        .post("/graphql")
-        .send({ query, variables })
-        .expect(400);
-      const body = response.body as GraphQLResponse;
+    for (const payload of [
+      { query: createSkillMutation, variables: { input: {} } },
+      { query: createDetailedSkillMutation, variables: { input: {} } },
+      { query: createSkillMutation, variables: {} },
+      { query: createSkillMutation, variables: { input: null } },
+      {
+        query:
+          "query ($first: Int!, $second: Int!) { a: weighted(weight: $first) b: weighted(weight: $second) }",
+        variables: {},
+      },
+      {
+        query:
+          "mutation Update($include: Boolean!) { updateStatus @include(if: $include) }",
+        variables: { include: null },
+      },
+      { query: "query First { hello } query Second { hello }" },
+      { query: "query First { hello }", operationName: "Missing" },
+    ]) {
+      const [baseline, rateLimited] = await Promise.all([
+        baselineHttp.post("/graphql").send(payload),
+        rateLimitedHttp.post("/graphql").send(payload),
+      ]);
 
-      expect(body.data).toBeUndefined();
-      expect(body.extensions?.cost).toBeUndefined();
-      expect(body.errors?.[0]).toMatchObject({
-        message: expectedMessage,
-        extensions: { code: "BAD_USER_INPUT" },
-      });
-      expect(body.errors?.[0]?.extensions).not.toHaveProperty("http");
+      expect(rateLimited.status).toBe(400);
+      expect(rateLimited.status).toBe(baseline.status);
+      expect(rateLimited.body).toEqual(baseline.body);
     }
+
+    const multiErrorResponse = await rateLimitedHttp
+      .post("/graphql")
+      .send({ query: createDetailedSkillMutation, variables: { input: {} } })
+      .expect(400);
+    expect((multiErrorResponse.body as GraphQLResponse).errors).toMatchObject([
+      {
+        message:
+          'Variable "$input" got invalid value {}; Field "name" of required type "String!" was not provided.',
+        extensions: { code: "BAD_USER_INPUT" },
+      },
+      {
+        message:
+          'Variable "$input" got invalid value {}; Field "owner" of required type "SkillOwnerInput!" was not provided.',
+        extensions: { code: "BAD_USER_INPUT" },
+      },
+    ]);
 
     expect(createSkillResolver).not.toHaveBeenCalled();
 
-    const validResponse = await http
+    const validResponse = await rateLimitedHttp
       .post("/graphql")
       .send({ query: "{ hello }" })
       .expect(200);
@@ -547,20 +580,23 @@ describe("GraphQLRateLimitModule - e2e", () => {
 
   /**
    * Returns initialized test application and its exposed dependencies.
-   * @param rateLimitModule - GraphQL rate-limit module registration to test.
+   * @param rateLimitModule - Optional GraphQL rate-limit module registration to test.
    * @returns Initialized test application and its exposed dependencies.
    */
   async function createApp(
-    rateLimitModule: DynamicModule,
+    rateLimitModule?: DynamicModule,
   ): Promise<INestApplication> {
+    const imports: DynamicModule[] = [
+      GraphQLModule.forRoot({
+        autoSchemaFile: true,
+        graphiql: false,
+      }),
+    ];
+    if (rateLimitModule) {
+      imports.push(rateLimitModule);
+    }
     const moduleRef = await Test.createTestingModule({
-      imports: [
-        GraphQLModule.forRoot({
-          autoSchemaFile: true,
-          graphiql: false,
-        }),
-        rateLimitModule,
-      ],
+      imports,
       providers: [TestResolver],
     }).compile();
     const app = moduleRef.createNestApplication();
