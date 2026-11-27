@@ -13,6 +13,12 @@ import {
 } from "@mastra/core/tools";
 import { kebabCase } from "lodash-es";
 
+import {
+  GET_TOOL_ORIGINAL_EXECUTE,
+  getActiveToolExecuteDelegate,
+  SET_TOOL_EXECUTE_DELEGATE,
+} from "./tool-guard.js";
+
 const BASE_TOOL_MARKER = Symbol("nest-mastra-base-tool");
 
 type ToolStaticKeys =
@@ -277,15 +283,43 @@ export function BaseTool<
           | PublicSchema<TRequestContext, any>
           | undefined,
         execute: (inputData, context) => {
-          if (!delegate.execute) {
+          const activeDelegate = getActiveToolExecuteDelegate(this) as
+            | ((
+                inputData: TInput,
+                context: TExecContext,
+              ) => Promise<TOutput | ValidationError>)
+            | undefined;
+          const targetDelegate = activeDelegate ?? delegate.execute;
+          if (!targetDelegate) {
             throw new Error("BaseTool execute delegate is not initialized");
           }
-          return delegate.execute(inputData, context);
+          return targetDelegate(inputData, context);
         },
       });
 
       delegate.execute = (inputData, context) =>
         proto.execute.call(this, inputData, context);
+
+      Object.defineProperty(this, GET_TOOL_ORIGINAL_EXECUTE, {
+        value: () => proto.execute,
+        configurable: true,
+        enumerable: false,
+        writable: false,
+      });
+
+      Object.defineProperty(this, SET_TOOL_EXECUTE_DELEGATE, {
+        value: (
+          fn: (
+            inputData: TInput,
+            context: TExecContext,
+          ) => Promise<TOutput | ValidationError>,
+        ) => {
+          delegate.execute = fn;
+        },
+        configurable: true,
+        enumerable: false,
+        writable: false,
+      });
     }
 
     abstract execute(

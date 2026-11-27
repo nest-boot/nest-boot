@@ -1,6 +1,11 @@
 /** Reflection metadata key used by the unified Can decorator. */
 export const CAN_METADATA = Symbol("CAN_METADATA");
 
+/** Non-enumerable symbol key carrying the bound handler instance on external ExecutionContext args. */
+export const EXTERNAL_HANDLER_INSTANCE = Symbol.for(
+  "nest-boot:auth:external-handler-instance",
+);
+
 /** Nest route arguments metadata key. */
 export const ROUTE_ARGS_METADATA = "__routeArguments__";
 

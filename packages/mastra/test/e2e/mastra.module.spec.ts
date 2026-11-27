@@ -23,6 +23,7 @@ import { z } from "zod";
 import {
   BaseAgent,
   BaseStep,
+  BaseTool,
   BaseWorkflow,
   MastraController,
   MastraModule,
@@ -723,6 +724,241 @@ describe("MastraModule HTTP & Studio (e2e)", () => {
 
       const studioRes = await fetch(`${url}/api/host-mastra/studio/`);
       expect(studioRes.status).toBe(200);
+    } finally {
+      await app.close();
+    }
+  });
+
+  it("filters unauthorized tools across Mastra HTTP tool/agent listing endpoints and enforces guards on tool execution", async () => {
+    @Injectable()
+    class SecretConfigService {
+      readonly internalToken = "do-not-expose-me";
+      readonly circularRef: SecretConfigService = this;
+    }
+
+    let quotaDiscoveryCalls = 0;
+    let quotaExecutionCalls = 0;
+
+    @UseGuards({
+      canActivate: (ctx) => {
+        if (ctx.getType<string>() === "mastra:tool:discovery") {
+          quotaDiscoveryCalls += 1;
+          return true;
+        }
+        if (ctx.getType<string>() === "mastra:tool:execution") {
+          quotaExecutionCalls += 1;
+          return true;
+        }
+        return true;
+      },
+    })
+    @Injectable()
+    class OpenEchoTool extends BaseTool({
+      description: "Allowed echo tool",
+      inputSchema: z.object({ message: z.string() }),
+      outputSchema: z.object({ echoed: z.string() }),
+    }) {
+      constructor(private readonly secretConfig: SecretConfigService) {
+        super();
+      }
+
+      execute({ message }: { message: string }) {
+        return Promise.resolve({
+          echoed: `${message}:${this.secretConfig.circularRef ? "ok" : "missing"}`,
+        });
+      }
+    }
+
+    @UseGuards({ canActivate: () => false })
+    @Injectable()
+    class RestrictedSecretTool extends BaseTool({
+      description: "Forbidden secret tool",
+      inputSchema: z.object({ key: z.string() }),
+      outputSchema: z.object({ secret: z.string() }),
+    }) {
+      execute({ key }: { key: string }) {
+        return Promise.resolve({ secret: `val:${key}` });
+      }
+    }
+
+    class AllowedAliasedTool extends BaseTool({
+      id: "allowed-aliased-tool",
+      description: "Registered under a key matching RestrictedSecretTool's id",
+      outputSchema: z.object({ ok: z.boolean() }),
+    }) {
+      execute() {
+        return Promise.resolve({ ok: true });
+      }
+    }
+    const allowedAliasedTool = new AllowedAliasedTool();
+
+    @Injectable()
+    class GuardedToolsAgent extends BaseAgent {
+      constructor(
+        openEchoTool: OpenEchoTool,
+        restrictedSecretTool: RestrictedSecretTool,
+      ) {
+        super({
+          name: "Guarded Tools Agent",
+          instructions: "Use available tools.",
+          model: "openai/gpt-4o-mini",
+          tools: {
+            openEcho: openEchoTool,
+            restrictedSecret: restrictedSecretTool,
+          },
+        });
+      }
+    }
+
+    @Module({
+      providers: [
+        SecretConfigService,
+        OpenEchoTool,
+        RestrictedSecretTool,
+        GuardedToolsAgent,
+      ],
+    })
+    class GuardedToolsFeatureModule {}
+
+    const moduleRef = await Test.createTestingModule({
+      imports: [
+        MastraModule.forRoot({
+          server: true,
+          tools: {
+            // Registration key intentionally matches another denied tool's intrinsic id,
+            // while RestrictedSecretTool is registered under its own distinct key via agent/provider:
+            // let's use a key matching a denied preconfigured tool's intrinsic id!
+            "denied-preconfigured-id": allowedAliasedTool,
+            "other-denied-key": Object.assign(new RestrictedSecretTool(), {
+              id: "denied-preconfigured-id",
+            }),
+          },
+        }),
+        GuardedToolsFeatureModule,
+      ],
+    }).compile();
+
+    const app = moduleRef.createNestApplication();
+    await app.listen(0);
+
+    try {
+      const url = await app.getUrl();
+
+      // GET /api/mastra/tools hides denied tools, keeps allowed tool whose registration key
+      // matches another denied tool's intrinsic id, and never leaks injected DI services
+      const listToolsRes = await fetch(`${url}/api/mastra/tools`);
+      expect(listToolsRes.status).toBe(200);
+      const toolsBody = (await listToolsRes.json()) as Record<
+        string,
+        Record<string, unknown>
+      >;
+      expect(Object.keys(toolsBody)).toContain("open-echo-tool");
+      expect(Object.keys(toolsBody)).toContain("denied-preconfigured-id");
+      expect(toolsBody["denied-preconfigured-id"]?.id).toBe(
+        "allowed-aliased-tool",
+      );
+      expect(Object.keys(toolsBody)).not.toContain("restricted-secret-tool");
+      expect(Object.keys(toolsBody)).not.toContain("other-denied-key");
+      expect(toolsBody["open-echo-tool"]).not.toHaveProperty("secretConfig");
+      expect(JSON.stringify(toolsBody)).not.toContain("do-not-expose-me");
+
+      // GET /api/mastra/tools/:toolId returns 200 for allowed tool without DI leakage, 404 for hidden tool
+      // and ignores query-string toolId shadowing attempts.
+      const singleToolRes = await fetch(
+        `${url}/api/mastra/tools/open-echo-tool`,
+      );
+      expect(singleToolRes.status).toBe(200);
+      const singleToolBody = (await singleToolRes.json()) as Record<
+        string,
+        unknown
+      >;
+      expect(singleToolBody).not.toHaveProperty("secretConfig");
+      expect(JSON.stringify(singleToolBody)).not.toContain("do-not-expose-me");
+
+      const unshadowedRes = await fetch(
+        `${url}/api/mastra/tools/open-echo-tool?toolId=restricted-secret-tool`,
+      );
+      expect(unshadowedRes.status).toBe(200);
+      expect(((await unshadowedRes.json()) as { id?: string }).id).toBe(
+        "open-echo-tool",
+      );
+      expect(
+        (await fetch(`${url}/api/mastra/tools/restricted-secret-tool`)).status,
+      ).toBe(404);
+
+      // GET /api/mastra/agents and GET /api/mastra/agents/:agentId only expose openEcho and strip DI fields
+      const agentsListRes = await fetch(`${url}/api/mastra/agents`);
+      expect(agentsListRes.status).toBe(200);
+      const agentsListText = await agentsListRes.text();
+      expect(agentsListText).not.toContain("do-not-expose-me");
+      expect(agentsListText).not.toContain("secretConfig");
+
+      const agentRes = await fetch(
+        `${url}/api/mastra/agents/guarded-tools-agent`,
+      );
+      expect(agentRes.status).toBe(200);
+      const agentBody = (await agentRes.json()) as {
+        tools?: Record<string, Record<string, unknown>>;
+      };
+      expect(Object.keys(agentBody.tools ?? {})).toEqual(["openEcho"]);
+      expect(agentBody.tools?.openEcho).not.toHaveProperty("secretConfig");
+
+      const agentToolRes = await fetch(
+        `${url}/api/mastra/agents/guarded-tools-agent/tools/open-echo-tool`,
+      );
+      expect(agentToolRes.status).toBe(200);
+      expect(await agentToolRes.json()).not.toHaveProperty("secretConfig");
+
+      // GET /api/mastra/agents/:agentId/tools/:toolId returns 404 for hidden tool
+      expect(
+        (
+          await fetch(
+            `${url}/api/mastra/agents/guarded-tools-agent/tools/restricted-secret-tool`,
+          )
+        ).status,
+      ).toBe(404);
+
+      // POST /api/mastra/tools/:toolId/execute runs discovery guard ONCE (not twice) and execution guard ONCE
+      quotaDiscoveryCalls = 0;
+      quotaExecutionCalls = 0;
+      const okExecRes = await fetch(
+        `${url}/api/mastra/tools/open-echo-tool/execute`,
+        {
+          method: "POST",
+          headers: { "content-type": "application/json" },
+          body: JSON.stringify({ data: { message: "hello" } }),
+        },
+      );
+      expect(okExecRes.status).toBe(200);
+      expect(await okExecRes.json()).toEqual({ echoed: "hello:ok" });
+      expect(quotaDiscoveryCalls).toBe(1);
+      expect(quotaExecutionCalls).toBe(1);
+
+      // POST /api/mastra/agents/:agentId/tools/:toolId/execute ALSO runs discovery guard ONCE and execution guard ONCE
+      quotaDiscoveryCalls = 0;
+      quotaExecutionCalls = 0;
+      const agentExecRes = await fetch(
+        `${url}/api/mastra/agents/guarded-tools-agent/tools/open-echo-tool/execute`,
+        {
+          method: "POST",
+          headers: { "content-type": "application/json" },
+          body: JSON.stringify({ data: { message: "via-agent" } }),
+        },
+      );
+      expect(agentExecRes.status).toBe(200);
+      expect(await agentExecRes.json()).toEqual({ echoed: "via-agent:ok" });
+      expect(quotaDiscoveryCalls).toBe(1);
+      expect(quotaExecutionCalls).toBe(1);
+
+      const forbiddenExecRes = await fetch(
+        `${url}/api/mastra/tools/restricted-secret-tool/execute`,
+        {
+          method: "POST",
+          headers: { "content-type": "application/json" },
+          body: JSON.stringify({ data: {} }),
+        },
+      );
+      expect(forbiddenExecRes.status).toBe(403);
     } finally {
       await app.close();
     }
