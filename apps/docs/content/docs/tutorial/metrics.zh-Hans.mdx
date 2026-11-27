@@ -38,7 +38,7 @@ export class AppModule {}
 
 ### 同步注册
 
-使用 `register()` 配置默认指标采集器：
+使用 `forRoot()` 配置默认指标采集器与端点：
 
 ```typescript
 import { MetricsModule } from "@nest-boot/metrics";
@@ -46,7 +46,7 @@ import { Module } from "@nestjs/common";
 
 @Module({
   imports: [
-    MetricsModule.register({
+    MetricsModule.forRoot({
       prefix: "api_",
       labels: {
         service: "orders",
@@ -60,7 +60,7 @@ export class AppModule {}
 
 ### 异步注册
 
-配置来自其他 provider 时使用 `registerAsync()`。以下示例通过 `@nestjs/config` 读取指标前缀和公共标签：
+配置来自其他 provider 时使用 `forRootAsync()`。以下示例通过 `@nestjs/config` 读取指标前缀和公共标签：
 
 ```typescript
 import { MetricsModule } from "@nest-boot/metrics";
@@ -70,7 +70,7 @@ import { ConfigModule, ConfigService } from "@nestjs/config";
 @Module({
   imports: [
     ConfigModule.forRoot({ isGlobal: true }),
-    MetricsModule.registerAsync({
+    MetricsModule.forRootAsync({
       inject: [ConfigService],
       useFactory: (configService: ConfigService) => ({
         prefix: configService.get("METRICS_PREFIX", "api_"),
@@ -85,18 +85,20 @@ import { ConfigModule, ConfigService } from "@nestjs/config";
 export class AppModule {}
 ```
 
-异步工厂可以直接返回配置对象，也可以返回解析为配置对象的 Promise。`registerAsync()` 同样支持 Nest configurable module 标准的 `useClass` 和 `useExisting` 用法。
+异步工厂可以直接返回配置对象，也可以返回解析为配置对象的 Promise。`forRootAsync()` 同样支持 Nest configurable module 标准的 `useClass` 和 `useExisting` 用法。
 
 ### 配置选项
 
-| 选项                           | 类型       | 说明                                |
-| ------------------------------ | ---------- | ----------------------------------- |
-| `prefix`                       | `string`   | 添加到所有默认指标名称之前的前缀    |
-| `labels`                       | `object`   | 添加到所有默认指标的静态标签        |
-| `gcDurationBuckets`            | `number[]` | 垃圾回收耗时指标使用的自定义 bucket |
-| `eventLoopMonitoringPrecision` | `number`   | 事件循环指标的采样精度，单位为毫秒  |
+| 选项                           | 类型               | 说明                                                        |
+| ------------------------------ | ------------------ | ----------------------------------------------------------- |
+| `path`                         | `string`           | 指标控制器的 HTTP 路由路径（默认 `"/metrics"`）             |
+| `decorators`                   | `ClassDecorator[]` | 应用到指标控制器的类装饰器（默认 `[]`，默认不添加公开标记） |
+| `prefix`                       | `string`           | 添加到所有默认指标名称之前的前缀                            |
+| `labels`                       | `object`           | 添加到所有默认指标的静态标签                                |
+| `gcDurationBuckets`            | `number[]`         | 垃圾回收耗时指标使用的自定义 bucket                         |
+| `eventLoopMonitoringPrecision` | `number`           | 事件循环指标的采样精度，单位为毫秒                          |
 
-这些选项对应 `prom-client` 的默认采集配置。模块有意不暴露 `register` 选项，因为 `MetricsModule` 会创建并管理控制器所使用的 Registry。
+`path` 与 `decorators` 用于配置动态 `MetricsController`（例如传入 `@nest-boot/common` 的 `[Public()]` 或自定义 `[UseGuards(MetricsGuard)]`）；其余选项对应 `prom-client` 的默认采集配置。模块有意不暴露 `register` 选项，因为 `MetricsModule` 会创建并管理控制器所使用的 Registry。
 
 ## 抓取指标端点
 

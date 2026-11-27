@@ -12,7 +12,7 @@ pnpm add mastra
 
 ## Quick Start
 
-Import `MastraModule` in your root or common module:
+Import `MastraModule` directly for zero-config headless mode (DI auto-discovery, storage, and observability without HTTP routes or Studio), or pass `{ server: true }` / `{ server: { ... } }` to `forRoot` / `forRootAsync` to expose the Mastra HTTP API and Studio:
 
 ```typescript
 import { MastraModule } from "@nest-boot/mastra";
@@ -24,7 +24,7 @@ import { Module } from "@nestjs/common";
 export class AppModule {}
 ```
 
-NestJS owns the HTTP server. `server.*` configuration is forbidden in both TypeScript and at startup, including options returned by `forRootAsync`. Define custom endpoints with NestJS controllers and configure authentication, middleware, CORS, and exception handling through NestJS. `api.auth` and `api.customRouteAuthConfig` are also unsupported; use `@nest-boot/auth` for authorization.
+NestJS owns the HTTP listener. Standalone Hono `server` fields (`port`, `host`, `cors`, `middleware`, `apiRoutes`, `auth`, `customRouteAuthConfig`) are forbidden in both TypeScript and at startup, including options returned by `forRootAsync`. Configure `@mastra/nestjs` adapter options (`prefix`, `decorators`, `bodyLimitOptions`, `rateLimitOptions`, `streamOptions`, `mcpOptions`, `shutdownOptions`) under `server`, define custom endpoints with NestJS controllers, and use `@nest-boot/auth` for authorization.
 
 API and Studio paths include the application's global prefix. For example, `app.setGlobalPrefix("v1")` serves the API at `/v1/api/mastra` and Studio at `/v1/api/mastra/studio`.
 
@@ -57,5 +57,5 @@ buildAbility: ({ builder, permissions }) => {
 
 ## Routes
 
-- **Mastra HTTP API**: `/api/mastra/*` (protected by `@Can("manage", Mastra)`).
-- **Mastra Studio**: `/api/mastra/studio` (served via Express middleware; static shell is unauthenticated while API calls go through `@Can("manage", Mastra)`).
+- **Mastra HTTP API**: `/api/mastra/*` (mounted via dynamic controller; protected by `@Can("manage", Mastra)` by default and customizable via `server.decorators`).
+- **Mastra Studio**: `/api/mastra/studio` (served via Express middleware; static shell is unauthenticated while API calls go through `server.decorators`).

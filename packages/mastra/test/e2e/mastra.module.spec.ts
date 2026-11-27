@@ -1,6 +1,23 @@
+import { request as httpRequest } from "node:http";
+
 import { Mastra } from "@mastra/core/mastra";
-import { Controller, Get, Injectable, Module } from "@nestjs/common";
+import { CAN_METADATA } from "@nest-boot/auth";
+import {
+  type CanActivate,
+  Controller,
+  type ExecutionContext,
+  Get,
+  Inject,
+  Injectable,
+  Module,
+  type NestInterceptor,
+  UseGuards,
+  UseInterceptors,
+  VersioningType,
+} from "@nestjs/common";
+import { ModulesContainer } from "@nestjs/core";
 import { Test } from "@nestjs/testing";
+import { tap } from "rxjs";
 import { z } from "zod";
 
 import {
@@ -83,55 +100,39 @@ describe("MastraModule HTTP & Studio (e2e)", () => {
 
   it.each([
     { port: 4111 },
+    { host: "0.0.0.0" },
     { auth: { enabled: false } },
+    { customRouteAuthConfig: new Map() },
     { apiRoutes: [] },
     { middleware: [] },
-    {},
+    { cors: {} },
+    { apiPrefix: "/api" },
   ])(
-    "rejects server configuration in sync, async, and headless modules: %j",
+    "rejects unsupported standalone server keys in sync and async modules: %j",
     async (server) => {
-      for (const api of [true, false]) {
-        const options = { server, api } as unknown as MastraModuleOptions;
-        for (const mastraModule of [
-          MastraModule.forRoot(options),
-          MastraModule.forRootAsync({
-            useFactory: () => Promise.resolve(options),
-          }),
-          MastraModule.forRootAsync({ api, useFactory: () => options }),
-        ]) {
-          await expect(
-            Test.createTestingModule({ imports: [mastraModule] }).compile(),
-          ).rejects.toThrow(/server.*NestJS/);
-        }
-      }
-    },
-  );
-
-  it.each(["auth", "customRouteAuthConfig"] as const)(
-    "rejects api.%s instead of enabling a second HTTP authorization layer",
-    async (key) => {
-      const options = { api: { [key]: {} } } as unknown as MastraModuleOptions;
+      const options = { server } as unknown as MastraModuleOptions;
       for (const mastraModule of [
         MastraModule.forRoot(options),
-        MastraModule.forRootAsync({ useFactory: () => options }),
+        MastraModule.forRootAsync({
+          useFactory: () => Promise.resolve(options),
+        }),
       ]) {
         await expect(
           Test.createTestingModule({ imports: [mastraModule] }).compile(),
-        ).rejects.toThrow(new RegExp(`api\\.${key}.*NestJS`));
+        ).rejects.toThrow(/MastraModule does not support server\..*NestJS/);
       }
     },
   );
 
   it.each([true, false])(
-    "serves Studio with custom and global prefixes when api is %s",
-    async (apiEnabled) => {
+    "serves Studio with custom and global prefixes when server is %s",
+    async (serverEnabled) => {
       const prefix = "/api/custom-mastra";
       const moduleRef = await Test.createTestingModule({
         imports: [
           MastraModule.forRootAsync({
-            api: apiEnabled,
             useFactory: () => ({
-              api: { enabled: apiEnabled, prefix },
+              server: { enabled: serverEnabled, prefix },
               studio: true,
             }),
           }),
@@ -150,16 +151,59 @@ describe("MastraModule HTTP & Studio (e2e)", () => {
           `window.MASTRA_API_PREFIX = '/v2/nested${prefix}';`,
         );
         const apiRes = await fetch(`${url}/v2/nested${prefix}/agents`);
-        expect(apiRes.status).toBe(apiEnabled ? 200 : 404);
+        expect(apiRes.status).toBe(serverEnabled ? 200 : 404);
       } finally {
         await app.close();
       }
     },
   );
 
-  it("enforces NestJS guards on API requests while serving the public Studio shell", async () => {
+  it("runs in headless mode by default when imported directly, via forRoot(), or via forRootAsync()", async () => {
+    @Controller("api/mastra")
+    class HostMastraCustomController {
+      @Get("custom")
+      custom() {
+        return { hostOwned: true };
+      }
+    }
+
+    for (const mastraModule of [
+      MastraModule,
+      MastraModule.forRoot(),
+      MastraModule.forRootAsync({ useFactory: () => ({}) }),
+    ]) {
+      const moduleRef = await Test.createTestingModule({
+        imports: [mastraModule, SampleFeatureModule],
+        controllers: [HostMastraCustomController],
+      }).compile();
+      const app = moduleRef.createNestApplication();
+      app.useGlobalGuards({
+        canActivate: (context) =>
+          context.getClass() === HostMastraCustomController,
+      });
+      await app.listen(0);
+      try {
+        expect(() =>
+          moduleRef.get(MastraController, { strict: false }),
+        ).toThrow();
+        expect(moduleRef.get(Mastra).getAgent("writer-agent")).toBe(
+          moduleRef.get(WriterAgent),
+        );
+        const url = await app.getUrl();
+        expect((await fetch(`${url}/api/mastra/agents`)).status).toBe(404);
+        expect((await fetch(`${url}/api/mastra/studio`)).status).toBe(404);
+        const customRes = await fetch(`${url}/api/mastra/custom`);
+        expect(customRes.status).toBe(200);
+        expect(await customRes.json()).toEqual({ hostOwned: true });
+      } finally {
+        await app.close();
+      }
+    }
+  });
+
+  it("enforces NestJS guards on API requests while serving the public Studio shell when server is enabled", async () => {
     const moduleRef = await Test.createTestingModule({
-      imports: [MastraModule],
+      imports: [MastraModule.forRoot({ server: true })],
     }).compile();
     const app = moduleRef.createNestApplication();
     app.useGlobalGuards({ canActivate: () => false });
@@ -188,7 +232,11 @@ describe("MastraModule HTTP & Studio (e2e)", () => {
     class DemoFeatureModule {}
 
     const moduleRef = await Test.createTestingModule({
-      imports: [MastraModule, DemoFeatureModule, SampleFeatureModule],
+      imports: [
+        MastraModule.forRoot({ server: true }),
+        DemoFeatureModule,
+        SampleFeatureModule,
+      ],
     }).compile();
 
     const app = moduleRef.createNestApplication();
@@ -288,12 +336,12 @@ describe("MastraModule HTTP & Studio (e2e)", () => {
     }
   });
 
-  it("supports configuring custom prefix, disabling studio, and disabling api statically or asynchronously", async () => {
+  it("supports configuring custom prefix, disabling studio, and disabling server statically or asynchronously", async () => {
     const customPrefixRef = await Test.createTestingModule({
       imports: [
         MastraModule.forRootAsync({
           useFactory: () => ({
-            api: {
+            server: {
               prefix: "/api/custom-mastra",
             },
           }),
@@ -334,6 +382,7 @@ describe("MastraModule HTTP & Studio (e2e)", () => {
     const disabledStudioRef = await Test.createTestingModule({
       imports: [
         MastraModule.forRoot({
+          server: true,
           studio: false,
         }),
         SampleFeatureModule,
@@ -355,7 +404,7 @@ describe("MastraModule HTTP & Studio (e2e)", () => {
     const disabledApiRef = await Test.createTestingModule({
       imports: [
         MastraModule.forRoot({
-          api: false,
+          server: false,
         }),
         SampleFeatureModule,
       ],
@@ -397,7 +446,7 @@ describe("MastraModule HTTP & Studio (e2e)", () => {
       imports: [
         MastraModule.forRootAsync({
           useFactory: () => ({
-            api: false,
+            server: false,
           }),
         }),
         AsyncDisabledDemoModule,
@@ -425,7 +474,7 @@ describe("MastraModule HTTP & Studio (e2e)", () => {
     }
 
     const globalPrefixRef = await Test.createTestingModule({
-      imports: [MastraModule, SampleFeatureModule],
+      imports: [MastraModule.forRoot({ server: true }), SampleFeatureModule],
     }).compile();
 
     const globalPrefixApp = globalPrefixRef.createNestApplication();
@@ -479,7 +528,11 @@ describe("MastraModule HTTP & Studio (e2e)", () => {
     class ExcludedPrefixDemoModule {}
 
     const excludedPrefixRef = await Test.createTestingModule({
-      imports: [MastraModule, ExcludedPrefixDemoModule, SampleFeatureModule],
+      imports: [
+        MastraModule.forRoot({ server: true }),
+        ExcludedPrefixDemoModule,
+        SampleFeatureModule,
+      ],
     }).compile();
 
     const excludedPrefixApp = excludedPrefixRef.createNestApplication();
@@ -514,6 +567,164 @@ describe("MastraModule HTTP & Studio (e2e)", () => {
       expect((await fetch(`${url}/v1/api/mastra/studio`)).status).toBe(404);
     } finally {
       await excludedPrefixApp.close();
+    }
+  });
+
+  it.each([false, true])(
+    "supports custom server.decorators with DI enhancers and stays VERSION_NEUTRAL (async: %s)",
+    async (asyncRegistration) => {
+      const API_TOKEN = Symbol("API_TOKEN");
+
+      @Injectable()
+      class MastraTokenGuard implements CanActivate {
+        constructor(@Inject(API_TOKEN) private readonly token: string) {}
+
+        canActivate(context: ExecutionContext): boolean {
+          const req = context
+            .switchToHttp()
+            .getRequest<{ headers: Record<string, string | undefined> }>();
+          return req.headers["x-mastra-token"] === this.token;
+        }
+      }
+
+      @Injectable()
+      class MastraHeaderInterceptor implements NestInterceptor {
+        intercept(
+          context: ExecutionContext,
+          next: Parameters<NestInterceptor["intercept"]>[1],
+        ) {
+          const res = context.switchToHttp().getResponse<{
+            setHeader: (name: string, value: string) => void;
+          }>();
+          return next.handle().pipe(
+            tap(() => {
+              res.setHeader("x-mastra-intercepted", "1");
+            }),
+          );
+        }
+      }
+
+      @Module({
+        providers: [{ provide: API_TOKEN, useValue: "mastra-secret" }],
+        exports: [API_TOKEN],
+      })
+      class MastraSecurityModule {}
+
+      const decorators = [
+        UseGuards(MastraTokenGuard),
+        UseInterceptors(MastraHeaderInterceptor),
+      ];
+      const mastraModule = asyncRegistration
+        ? MastraModule.forRootAsync({
+            imports: [MastraSecurityModule],
+            useFactory: () =>
+              Promise.resolve({
+                server: {
+                  prefix: "/api/secured-mastra",
+                  decorators,
+                },
+              }),
+          })
+        : {
+            ...MastraModule.forRoot({
+              server: {
+                prefix: "/api/secured-mastra",
+                decorators,
+              },
+            }),
+            imports: [
+              ...(MastraModule.forRoot().imports ?? []),
+              MastraSecurityModule,
+            ],
+          };
+
+      const moduleRef = await Test.createTestingModule({
+        imports: [mastraModule, SampleFeatureModule],
+      }).compile();
+      const app = moduleRef.createNestApplication();
+      app.enableVersioning({
+        type: VersioningType.URI,
+        defaultVersion: "1",
+      });
+      await app.listen(0);
+
+      try {
+        const modulesContainer = moduleRef.get(ModulesContainer);
+        const controllerWrapper = [...modulesContainer.values()]
+          .flatMap((mod) => [...mod.controllers.values()])
+          .find((wrapper) => wrapper.instance instanceof MastraController);
+        expect(controllerWrapper?.metatype).toBeDefined();
+        expect(
+          Reflect.getMetadata(
+            CAN_METADATA,
+            controllerWrapper?.metatype as object,
+          ),
+        ).toBeUndefined();
+
+        const url = await app.getUrl();
+        expect((await fetch(`${url}/api/secured-mastra/agents`)).status).toBe(
+          403,
+        );
+        expect(
+          (await fetch(`${url}/v1/api/secured-mastra/agents`)).status,
+        ).toBe(404);
+
+        const okRes = await fetch(`${url}/api/secured-mastra/agents`, {
+          headers: { "x-mastra-token": "mastra-secret" },
+        });
+        expect(okRes.status).toBe(200);
+        expect(okRes.headers.get("x-mastra-intercepted")).toBe("1");
+      } finally {
+        await app.close();
+      }
+    },
+  );
+
+  it("preserves server.prefix and VERSION_NEUTRAL when server.decorators includes @Controller({ host })", async () => {
+    const moduleRef = await Test.createTestingModule({
+      imports: [
+        MastraModule.forRoot({
+          server: {
+            prefix: "/api/host-mastra",
+            decorators: [Controller({ host: "mastra.example.test" })],
+          },
+        }),
+      ],
+      providers: [WriterAgent],
+    }).compile();
+
+    const app = moduleRef.createNestApplication();
+    app.useLogger(false);
+    app.enableVersioning({
+      type: VersioningType.URI,
+      defaultVersion: "1",
+    });
+    await app.listen(0, "127.0.0.1");
+
+    try {
+      const url = await app.getUrl();
+      expect((await fetch(`${url}/api/host-mastra/agents`)).status).toBe(404);
+
+      const hostMatchedStatus = await new Promise<number>((resolve, reject) => {
+        const req = httpRequest(
+          `${url}/api/host-mastra/agents`,
+          { headers: { host: "mastra.example.test" } },
+          (res) => {
+            res.resume();
+            res.on("end", () => {
+              resolve(res.statusCode ?? 0);
+            });
+          },
+        );
+        req.on("error", reject);
+        req.end();
+      });
+      expect(hostMatchedStatus).toBe(200);
+
+      const studioRes = await fetch(`${url}/api/host-mastra/studio/`);
+      expect(studioRes.status).toBe(200);
+    } finally {
+      await app.close();
     }
   });
 });

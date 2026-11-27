@@ -27,35 +27,35 @@ import { Module } from "@nestjs/common";
 export class CommonModule {}
 ```
 
-By default:
+By default, `MastraModule` runs in **headless mode**:
 
-- Mastra HTTP API routes are mounted at `/api/mastra/*` and protected with `@Can("manage", Mastra)`.
-- Embedded Mastra Studio is served via middleware at `/api/mastra/studio`.
 - All singleton `BaseAgent` (or Mastra `Agent`) and `BaseWorkflow` (or Mastra `Workflow`) providers across loaded NestJS modules are automatically discovered and registered into the shared `Mastra` instance.
+- No Mastra HTTP routes or Studio middleware are mounted unless `server` or `studio` is enabled.
 
-To customize prefixes or disable HTTP API / Studio:
+To enable the Mastra HTTP server (defaulting to `/api/mastra/*` protected by `@Can("manage", Mastra)`) and embedded Mastra Studio (`/api/mastra/studio`):
 
 ```typescript
+// Default prefix `/api/mastra` + Studio at `/api/mastra/studio`
 MastraModule.forRoot({
-  api: {
+  server: true,
+});
+
+// Custom prefix, decorators, or Studio toggle
+MastraModule.forRoot({
+  server: {
     prefix: "/api/mastra",
   },
   studio: true,
 });
-
-// Headless mode (no HTTP routes or Studio, keeps DI auto-discovery)
-MastraModule.forRoot({
-  api: false,
-});
 ```
 
-NestJS owns the HTTP server. `server.*` is forbidden by the module's TypeScript types and rejected at startup, including configuration returned by `forRootAsync`. Use NestJS controllers for custom endpoints and NestJS guards, middleware, CORS, and exception handling for HTTP behavior. `api.auth` and `api.customRouteAuthConfig` are also rejected; authorization uses `@nest-boot/auth`.
+NestJS owns the HTTP listener. Standalone Hono `server` fields (`port`, `host`, `cors`, `middleware`, `apiRoutes`, `auth`, `customRouteAuthConfig`) are forbidden by the module's TypeScript types and rejected at startup, including configuration returned by `forRootAsync`. Use NestJS controllers for custom endpoints and NestJS guards, middleware, CORS, and exception handling for HTTP behavior; authorization uses `@nest-boot/auth`.
 
 API and Studio paths both include the NestJS global prefix. With `app.setGlobalPrefix("v1")`, the defaults become `/v1/api/mastra` and `/v1/api/mastra/studio`, including Studio asset URLs and its API connection configuration.
 
 ## Authorization
 
-`MastraController` applies `@Can("manage", Mastra)`. Grant the ability in your `AuthModule` `buildAbility` callback:
+By default, `MastraModule` mounts a dynamic `MastraController` with `server.decorators` set to `[Can("manage", Mastra)]`. Grant the ability in your `AuthModule` `buildAbility` callback (or customize `server.decorators` with your own metadata decorators / Nest enhancers):
 
 ```typescript
 import { Mastra } from "@mastra/core/mastra";

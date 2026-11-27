@@ -71,22 +71,24 @@ async function startMiddlewareServer(middleware: MastraStudioMiddleware) {
 }
 
 describe("MastraStudioMiddleware", () => {
-  it("passes requests through via next() when Studio is disabled", () => {
-    const middleware = new MastraStudioMiddleware({ studio: false });
-    const next = vi.fn();
+  it("passes requests through via next() in default headless mode or when Studio is disabled", () => {
+    for (const options of [{}, { studio: false }] as const) {
+      const middleware = new MastraStudioMiddleware(options);
+      const next = vi.fn();
 
-    middleware.use(
-      {} as express.Request,
-      {} as express.Response,
-      next as express.NextFunction,
-    );
+      middleware.use(
+        {} as express.Request,
+        {} as express.Response,
+        next as express.NextFunction,
+      );
 
-    expect(next).toHaveBeenCalledTimes(1);
+      expect(next).toHaveBeenCalledTimes(1);
+    }
   });
 
   it("serves injected HTML for /, /index.html, and SPA routes, immutable assets, 404 for missing assets, and SSE refresh-events", async () => {
     const middleware = new MastraStudioMiddleware({
-      api: { prefix: "/api/mastra" },
+      server: { prefix: "/api/mastra" },
       studio: {
         enabled: true,
         hideCloudCta: false,
@@ -205,7 +207,7 @@ describe("MastraStudioMiddleware", () => {
       .mockImplementation(() => undefined);
 
     try {
-      const middleware = new MastraStudioMiddleware({});
+      const middleware = new MastraStudioMiddleware({ server: true });
       middleware.onApplicationBootstrap();
       const next = vi.fn();
       middleware.use(
@@ -243,7 +245,10 @@ describe("MastraStudioMiddleware", () => {
     });
 
     const readSpy = vi.spyOn(fs, "readFileSync");
-    const middleware = new MastraStudioMiddleware({}, applicationConfig);
+    const middleware = new MastraStudioMiddleware(
+      { server: true },
+      applicationConfig,
+    );
 
     try {
       middleware.onApplicationBootstrap();

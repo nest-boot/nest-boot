@@ -12,7 +12,7 @@ Apply `@Public()` to a controller or route handler to mark it as publicly access
 
 ## Dynamic Controllers
 
-Use `withDynamicController` (or the lower-level `createDynamicController`) when a module configures a controller's `path` or class `decorators` (including `@Public()`, `@UseGuards()`, `@UseInterceptors()`, `@UsePipes()`, and `@UseFilters()`) dynamically via synchronous or asynchronous module options:
+Use `withDynamicController` (or the lower-level `createDynamicController`) when a module configures a controller's `enabled` state, `path`, or class `decorators` (including `@Public()`, `@UseGuards()`, `@UseInterceptors()`, `@UsePipes()`, and `@UseFilters()`) dynamically via synchronous or asynchronous module options. When binding Nest middleware to a dynamic controller, inject `provider.provide` to obtain the container-local controller class for `MiddlewareConsumer.forRoutes()`:
 
 ```ts
 import { withDynamicController } from "@nest-boot/common";

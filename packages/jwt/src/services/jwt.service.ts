@@ -1,6 +1,11 @@
 import { EntityManager, type RequiredEntityData } from "@mikro-orm/core";
 import { CryptService } from "@nest-boot/crypt";
-import { Inject, Injectable, UnauthorizedException } from "@nestjs/common";
+import {
+  Inject,
+  Injectable,
+  Optional,
+  UnauthorizedException,
+} from "@nestjs/common";
 import {
   type CryptoKey,
   errors,
@@ -46,7 +51,9 @@ export class JwtService {
 
   constructor(
     private readonly em: EntityManager,
-    @Inject(MODULE_OPTIONS_TOKEN) options: JwtModuleOptions,
+    @Optional()
+    @Inject(MODULE_OPTIONS_TOKEN)
+    options: JwtModuleOptions = {},
   ) {
     this.jwks = resolveJwksOptions(options.jwks);
     const issuer =
@@ -58,17 +65,14 @@ export class JwtService {
     }
 
     const secret =
-      options.secret ??
-      process.env.JWT_SECRET ??
-      process.env.AUTH_SECRET ??
-      process.env.APP_SECRET;
+      options.secret ?? process.env.JWT_SECRET ?? process.env.APP_SECRET;
     if (
       !secret ||
       secret.length < 32 ||
       Math.log2(new Set(secret).size) * secret.length < 120
     ) {
       throw new Error(
-        "JWT requires a strong secret of at least 32 characters. Set secret, JWT_SECRET, AUTH_SECRET, or APP_SECRET.",
+        "JWT requires a strong secret of at least 32 characters. Set secret, JWT_SECRET, or APP_SECRET.",
       );
     }
 

@@ -1,12 +1,10 @@
-import { MiddlewareManager } from "@nest-boot/middleware";
-import { RequestMethod, ServiceUnavailableException } from "@nestjs/common";
+import { ServiceUnavailableException } from "@nestjs/common";
 import { HttpAdapterHost } from "@nestjs/core";
 import { type HealthIndicatorFunction, TerminusModule } from "@nestjs/terminus";
 import { Test, type TestingModule } from "@nestjs/testing";
 
 import {
-  HealthCheckMiddleware,
-  HealthCheckModule,
+  HealthCheckController,
   HealthCheckRegistry,
   HealthCheckService,
 } from "../../src/index.js";
@@ -118,17 +116,20 @@ describe("registered health checks", () => {
   });
 
   /**
-   * Returns test middleware and its mocked dependencies.
-   * @returns Test middleware and its mocked dependencies.
+   * Returns test controller and mocked HTTP adapter.
+   * @returns Test controller and mocked dependencies.
    */
-  function createMiddleware() {
-    const adapter = { setHeader: vi.fn(), reply: vi.fn() };
+  function createController() {
+    const adapter = { setHeader: vi.fn() };
     const host = new HttpAdapterHost();
     host.httpAdapter = adapter as unknown as HttpAdapterHost["httpAdapter"];
-    return { adapter, middleware: new HealthCheckMiddleware(service, host) };
+    return {
+      adapter,
+      controller: new HealthCheckController(service, host),
+    };
   }
 
-  it("disables caching before awaiting checks and replies only after they finish", async () => {
+  it("disables caching before awaiting checks in the controller", async () => {
     let complete!: () => void;
     const ready = new Promise<void>((resolve) => {
       complete = resolve;
@@ -137,31 +138,25 @@ describe("registered health checks", () => {
       await ready;
       return { cache: { status: "up" } };
     });
-    const { adapter, middleware } = createMiddleware();
+    const { adapter, controller } = createController();
     const response = {};
-    const pending = middleware.use({}, response);
+    const pending = controller.check(response);
     expect(adapter.setHeader).toHaveBeenCalledWith(
       response,
       "Cache-Control",
       "no-cache, no-store, must-revalidate",
     );
-    expect(adapter.reply).not.toHaveBeenCalled();
     complete();
-    await pending;
-    expect(adapter.reply).toHaveBeenCalledExactlyOnceWith(
-      response,
-      {
-        status: "ok",
-        info: { cache: { status: "up" } },
-        error: {},
-        details: { cache: { status: "up" } },
-      },
-      200,
-    );
+    await expect(pending).resolves.toEqual({
+      status: "ok",
+      info: { cache: { status: "up" } },
+      error: {},
+      details: { cache: { status: "up" } },
+    });
   });
 
   it.each(["unhealthy", "unexpected"])(
-    "propagates %s checks without sending a successful response",
+    "propagates %s checks after setting Cache-Control",
     async (kind) => {
       const failure = new Error("unexpected failure");
       registry.register(() => {
@@ -170,26 +165,11 @@ describe("registered health checks", () => {
         }
         return { cache: { status: "down" } };
       });
-      const { adapter, middleware } = createMiddleware();
-      await expect(middleware.use({}, {})).rejects.toBeInstanceOf(
+      const { adapter, controller } = createController();
+      await expect(controller.check({})).rejects.toBeInstanceOf(
         kind === "unexpected" ? Error : ServiceUnavailableException,
       );
       expect(adapter.setHeader).toHaveBeenCalledOnce();
-      expect(adapter.reply).not.toHaveBeenCalled();
     },
   );
-
-  it("registers the health handler for GET through the shared middleware manager", async () => {
-    const manager = new MiddlewareManager();
-    const { adapter, middleware } = createMiddleware();
-    new HealthCheckModule(manager, middleware);
-    const configuration = manager.middlewareConfigMap.get(middleware);
-    expect(configuration?.routes).toEqual([
-      { path: "health", method: RequestMethod.GET },
-    ]);
-    const next = vi.fn();
-    await configuration?.middleware({}, {}, next);
-    expect(adapter.reply).toHaveBeenCalledOnce();
-    expect(next).not.toHaveBeenCalled();
-  });
 });

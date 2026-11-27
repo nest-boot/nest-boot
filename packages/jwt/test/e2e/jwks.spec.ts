@@ -14,6 +14,7 @@ import {
   Get,
   type INestApplication,
   Injectable,
+  Module,
   type NestInterceptor,
   type PipeTransform,
   SetMetadata,
@@ -140,6 +141,9 @@ describe("standalone JWT module", () => {
   beforeEach(() => {
     vi.stubEnv("AUTH_URL", undefined);
     vi.stubEnv("APP_URL", undefined);
+    vi.stubEnv("JWT_SECRET", undefined);
+    vi.stubEnv("AUTH_SECRET", undefined);
+    vi.stubEnv("APP_SECRET", undefined);
     instantiatedPipePath = undefined;
   });
 
@@ -147,6 +151,80 @@ describe("standalone JWT module", () => {
     vi.unstubAllEnvs();
     await app?.close();
   });
+
+  it.each(["bare", "forRoot"] as const)(
+    "supports zero-config registration using environment variables (%s)",
+    async (mode) => {
+      vi.stubEnv("APP_URL", "http://app.example");
+      vi.stubEnv("AUTH_SECRET", secret);
+
+      await expect(
+        Test.createTestingModule({
+          imports: [
+            DatabaseModule.forRoot({
+              driver: PgliteDriver,
+              dbName: "memory://",
+              entities: [],
+            }),
+            mode === "bare" ? JwtModule : JwtModule.forRoot(),
+          ],
+        }).compile(),
+      ).rejects.toThrow(
+        "JWT requires a strong secret of at least 32 characters. Set secret, JWT_SECRET, or APP_SECRET.",
+      );
+
+      vi.stubEnv("AUTH_SECRET", undefined);
+      vi.stubEnv(mode === "bare" ? "JWT_SECRET" : "APP_SECRET", secret);
+
+      const module = await Test.createTestingModule({
+        imports: [
+          DatabaseModule.forRoot({
+            driver: PgliteDriver,
+            dbName: "memory://",
+            entities: [],
+          }),
+          mode === "bare" ? JwtModule : JwtModule.forRoot(),
+        ],
+        controllers: [ProtectedController],
+        providers: [{ provide: APP_GUARD, useClass: PublicAwareGlobalGuard }],
+      }).compile();
+
+      app = module.createNestApplication();
+      app.useLogger(false);
+      app.enableVersioning({
+        type: VersioningType.URI,
+        defaultVersion: "1",
+      });
+      const jwt = app.get(JwtService);
+      expect(jwt.jwksPath).toBe("/.well-known/jwks.json");
+      app.setGlobalPrefix("api", { exclude: [jwt.jwksPath] });
+      await app.listen(0, "127.0.0.1");
+      const url = await app.getUrl();
+
+      const orm = app.get<PgliteORM>(MikroORM);
+      await orm.schema.create();
+
+      expect((await fetch(`${url}/api/v1/protected`)).status).toBe(401);
+
+      const scope = { type: "access+jwt", audience: "api" };
+      const token = await jwt.sign(
+        {},
+        { ...scope, subject: "user:1", expiresIn: 60 },
+      );
+      await expect(jwt.verify(token, scope)).resolves.toMatchObject({
+        iss: "http://app.example",
+        sub: "user:1",
+      });
+
+      const jwksResponse = await fetch(`${url}/.well-known/jwks.json`);
+      expect(jwksResponse.status).toBe(200);
+      const jwksBody = (await jwksResponse.json()) as {
+        keys: { kid: string }[];
+      };
+      expect(jwksBody.keys).toHaveLength(1);
+      expect(jwksBody.keys[0]?.kid).toBe(decodeProtectedHeader(token).kid);
+    },
+  );
 
   it.each([false, true])(
     "marks the JWKS controller with @Public() and VERSION_NEUTRAL by default (async options: %s)",
@@ -593,6 +671,18 @@ describe("standalone JWT module", () => {
     withGlobalGuard = false,
   ) {
     const options = { secret, ...overrides };
+    @Module({
+      imports: [
+        asyncOptions
+          ? JwtModule.forRootAsync({
+              useFactory: () => Promise.resolve(options),
+            })
+          : JwtModule.forRoot(options),
+      ],
+      exports: [JwtModule],
+    })
+    class ReexportedJwtModule {}
+
     const module = await Test.createTestingModule({
       imports: [
         DatabaseModule.forRoot({
@@ -600,11 +690,7 @@ describe("standalone JWT module", () => {
           dbName: "memory://",
           entities: [],
         }),
-        asyncOptions
-          ? JwtModule.forRootAsync({
-              useFactory: () => Promise.resolve(options),
-            })
-          : JwtModule.forRoot(options),
+        ReexportedJwtModule,
       ],
       ...(withGlobalGuard
         ? {

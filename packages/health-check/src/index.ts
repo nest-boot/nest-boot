@@ -1,6 +1,7 @@
-export * from "./health-check.middleware.js";
+export * from "./health-check.controller.js";
 export * from "./health-check.module.js";
 export * from "./health-check.service.js";
+export * from "./health-check-module-options.interface.js";
 export * from "./health-check-registry.service.js";
 export {
   type CheckGRPCServiceOptions,

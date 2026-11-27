@@ -1,6 +1,12 @@
 /** Route and decorator configuration resolved for a dynamic controller. */
 export interface DynamicControllerOptions {
-  /** Controller route path or paths passed to `@Controller(...)`. */
+  /** Whether to mount the controller. Defaults to `true`. */
+  enabled?: boolean;
+
+  /**
+   * Controller route path or paths passed to `@Controller(...)`.
+   * When specified, takes precedence over any default path written by decorators in `decorators`.
+   */
   path?: string | string[];
 
   /**

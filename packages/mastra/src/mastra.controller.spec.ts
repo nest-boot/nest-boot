@@ -83,7 +83,7 @@ function createControllerHarness(options: ControllerHarnessOptions = {}) {
   }
 
   const controller = new MastraController(
-    options.moduleOptions ?? {},
+    options.moduleOptions ?? { server: true },
     {
       mastra: {} as Mastra,
       prefix: "/api/mastra",
@@ -105,14 +105,13 @@ function createControllerHarness(options: ControllerHarnessOptions = {}) {
 }
 
 describe("MastraController", () => {
-  it("throws NotFoundException when API is disabled via module options", async () => {
-    const { controller, res } = createControllerHarness({
-      moduleOptions: { api: false },
-    });
-
-    await expect(
-      controller.handleRequest(createMockRequest(), res),
-    ).rejects.toThrow(NotFoundException);
+  it("throws NotFoundException when server is headless by default or explicitly disabled", async () => {
+    for (const moduleOptions of [{}, { server: false }] as const) {
+      const { controller, res } = createControllerHarness({ moduleOptions });
+      await expect(
+        controller.handleRequest(createMockRequest(), res),
+      ).rejects.toThrow(NotFoundException);
+    }
   });
 
   it("matches standard routes across default, custom, global, excluded, and empty prefixes", async () => {
