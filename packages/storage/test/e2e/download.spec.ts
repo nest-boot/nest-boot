@@ -15,9 +15,7 @@ it("keeps storage usable when the app has no JwtModule", async () => {
   const app = module.createNestApplication();
   try {
     await app.listen(0, "127.0.0.1");
-    const response = await fetch(
-      `${await app.getUrl()}/files/download/file.txt`,
-    );
+    const response = await fetch(`${await app.getUrl()}/files/file.txt`);
     expect(response.status).toBe(404);
     await expect(
       app.get(StorageDownloadService).createUrl("file.txt", "user:42"),
@@ -38,7 +36,7 @@ it.each([
 ])(
   "leaves the download path free when explicitly disabled",
   async (storageModule) => {
-    @Controller("files/download")
+    @Controller("files")
     class CustomStorageController {
       @Get("*key")
       getFile(): { custom: boolean } {
@@ -55,9 +53,7 @@ it.each([
     const app = module.createNestApplication();
     try {
       await app.listen(0, "127.0.0.1");
-      const response = await fetch(
-        `${await app.getUrl()}/files/download/file.txt`,
-      );
+      const response = await fetch(`${await app.getUrl()}/files/file.txt`);
       expect(response.status).toBe(200);
       await expect(response.json()).resolves.toEqual({ custom: true });
       await expect(
@@ -70,7 +66,7 @@ it.each([
 );
 
 it.each([
-  { registration: "direct", path: undefined, route: "files/download" },
+  { registration: "direct", path: undefined, route: "files" },
   { registration: "sync", path: "/media/download/", route: "media/download" },
   { registration: "async", path: "assets/signed", route: "assets/signed" },
 ] as const)(
@@ -148,7 +144,7 @@ it.each([
       expect(response.status).toBe(302);
       if (registration !== "direct") {
         const defaultRoute = new URL(
-          `/${prefix}/files/download/file.txt`,
+          `/${prefix}/files/file.txt`,
           await app.getUrl(),
         );
         expect((await fetch(defaultRoute)).status).toBe(404);

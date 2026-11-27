@@ -1,4 +1,4 @@
-export const DEFAULT_STORAGE_DOWNLOAD_PATH = "files/download";
+export const DEFAULT_STORAGE_DOWNLOAD_PATH = "files";
 
 /**
  * Resolves the static route segments before Nest adds its global prefix.

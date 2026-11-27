@@ -17,7 +17,7 @@ StorageModule.register({ download: { baseURL: "https://api.example.com" } });
 
 Authorize access in your application before calling
 `StorageDownloadService.createUrl(key, subject)`. The generated URL points to
-`/files/download/*` under the app's Nest global prefix. Set `download.path`
+`/files/*` under the app's Nest global prefix. Set `download.path`
 to use a different static route, such as `/media/download`. Add only the
 route path in this option. Nest supplies the global prefix, and the module
 appends the object key. Links are root-relative by default. Set
