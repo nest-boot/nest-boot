@@ -167,17 +167,11 @@ export class AuthGuard implements CanActivate {
   }
 
   private isMastraDiscoveryContext(context: ExecutionContext): boolean {
-    if (typeof context.getType !== "function") {
-      return false;
-    }
     const type = context.getType<string>();
     return type.startsWith("mastra:") && type.endsWith(":discovery");
   }
 
   private isMastraExecutionContext(context: ExecutionContext): boolean {
-    if (typeof context.getType !== "function") {
-      return false;
-    }
     const type = context.getType<string>();
     return type.startsWith("mastra:") && type.endsWith(":execution");
   }

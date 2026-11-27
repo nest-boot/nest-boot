@@ -38,6 +38,8 @@ import {
   APP_FILTER,
   APP_GUARD,
   APP_INTERCEPTOR,
+  DiscoveryService,
+  ExternalContextCreator,
   ModuleRef,
   Reflector,
 } from "@nestjs/core";
@@ -957,6 +959,7 @@ describe("BaseTool Guard authorization and exposure filtering", () => {
     ).rejects.toThrow(/already bound to another active NestJS container/);
 
     await app1.close();
+    expect(await sharedTool.execute()).toEqual({ ok: true });
 
     const app2AfterClose = await Test.createTestingModule({
       imports: [
@@ -1585,6 +1588,26 @@ describe("BaseTool Guard authorization and exposure filtering", () => {
     expect(await canExposeMastraTool(renderOnlyTool)).toBe(true);
 
     // Prototype execute resolution on a raw MastraTool subclass & Observable return on BaseTool
+    class ProtoMastraTool extends MastraTool {
+      constructor() {
+        super({
+          id: "proto-mastra-tool",
+          description: "Raw MastraTool whose execute lives on prototype",
+          renderOnly: true,
+        });
+      }
+
+      override execute = undefined as never;
+    }
+    Object.defineProperty(ProtoMastraTool.prototype, "execute", {
+      value: () => Promise.resolve({ proto: true }),
+      configurable: true,
+      writable: true,
+    });
+    const protoTool = new ProtoMastraTool();
+    Reflect.deleteProperty(protoTool, "execute");
+    bindToolGuards(protoTool, {} as never);
+
     class LeafNestedTool extends BaseTool({
       description: "Leaf tool returning an Observable",
       outputSchema: z.object({ leaf: z.boolean() }),
@@ -1597,14 +1620,20 @@ describe("BaseTool Guard authorization and exposure filtering", () => {
     }
 
     class OuterNestedTool extends BaseTool({
-      description: "Outer tool invoking LeafNestedTool inside execute",
+      description: "Outer tool invoking itself and LeafNestedTool",
+      inputSchema: z.object({ recursed: z.boolean().optional() }),
       outputSchema: z.object({ nested: z.boolean() }),
     }) {
       constructor(private readonly leaf: LeafNestedTool) {
         super();
       }
 
-      async execute() {
+      async execute(input: { recursed?: boolean }) {
+        if (!input.recursed) {
+          return (await this.execute({ recursed: true })) as {
+            nested: boolean;
+          };
+        }
         const res = await this.leaf.execute();
         return { nested: "leaf" in res && res.leaf };
       }
@@ -1624,13 +1653,34 @@ describe("BaseTool Guard authorization and exposure filtering", () => {
     await nestedRef.init();
     try {
       const outer = nestedRef.get(OuterNestedTool);
-      // Re-invoking OuterNestedTool inside its own active delegate storage tests nested same-tool + cross-tool paths
-      expect(await outer.execute()).toEqual({ nested: true });
+      expect(await outer.execute({})).toEqual({ nested: true });
+
+      // Direct bindToolGuards without wrapper options resolves inquirerId from entryProviders
+      @Injectable()
+      class StandaloneBoundEntryTool extends BaseTool({
+        description: "Direct bind entry lookup",
+      }) {
+        execute() {
+          return Promise.resolve({ ok: true });
+        }
+      }
+      const directEntryRef = await Test.createTestingModule({
+        providers: [StandaloneBoundEntryTool],
+      }).compile();
+      await directEntryRef.init();
+      try {
+        const directTool = directEntryRef.get(StandaloneBoundEntryTool);
+        const creator = directEntryRef.get(ExternalContextCreator);
+        bindToolGuards(directTool, creator);
+        expect(await directTool.execute()).toEqual({ ok: true });
+      } finally {
+        await directEntryRef.close();
+      }
     } finally {
       await nestedRef.close();
     }
 
-    // wrapAgentToolDiscovery function overload
+    // wrapAgentToolDiscovery function overload & cross-container conflict
     const standaloneAgent = new MastraAgent({
       id: "standalone-fn-agent",
       name: "Standalone",
@@ -1642,6 +1692,110 @@ describe("BaseTool Guard authorization and exposure filtering", () => {
     wrapAgentToolDiscovery(standaloneAgent, binderSpy);
     await standaloneAgent.listTools();
     expect(binderSpy).toHaveBeenCalledTimes(1);
+
+    const fakeCreatorA = {} as ExternalContextCreator;
+    const fakeCreatorB = {} as ExternalContextCreator;
+    wrapAgentToolDiscovery(standaloneAgent, {
+      externalContextCreator: fakeCreatorA,
+    });
+    expect(() => {
+      wrapAgentToolDiscovery(standaloneAgent, {
+        externalContextCreator: fakeCreatorB,
+      });
+    }).toThrow(/already bound to another active NestJS container/);
+
+    // MastraManager without ExternalContextCreator, non-tool registry entries, and duplicate tool IDs
+    const sharedProviderInstance = new LeafNestedTool();
+    const bareMastra = {
+      listTools: () => ({
+        adHoc: sharedProviderInstance,
+        nonTool: { notATool: true },
+      }),
+      listAgents: () => ({}),
+      listWorkflows: () => ({}),
+      addTool: vi.fn(),
+      addAgent: vi.fn(),
+      addWorkflow: vi.fn(),
+      removeTool: vi.fn(),
+      removeAgent: vi.fn(),
+      removeWorkflow: vi.fn(),
+      getToolById: vi.fn(),
+    } as unknown as Mastra;
+    const bareDiscovery = {
+      getProviders: () => [
+        {
+          isAlias: false,
+          instance: sharedProviderInstance,
+          metatype: LeafNestedTool,
+          isDependencyTreeStatic: () => true,
+          isTransient: false,
+        },
+        {
+          isAlias: false,
+          instance: sharedProviderInstance,
+          metatype: LeafNestedTool,
+          isDependencyTreeStatic: () => true,
+          isTransient: false,
+        },
+      ],
+    } as unknown as DiscoveryService;
+    const bareManager = new MastraManager(bareDiscovery, bareMastra);
+    bareManager.onModuleInit();
+    expect(bareManager.getToolByRegistrationKey("nonTool")).toBeUndefined();
+
+    @Injectable()
+    class DuplicateToolA extends BaseTool({
+      id: "dup-tool-id",
+      description: "First duplicate tool",
+    }) {
+      execute() {
+        return Promise.resolve({});
+      }
+    }
+
+    @Injectable()
+    class DuplicateToolB extends BaseTool({
+      id: "dup-tool-id",
+      description: "Second duplicate tool",
+    }) {
+      execute() {
+        return Promise.resolve({});
+      }
+    }
+
+    const dupProvidersRef = await Test.createTestingModule({
+      imports: [MastraModule.forRoot()],
+      providers: [DuplicateToolA, DuplicateToolB],
+    }).compile();
+    try {
+      await expect(dupProvidersRef.init()).rejects.toThrow(
+        /Mastra tool "dup-tool-id" has multiple providers/,
+      );
+    } finally {
+      await dupProvidersRef.close().catch(() => undefined);
+    }
+
+    const preconfDupRef = await Test.createTestingModule({
+      imports: [
+        MastraModule.forRoot({
+          tools: {
+            differentMapKey: createTool({
+              id: "dup-tool-id",
+              description: "Preconfigured tool with matching intrinsic id",
+              execute: () => Promise.resolve({}),
+            }),
+          },
+        }),
+      ],
+      providers: [DuplicateToolA],
+    }).compile();
+    try {
+      await expect(preconfDupRef.init()).rejects.toThrow(
+        /Mastra tool "dup-tool-id" has multiple providers/,
+      );
+    } finally {
+      await preconfDupRef.close().catch(() => undefined);
+    }
 
     // Request-scoped APP_GUARD fails closed when binding an ad-hoc tool outside entryProviders
     @Injectable({ scope: Scope.REQUEST })

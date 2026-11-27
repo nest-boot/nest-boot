@@ -207,7 +207,7 @@ function resolveToolMetadataHandler(
     return tool.execute as (...args: unknown[]) => unknown;
   }
 
-  return () => undefined;
+  return Function.prototype as (...args: unknown[]) => unknown;
 }
 
 /**

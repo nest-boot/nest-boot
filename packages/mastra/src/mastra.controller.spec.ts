@@ -522,6 +522,9 @@ describe("MastraController", () => {
         if (key === "colliding-denied-id") {
           return registryAllowedTool;
         }
+        if (key === "option-allowed-tool") {
+          return preflightedOptionTool;
+        }
         if (
           key === "denied-reg-key" ||
           key === "sharedKeyOverwrittenByDeniedRegistryTool"
@@ -582,6 +585,7 @@ describe("MastraController", () => {
           requireApproval: true,
           leakedService: { secret: "hidden" },
         },
+        "option-allowed-tool": "primitive-tool-entry",
         optionDenied: {
           id: "option-denied-tool",
           description: "Denied option tool",
@@ -614,6 +618,7 @@ describe("MastraController", () => {
           description: "Allowed option tool",
           requireApproval: true,
         },
+        "option-allowed-tool": "primitive-tool-entry",
         "colliding-denied-id": {
           id: "registry-allowed-id",
           description: "Allowed despite key matching another tool's id",
@@ -640,6 +645,9 @@ describe("MastraController", () => {
             },
           },
         },
+        bareAgentWithoutTools: {
+          name: "Bare Agent",
+        },
       },
     });
     expect(
@@ -659,6 +667,9 @@ describe("MastraController", () => {
               inputSchema: "{}",
             },
           },
+        },
+        bareAgentWithoutTools: {
+          name: "Bare Agent",
         },
       },
     });
