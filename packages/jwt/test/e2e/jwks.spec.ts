@@ -97,7 +97,7 @@ describe("standalone JWT module", () => {
     expect(JwksController).toBeDefined();
   });
 
-  it("disables key rotation by default and works inside PGlite transactions", async () => {
+  it("uses 30-day Ed25519 rotation by default and works inside PGlite transactions", async () => {
     const url = await createApp({ issuer: "http://auth.example" });
     const orm = app.get<PgliteORM>(MikroORM);
     await orm.schema.create();
@@ -107,7 +107,7 @@ describe("standalone JWT module", () => {
     const claims = {
       ...scope,
       subject: "user:1",
-      expiresIn: 60 * 60 * 24 * 90,
+      expiresIn: 60 * 60 * 24 * 30,
     };
 
     vi.useFakeTimers({ toFake: ["Date"] });
@@ -134,7 +134,9 @@ describe("standalone JWT module", () => {
         alg: "Ed25519",
       });
       expect(typeof storedKey.privateKey).toBe("string");
-      expect(storedKey.expiresAt).toBeNull();
+      expect(storedKey.expiresAt.getTime()).toBe(
+        start + 30 * 24 * 60 * 60 * 1000,
+      );
 
       await orm.em.transactional(async () => {
         const txToken = await signer.sign({}, claims);
@@ -144,26 +146,14 @@ describe("standalone JWT module", () => {
         });
         expect((await signer.getJwks()).keys).toHaveLength(1);
       });
-
-      vi.setSystemTime(start + 60 * 24 * 60 * 60 * 1000);
-      const laterToken = await signer.sign({}, claims);
-      expect(decodeProtectedHeader(laterToken).kid).toBe(header.kid);
-      expect(await orm.em.fork().count(Jwk)).toBe(1);
-      await expect(signer.verify(first, scope)).resolves.toMatchObject({
-        sub: "user:1",
-      });
     } finally {
       vi.useRealTimers();
     }
   });
 
-  it("rotates keys on demand, transitions null-expiry keys, and enforces token lifetime windows", async () => {
+  it("only creates and rotates keys during signing while keeping tokens verifiable through exp", async () => {
     vi.stubEnv("AUTH_URL", "http://auth.example");
     vi.stubEnv("APP_URL", "http://app.example");
-    const unrotatedOptions: JwtModuleOptions = {
-      secret,
-      jwks: { alg: "ES256" },
-    };
     const rotatedOptions: JwtModuleOptions = {
       secret,
       jwks: {
@@ -176,7 +166,14 @@ describe("standalone JWT module", () => {
     const orm = app.get<PgliteORM>(MikroORM);
     await orm.schema.create();
 
-    const unrotatedSigner = new JwtService(orm.em, unrotatedOptions);
+    const longGraceSigner = new JwtService(orm.em, {
+      secret,
+      jwks: {
+        alg: "ES256",
+        rotationInterval: 10,
+        gracePeriod: 50,
+      },
+    });
     const firstSigner = app.get(JwtService);
     const nextAlgOptions: JwtModuleOptions = {
       ...rotatedOptions,
@@ -191,20 +188,19 @@ describe("standalone JWT module", () => {
     vi.useFakeTimers({ toFake: ["Date"] });
     try {
       const start = Date.now();
-      // Mint a 60s token before rotation is enabled (expiresAt starts as null).
-      const longUnrotatedToken = await unrotatedSigner.sign(
+      const initial = await fetch(`${url}/.well-known/jwks.json`);
+      expect(initial.status).toBe(200);
+      expect(await initial.json()).toEqual({ keys: [] });
+      expect(await orm.em.fork().count(Jwk)).toBe(0);
+
+      // Issue a 60s token using a 50s grace signer so we can verify firstSigner's 20s grace retirement at +30s.
+      const longToken = await longGraceSigner.sign(
         {},
         { ...scope, subject: "user:1", expiresIn: 60 },
       );
-      const oldHeader = decodeProtectedHeader(longUnrotatedToken);
+      const oldHeader = decodeProtectedHeader(longToken);
       expect(oldHeader.alg).toBe("ES256");
-      expect(oldHeader.kid).toBeDefined();
-      expect(
-        (await orm.em.fork().findOneOrFail(Jwk, { id: oldHeader.kid }))
-          .expiresAt,
-      ).toBeNull();
 
-      // Enabling rotation stamps expiresAt on the existing null key and reuses it while fresh.
       const [reused, other] = await Promise.all([
         firstSigner.sign({}, claims),
         firstSigner.sign({}, otherType),
@@ -234,7 +230,7 @@ describe("standalone JWT module", () => {
       });
       const [firstKey] = await orm.em.fork().find(Jwk, {});
       expect(firstKey.createdAt.getTime()).toBe(start);
-      expect(firstKey.expiresAt?.getTime()).toBe(start + 10_000);
+      expect(firstKey.expiresAt.getTime()).toBe(start + 10_000);
       expect(await orm.em.fork().count(Jwk)).toBe(1);
 
       vi.stubEnv("AUTH_URL", undefined);
@@ -281,19 +277,19 @@ describe("standalone JWT module", () => {
 
       const concurrent = await thirdSigner.sign({}, claims);
       expect(decodeProtectedHeader(concurrent).kid).toBe(rotatedHeader.kid);
-      await expect(
-        firstSigner.verify(longUnrotatedToken, scope),
-      ).resolves.toMatchObject({ sub: "user:1" });
+      await expect(firstSigner.verify(longToken, scope)).resolves.toMatchObject(
+        { sub: "user:1" },
+      );
       await expect(
         secondSigner.verify(earlyRotated, scope),
       ).resolves.toMatchObject({ sub: "user:1" });
 
-      // At start + 30s, firstKey leaves gracePeriod so longUnrotatedToken (exp = 60s) is rejected,
+      // At start + 30s, firstKey leaves firstSigner's 20s gracePeriod so longToken (exp = 60s) is rejected,
       // while earlyRotated (exp = 31s, key verifiable until 36s) still verifies.
       vi.setSystemTime(start + 30_000);
-      await expect(
-        firstSigner.verify(longUnrotatedToken, scope),
-      ).rejects.toThrow("Invalid token");
+      await expect(firstSigner.verify(longToken, scope)).rejects.toThrow(
+        "Invalid token",
+      );
       await expect(
         secondSigner.verify(earlyRotated, scope),
       ).resolves.toMatchObject({ sub: "user:1" });
@@ -318,7 +314,6 @@ describe("standalone JWT module", () => {
     const jwt = app.get(JwtService);
     const scope = { type: "test+jwt", audience: "test" };
 
-    // Create a null-expiry key so operator injection on `kid` would match if unvalidated.
     const validToken = await jwt.sign(
       {},
       { ...scope, subject: "user:1", expiresIn: 60 },

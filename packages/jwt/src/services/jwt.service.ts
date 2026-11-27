@@ -92,8 +92,8 @@ export class JwtService {
       throw new Error("JWT expiry must be a positive number of seconds");
     }
     if (
-      this.jwks.rotationInterval !== undefined &&
-      options.expiresIn > this.jwks.rotationInterval + this.jwks.gracePeriod
+      options.expiresIn >
+      this.jwks.rotationInterval + this.jwks.gracePeriod
     ) {
       throw new Error(
         "JWT expiry cannot exceed JWKS rotationInterval plus gracePeriod",
@@ -137,7 +137,7 @@ export class JwtService {
             Jwk,
             {
               id: kid,
-              ...this.verifiableKeyWhere(),
+              expiresAt: { $gt: this.verificationCutoff() },
             },
             { connectionType: "write" },
           );
@@ -163,11 +163,15 @@ export class JwtService {
   }
 
   async getJwks(): Promise<JSONWebKeySet> {
-    const keys = await this.keyManager().find(Jwk, this.verifiableKeyWhere(), {
-      fields: ["id", "publicKey"],
-      orderBy: { createdAt: "desc" },
-      connectionType: "write",
-    });
+    const keys = await this.keyManager().find(
+      Jwk,
+      { expiresAt: { $gt: this.verificationCutoff() } },
+      {
+        fields: ["id", "publicKey"],
+        orderBy: { createdAt: "desc" },
+        connectionType: "write",
+      },
+    );
 
     return {
       keys: keys.map(({ id, publicKey }) => ({
@@ -185,15 +189,6 @@ export class JwtService {
     if (typeof options.audience !== "string" || !options.audience.trim()) {
       throw new Error("JWT audience is required");
     }
-  }
-
-  private verifiableKeyWhere(): ObjectQuery<Jwk> {
-    return {
-      $or: [
-        { expiresAt: null },
-        { expiresAt: { $gt: this.verificationCutoff() } },
-      ],
-    };
   }
 
   private verificationCutoff(): Date {
@@ -233,33 +228,12 @@ export class JwtService {
     expiresIn: number,
   ): Promise<Jwk> {
     const em = this.keyManager();
-    const expiryCondition = this.signingExpiryCondition(nowMs, expiresIn);
     const existing = await em.findOne(
       Jwk,
-      {
-        $or: [{ expiresAt: null }, { expiresAt: expiryCondition }],
-      },
+      { expiresAt: this.signingExpiryCondition(nowMs, expiresIn) },
       { orderBy: { createdAt: "desc" }, connectionType: "write" },
     );
-
-    if (
-      existing?.expiresAt === null &&
-      this.jwks.rotationInterval !== undefined
-    ) {
-      await this.assignRotationExpiryToNullKeys(
-        em,
-        nowMs,
-        this.jwks.rotationInterval,
-      );
-      const refreshed = await em.findOne(
-        Jwk,
-        { expiresAt: expiryCondition },
-        { orderBy: { createdAt: "desc" }, connectionType: "write" },
-      );
-      if (refreshed) {
-        return refreshed;
-      }
-    } else if (existing) {
+    if (existing) {
       return existing;
     }
 
@@ -272,24 +246,6 @@ export class JwtService {
     ).finally(() => {
       this.inflightKeyCreation = undefined;
     }));
-  }
-
-  private async assignRotationExpiryToNullKeys(
-    em: EntityManager,
-    nowMs: number,
-    rotationInterval: number,
-  ): Promise<void> {
-    const nullKeys = await em.find(
-      Jwk,
-      { expiresAt: null },
-      { connectionType: "write" },
-    );
-    for (const nullKey of nullKeys) {
-      nullKey.expiresAt = new Date(
-        Math.max(nowMs, nullKey.createdAt.getTime() + rotationInterval * 1000),
-      );
-    }
-    await em.flush();
   }
 
   private async createAndPersistKey(em: EntityManager): Promise<Jwk> {
@@ -313,10 +269,9 @@ export class JwtService {
       publicKey: { ...publicJwk, alg },
       privateKey: encryptedPrivateKey,
       createdAt,
-      expiresAt:
-        this.jwks.rotationInterval === undefined
-          ? null
-          : new Date(createdAt.getTime() + this.jwks.rotationInterval * 1000),
+      expiresAt: new Date(
+        createdAt.getTime() + this.jwks.rotationInterval * 1000,
+      ),
     };
   }
 }

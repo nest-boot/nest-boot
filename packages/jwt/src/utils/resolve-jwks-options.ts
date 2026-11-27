@@ -7,12 +7,9 @@ const thirtyDays = 60 * 60 * 24 * 30;
 const literalPath = /^\/(?:[A-Za-z0-9_~.-]+\/)*[A-Za-z0-9_~.-]+$/;
 const allowedAlgorithms = new Set<JwtAlgorithm>(["Ed25519", "ES256", "ES512"]);
 
-export interface ResolvedJwksOptions {
-  path: string;
-  alg: JwtAlgorithm;
-  rotationInterval: number | undefined;
-  gracePeriod: number;
-}
+export type ResolvedJwksOptions = Required<
+  Omit<JwksOptions, "controllerDecorator">
+>;
 
 /**
  * Resolves JWKS configuration shared by signing, verification, and routing.
@@ -25,7 +22,7 @@ export function resolveJwksOptions(
   const {
     path = "/.well-known/jwks.json",
     alg = "Ed25519",
-    rotationInterval,
+    rotationInterval = thirtyDays,
     gracePeriod = thirtyDays,
   } = options;
 
@@ -39,10 +36,7 @@ export function resolveJwksOptions(
   if (!allowedAlgorithms.has(alg)) {
     throw new Error("JWKS alg must be Ed25519, ES256, or ES512");
   }
-  if (
-    rotationInterval !== undefined &&
-    (!Number.isSafeInteger(rotationInterval) || rotationInterval < 1)
-  ) {
+  if (!Number.isSafeInteger(rotationInterval) || rotationInterval < 1) {
     throw new Error(
       "JWKS rotationInterval must be a positive number of seconds",
     );

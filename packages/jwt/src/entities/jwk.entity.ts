@@ -25,6 +25,6 @@ export class Jwk {
   createdAt: Opt<Date> = new Date();
 
   /** When this key stops signing new tokens. */
-  @Property({ type: t.datetime, nullable: true })
-  expiresAt!: Date | null;
+  @Property({ type: t.datetime })
+  expiresAt!: Date;
 }

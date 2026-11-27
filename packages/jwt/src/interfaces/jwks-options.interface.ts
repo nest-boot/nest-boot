@@ -14,7 +14,7 @@ export interface JwksOptions {
   /** Signing key algorithm, defaulting to `"Ed25519"`. */
   alg?: JwtAlgorithm;
 
-  /** How long a key signs new tokens, in seconds. Disabled by default. */
+  /** How long a key signs new tokens, in seconds. Defaults to 30 days. */
   rotationInterval?: number;
 
   /** How long an expired signing key can still verify tokens, in seconds. Defaults to 30 days. */
