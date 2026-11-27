@@ -1,7 +1,18 @@
-import type { JwksOptions } from "../interfaces/jwks-options.interface.js";
+import type {
+  JwksOptions,
+  JwtAlgorithm,
+} from "../interfaces/jwks-options.interface.js";
 
 const thirtyDays = 60 * 60 * 24 * 30;
 const literalPath = /^\/(?:[A-Za-z0-9_~.-]+\/)*[A-Za-z0-9_~.-]+$/;
+const allowedAlgorithms = new Set<JwtAlgorithm>(["Ed25519", "ES256", "ES512"]);
+
+export interface ResolvedJwksOptions {
+  path: string;
+  alg: JwtAlgorithm;
+  rotationInterval: number | undefined;
+  gracePeriod: number;
+}
 
 /**
  * Resolves JWKS configuration shared by signing, verification, and routing.
@@ -10,11 +21,11 @@ const literalPath = /^\/(?:[A-Za-z0-9_~.-]+\/)*[A-Za-z0-9_~.-]+$/;
  */
 export function resolveJwksOptions(
   options: JwksOptions = {},
-): Required<Omit<JwksOptions, "controllerDecorator">> {
+): ResolvedJwksOptions {
   const {
     path = "/.well-known/jwks.json",
-    keyPairConfig = { alg: "EdDSA", crv: "Ed25519" },
-    rotationInterval = thirtyDays,
+    alg = "Ed25519",
+    rotationInterval,
     gracePeriod = thirtyDays,
   } = options;
 
@@ -25,7 +36,13 @@ export function resolveJwksOptions(
   ) {
     throw new Error("JWKS path must be a literal absolute path");
   }
-  if (!Number.isSafeInteger(rotationInterval) || rotationInterval < 1) {
+  if (!allowedAlgorithms.has(alg)) {
+    throw new Error("JWKS alg must be Ed25519, ES256, or ES512");
+  }
+  if (
+    rotationInterval !== undefined &&
+    (!Number.isSafeInteger(rotationInterval) || rotationInterval < 1)
+  ) {
     throw new Error(
       "JWKS rotationInterval must be a positive number of seconds",
     );
@@ -35,13 +52,5 @@ export function resolveJwksOptions(
       "JWKS gracePeriod must be a non-negative number of seconds",
     );
   }
-  if (
-    "modulusLength" in keyPairConfig &&
-    keyPairConfig.modulusLength !== undefined &&
-    (!Number.isSafeInteger(keyPairConfig.modulusLength) ||
-      keyPairConfig.modulusLength < 2048)
-  ) {
-    throw new Error("JWKS RSA modulusLength must be at least 2048 bits");
-  }
-  return { path, keyPairConfig, rotationInterval, gracePeriod };
+  return { path, alg, rotationInterval, gracePeriod };
 }

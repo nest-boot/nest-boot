@@ -16,13 +16,15 @@ to override these values. Every application instance must use the same issuer
 and strong encryption secret.
 
 Inject `JwtService` to sign and verify tokens. A signing request creates a key
-when no active key exists. JWKS reads publish public keys within their signing
-or grace period. An empty key table returns an empty key set. Signing defaults
-to Ed25519, with 30 days each for the rotation interval and the grace period.
+when no active key exists. JWKS reads publish non-expiring public keys and
+rotated keys within their signing or grace period. An empty key table returns an
+empty key set. Signing defaults to Ed25519 with automatic key rotation disabled;
+set `jwks.rotationInterval` (in seconds) to rotate keys automatically, with a
+30-day default `jwks.gracePeriod`.
 
 Keep the JWKS route outside the global prefix when using the default well-known
 path. Use `app.get(JwtService).jwksPath` in the host application's prefix exclusions.
-If the host uses a global authentication guard, supply its public-route class
+If the host uses a global authentication guard, supply its public-route metadata
 decorator in `jwks.controllerDecorator`.
 
 The `jwk` table inherits the application's default database table privileges.

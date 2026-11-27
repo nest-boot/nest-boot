@@ -1,6 +1,8 @@
-import { randomUUID } from "node:crypto";
-
-import { EntityManager } from "@mikro-orm/core";
+import {
+  EntityManager,
+  type ObjectQuery,
+  type RequiredEntityData,
+} from "@mikro-orm/core";
 import { CryptService } from "@nest-boot/crypt";
 import { Inject, Injectable, UnauthorizedException } from "@nestjs/common";
 import {
@@ -19,14 +21,20 @@ import {
 import { Jwk } from "../entities/jwk.entity.js";
 import type { JwtModuleOptions } from "../interfaces/jwt-module-options.interface.js";
 import { MODULE_OPTIONS_TOKEN } from "../jwt.module-definition.js";
-import { resolveJwksOptions } from "../utils/resolve-jwks-options.js";
+import {
+  type ResolvedJwksOptions,
+  resolveJwksOptions,
+} from "../utils/resolve-jwks-options.js";
 
-interface TokenScope {
+const uuidPattern =
+  /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+export interface JwtVerifyOptions {
   type: string;
   audience: string;
 }
 
-export interface JwtSignOptions extends TokenScope {
+export interface JwtSignOptions extends JwtVerifyOptions {
   subject: string;
   expiresIn: number;
 }
@@ -36,7 +44,8 @@ export interface JwtSignOptions extends TokenScope {
 export class JwtService {
   private readonly issuer: string;
   private readonly crypt: CryptService;
-  private readonly jwks: ReturnType<typeof resolveJwksOptions>;
+  private readonly jwks: ResolvedJwksOptions;
+  private inflightKeyCreation?: Promise<Jwk>;
 
   constructor(
     private readonly em: EntityManager,
@@ -75,16 +84,30 @@ export class JwtService {
   }
 
   async sign(payload: JWTPayload, options: JwtSignOptions): Promise<string> {
+    this.assertVerifyOptions(options);
+    if (typeof options.subject !== "string" || !options.subject.trim()) {
+      throw new Error("JWT subject is required");
+    }
     if (!Number.isSafeInteger(options.expiresIn) || options.expiresIn < 1) {
       throw new Error("JWT expiry must be a positive number of seconds");
     }
-    const key = await this.findOrCreateSigningKey();
+    if (
+      this.jwks.rotationInterval !== undefined &&
+      options.expiresIn > this.jwks.rotationInterval + this.jwks.gracePeriod
+    ) {
+      throw new Error(
+        "JWT expiry cannot exceed JWKS rotationInterval plus gracePeriod",
+      );
+    }
+
+    const nowMs = Date.now();
+    const key = await this.findOrCreateSigningKey(nowMs, options.expiresIn);
     const { alg } = key.publicKey;
     const privateKey = await importPKCS8(
       await this.crypt.decrypt(key.privateKey),
       alg,
     );
-    const now = Math.floor(Date.now() / 1000);
+    const now = Math.floor(nowMs / 1000);
 
     return await new SignJWT(payload)
       .setProtectedHeader({ alg, kid: key.id, typ: options.type })
@@ -96,18 +119,28 @@ export class JwtService {
       .sign(privateKey);
   }
 
-  async verify(token: string, options: TokenScope): Promise<JWTPayload> {
+  async verify(token: string, options: JwtVerifyOptions): Promise<JWTPayload> {
+    this.assertVerifyOptions(options);
     try {
       const { payload } = await jwtVerify(
         token,
         async ({ alg, kid }) => {
-          if (!alg || !kid) {
+          if (
+            typeof alg !== "string" ||
+            !alg ||
+            typeof kid !== "string" ||
+            !uuidPattern.test(kid)
+          ) {
             throw new UnauthorizedException("Invalid token");
           }
-          const key = await this.keyManager().findOne(Jwk, {
-            id: kid,
-            expiresAt: { $gt: this.verificationCutoff() },
-          });
+          const key = await this.keyManager().findOne(
+            Jwk,
+            {
+              id: kid,
+              ...this.verifiableKeyWhere(),
+            },
+            { connectionType: "write" },
+          );
           if (key?.publicKey.alg !== alg) {
             throw new UnauthorizedException("Invalid token");
           }
@@ -130,11 +163,11 @@ export class JwtService {
   }
 
   async getJwks(): Promise<JSONWebKeySet> {
-    const keys = await this.keyManager().find(
-      Jwk,
-      { expiresAt: { $gt: this.verificationCutoff() } },
-      { fields: ["id", "publicKey"] },
-    );
+    const keys = await this.keyManager().find(Jwk, this.verifiableKeyWhere(), {
+      fields: ["id", "publicKey"],
+      orderBy: { createdAt: "desc" },
+      connectionType: "write",
+    });
 
     return {
       keys: keys.map(({ id, publicKey }) => ({
@@ -145,54 +178,129 @@ export class JwtService {
     };
   }
 
+  private assertVerifyOptions(options: JwtVerifyOptions): void {
+    if (typeof options?.type !== "string" || !options.type.trim()) {
+      throw new Error("JWT type is required");
+    }
+    if (typeof options.audience !== "string" || !options.audience.trim()) {
+      throw new Error("JWT audience is required");
+    }
+  }
+
+  private verifiableKeyWhere(): ObjectQuery<Jwk> {
+    return {
+      $or: [
+        { expiresAt: null },
+        { expiresAt: { $gt: this.verificationCutoff() } },
+      ],
+    };
+  }
+
   private verificationCutoff(): Date {
     return new Date(Date.now() - this.jwks.gracePeriod * 1000);
   }
 
-  private keyManager(): EntityManager {
-    // Keep key persistence independent of the caller’s request transaction.
-    return this.em.fork({ disableContextResolution: true });
+  private signingExpiryCondition(
+    nowMs: number,
+    expiresIn: number,
+  ): ObjectQuery<Jwk>["expiresAt"] {
+    const minRemainingMs = Math.max(
+      0,
+      (expiresIn - this.jwks.gracePeriod) * 1000,
+    );
+    return minRemainingMs > 0
+      ? { $gte: new Date(nowMs + minRemainingMs) }
+      : { $gt: new Date(nowMs) };
   }
 
-  private async findOrCreateSigningKey(): Promise<Jwk> {
-    const findActiveKey = (em: EntityManager) =>
-      em.findOne(
-        Jwk,
-        { expiresAt: { $gt: new Date() } },
-        { orderBy: { createdAt: "desc" } },
+  private keyManager(): EntityManager {
+    const current = this.em.getContext(false);
+    if (!current.getSessionContext() && !current.global) {
+      return current.fork({ clear: true, keepTransactionContext: true });
+    }
+    if (current.isInTransaction()) {
+      throw new Error(
+        "JWT key access cannot bypass an active RLS transaction. Call JwtService before starting the scoped transaction.",
       );
+    }
+    const fork = current.fork({ clear: true });
+    fork.clearSessionContext();
+    return fork;
+  }
 
+  private async findOrCreateSigningKey(
+    nowMs: number,
+    expiresIn: number,
+  ): Promise<Jwk> {
     const em = this.keyManager();
-    const existing = await findActiveKey(em);
-    if (existing) {
+    const expiryCondition = this.signingExpiryCondition(nowMs, expiresIn);
+    const existing = await em.findOne(
+      Jwk,
+      {
+        $or: [{ expiresAt: null }, { expiresAt: expiryCondition }],
+      },
+      { orderBy: { createdAt: "desc" }, connectionType: "write" },
+    );
+
+    if (
+      existing?.expiresAt === null &&
+      this.jwks.rotationInterval !== undefined
+    ) {
+      await this.assignRotationExpiryToNullKeys(
+        em,
+        nowMs,
+        this.jwks.rotationInterval,
+      );
+      const refreshed = await em.findOne(
+        Jwk,
+        { expiresAt: expiryCondition },
+        { orderBy: { createdAt: "desc" }, connectionType: "write" },
+      );
+      if (refreshed) {
+        return refreshed;
+      }
+    } else if (existing) {
       return existing;
     }
 
-    return await em.transactional(
-      async (tx) => {
-        // Serialize the read and creation across instances, including on an empty table.
-        await tx
-          .getConnection()
-          .execute(
-            "select pg_advisory_xact_lock(hashtext('nest-boot.auth.jwk'))",
-            [],
-            "get",
-            tx.getTransactionContext(),
-          );
+    if (em.isInTransaction()) {
+      return await this.createAndPersistKey(em);
+    }
 
-        return (
-          (await findActiveKey(tx)) ??
-          tx.create(Jwk, await this.createKey(), { persist: true })
-        );
-      },
-      { clear: true },
-    );
+    return await (this.inflightKeyCreation ??= this.createAndPersistKey(
+      em,
+    ).finally(() => {
+      this.inflightKeyCreation = undefined;
+    }));
   }
 
-  private async createKey(): Promise<Jwk> {
-    const { alg, ...keyOptions } = this.jwks.keyPairConfig;
+  private async assignRotationExpiryToNullKeys(
+    em: EntityManager,
+    nowMs: number,
+    rotationInterval: number,
+  ): Promise<void> {
+    const nullKeys = await em.find(
+      Jwk,
+      { expiresAt: null },
+      { connectionType: "write" },
+    );
+    for (const nullKey of nullKeys) {
+      nullKey.expiresAt = new Date(
+        Math.max(nowMs, nullKey.createdAt.getTime() + rotationInterval * 1000),
+      );
+    }
+    await em.flush();
+  }
+
+  private async createAndPersistKey(em: EntityManager): Promise<Jwk> {
+    const key = em.create(Jwk, await this.createKey(), { persist: true });
+    await em.flush();
+    return key;
+  }
+
+  private async createKey(): Promise<RequiredEntityData<Jwk>> {
+    const { alg } = this.jwks;
     const { publicKey, privateKey } = await generateKeyPair(alg, {
-      ...keyOptions,
       extractable: true,
     });
     const publicJwk = await exportJWK(publicKey);
@@ -202,13 +310,13 @@ export class JwtService {
     const createdAt = new Date();
 
     return {
-      id: randomUUID(),
       publicKey: { ...publicJwk, alg },
       privateKey: encryptedPrivateKey,
       createdAt,
-      expiresAt: new Date(
-        createdAt.getTime() + this.jwks.rotationInterval * 1000,
-      ),
+      expiresAt:
+        this.jwks.rotationInterval === undefined
+          ? null
+          : new Date(createdAt.getTime() + this.jwks.rotationInterval * 1000),
     };
   }
 }
