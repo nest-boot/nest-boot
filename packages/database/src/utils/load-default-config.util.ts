@@ -26,6 +26,7 @@ export function loadDefaultConfig() {
     migrations: {
       path: "dist/database/migrations",
       pathTs: "src/database/migrations",
+      snapshotOnMigrate: false,
     },
     seeder: {
       path: "dist/database/seeders",
