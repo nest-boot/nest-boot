@@ -25,7 +25,6 @@ import { AuthAbility } from "../common/auth.ability.js";
 import {
   CAN_METADATA,
   CUSTOM_ROUTE_ARGS_METADATA,
-  EXTERNAL_HANDLER_INSTANCE,
   ROUTE_ARGS_METADATA,
 } from "../common/constants/permission.constants.js";
 import * as authorization from "../common/utils/can.util.js";
@@ -1424,120 +1423,6 @@ describe("permission checks", () => {
         strict: false,
       });
       expect(subjectCallback).toHaveBeenCalledWith(handlerThis);
-    });
-    it("passes tool input and execution context to subject callbacks in mastra:tool:execution contexts", async () => {
-      const subjectInstance = new Subject();
-      const handlerThis = { id: "tool-self" };
-      const toolInput = { articleId: "article-1" };
-      const toolExecContext = { requestContext: { tenant: "acme" } };
-      const subjectCallback = vi.fn(() => subjectInstance);
-      const canMock = vi.fn(() => true);
-      const { guard, reflector } = await createGuard(
-        {
-          can: canMock,
-        } as unknown as TestAbility,
-        handlerThis,
-      );
-      setCanMetadata(reflector, {
-        action: "update",
-        subjectCallback,
-      });
-      await RequestContext.run(createAuthRequestContext("http"), async () => {
-        await expect(
-          guard.canActivate(
-            createContext(
-              undefined,
-              undefined,
-              [toolInput, toolExecContext],
-              "mastra:tool:execution",
-            ),
-          ),
-        ).resolves.toBe(true);
-      });
-      expect(subjectCallback).toHaveBeenCalledWith(
-        handlerThis,
-        toolInput,
-        toolExecContext,
-      );
-      expect(canMock).toHaveBeenCalledWith("update", subjectInstance);
-    });
-    it("resolves dynamic subject callbacks against EXTERNAL_HANDLER_INSTANCE without moduleRef lookup", async () => {
-      const subjectInstance = new Subject();
-      const boundTool = { id: "ad-hoc-tool", lookup: () => subjectInstance };
-      const toolInput = { articleId: "article-2" };
-      const toolExecContext = { requestContext: { tenant: "acme" } };
-      const mastraArgs: unknown[] = [toolInput, toolExecContext];
-      Object.defineProperty(mastraArgs, EXTERNAL_HANDLER_INSTANCE, {
-        value: boundTool,
-        enumerable: false,
-      });
-      const subjectCallback = vi.fn((self: typeof boundTool) => self.lookup());
-      const canMock = vi.fn(() => true);
-      const { guard, reflector, moduleRef } = await createGuard({
-        can: canMock,
-      } as unknown as TestAbility);
-      moduleRef.resolve.mockRejectedValueOnce(
-        new Error("Unregistered custom-token or ad-hoc tool class"),
-      );
-      setCanMetadata(reflector, {
-        action: "update",
-        subjectCallback,
-      });
-      await RequestContext.run(createAuthRequestContext("http"), async () => {
-        await expect(
-          guard.canActivate(
-            createContext(
-              undefined,
-              undefined,
-              mastraArgs,
-              "mastra:tool:execution",
-            ),
-          ),
-        ).resolves.toBe(true);
-      });
-      expect(moduleRef.resolve).not.toHaveBeenCalled();
-      expect(subjectCallback).toHaveBeenCalledWith(
-        boundTool,
-        toolInput,
-        toolExecContext,
-      );
-      expect(canMock).toHaveBeenCalledWith("update", subjectInstance);
-    });
-    it("evaluates static subjects while deferring subject callbacks in mastra:tool:discovery contexts", async () => {
-      const subjectCallback = vi.fn(() => new Subject());
-      const canMock = vi.fn((action: string) => action === "read");
-      const { guard, reflector } = await createGuard({
-        can: canMock,
-      } as unknown as TestAbility);
-      reflector.getAllAndMerge.mockImplementation((key) =>
-        key === CAN_METADATA
-          ? [
-              { action: "read", subject: Subject },
-              { action: "update", subjectCallback },
-            ]
-          : undefined,
-      );
-      await RequestContext.run(createAuthRequestContext("http"), async () => {
-        await expect(
-          guard.canActivate(
-            createContext(undefined, undefined, [], "mastra:tool:discovery"),
-          ),
-        ).resolves.toBe(true);
-      });
-      expect(canMock).toHaveBeenCalledTimes(1);
-      expect(canMock).toHaveBeenCalledWith("read", Subject);
-      expect(subjectCallback).not.toHaveBeenCalled();
-
-      reflector.getAllAndMerge.mockImplementation((key) =>
-        key === CAN_METADATA ? [{ action: "delete", subject: Subject }] : [],
-      );
-      await RequestContext.run(createAuthRequestContext("http"), async () => {
-        await expect(
-          guard.canActivate(
-            createContext(undefined, undefined, [], "mastra:tool:discovery"),
-          ),
-        ).resolves.toBe(false);
-      });
     });
     it("falls back to prototype lookup and null when handler names are unavailable", async () => {
       const subjectInstance = new Subject();

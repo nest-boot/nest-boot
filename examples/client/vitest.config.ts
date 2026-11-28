@@ -16,6 +16,7 @@ export default defineConfig({
       include: ["src/**/*.{ts,tsx}"],
       exclude: [
         "**/*.spec.{ts,tsx}",
+        "**/*.spec-d.{ts,tsx}",
         "src/components/ui/**",
         "src/components/thread-ui/**",
         "src/gql/**",

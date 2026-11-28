@@ -7,6 +7,7 @@ export default defineConfig([
     // These fixtures exercise Auth with the upstream module or decorators.
     files: [
       "src/core/auth.module.spec.ts",
+      "src/core/auth.module.spec-d.ts",
       "test/e2e/api-key-workspace-context.spec.ts",
       "test/fixtures/auth-feature-bootstrap.fixture.ts",
       "test/fixtures/auth-workspace-bootstrap.fixture.ts",

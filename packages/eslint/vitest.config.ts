@@ -13,6 +13,7 @@ export default defineConfig({
     coverage: {
       exclude: [
         "**/*.spec.ts",
+        "**/*.spec-d.ts",
         "bin/**",
         "test/**",
         ".eslint-doc-generatorrc.*",

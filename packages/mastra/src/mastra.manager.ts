@@ -10,47 +10,29 @@ import {
   Logger,
   type OnApplicationShutdown,
   type OnModuleInit,
-  Optional,
 } from "@nestjs/common";
-import {
-  ApplicationConfig,
-  DiscoveryService,
-  ExternalContextCreator,
-} from "@nestjs/core";
+import { DiscoveryService } from "@nestjs/core";
 import type { InstanceWrapper } from "@nestjs/core/injector/instance-wrapper.js";
 
-import { type AnyMastraTool, BaseTool } from "./base.tool.js";
+import { BaseTool } from "./tools/base.tool.js";
+import type { AnyMastraTool } from "./types/tool.type.js";
 import {
-  bindToolGuards,
-  canExposeMastraTool,
   concealToolInstanceDependencies,
-  isClassBasedMastraTool,
   isMastraToolInstance,
-  unbindAgentToolDiscovery,
-  unbindToolGuards,
-  wrapAgentToolDiscovery,
-} from "./tool-guard.js";
+  wrapAgentDiscovery,
+} from "./utils/agent-discovery.util.js";
 
 /**
- * Discovers singleton NestJS providers extending Mastra `Tool` (including `BaseTool`),
- * Mastra `Agent` (including `BaseAgent`), and Mastra `Workflow` (including `BaseWorkflow`)
- * across all loaded modules, binds NestJS execution and exposure-filtering guards onto tools,
- * and registers them into the shared `Mastra` instance.
+ * Discovers singleton NestJS providers extending Mastra `Tool` (`BaseTool`),
+ * `Agent` (`BaseAgent`), and `Workflow` (`BaseWorkflow`) across all loaded modules,
+ * registers them into the shared `Mastra` instance, and enables `@Can(...)` discovery
+ * filtering on registered agents.
  */
 @Injectable()
 export class MastraManager implements OnModuleInit, OnApplicationShutdown {
   private readonly logger = new Logger(MastraManager.name);
-  private readonly trackedTools = new WeakSet<AnyMastraTool>();
-  private readonly boundToolRefs = new Set<WeakRef<AnyMastraTool>>();
-  private readonly boundToolCleanup = new FinalizationRegistry<
-    WeakRef<AnyMastraTool>
-  >((ref) => {
-    this.boundToolRefs.delete(ref);
-  });
-  private readonly boundAgents = new Set<MastraAgent>();
   private readonly agents = new Map<string, MastraAgent>();
   private readonly workflows = new Map<string, AnyWorkflow>();
-  private bindAdHocToolFn?: (tool: AnyMastraTool) => void;
   private restoreMastraRegistrationHooks?: () => void;
   private initialized = false;
   private shutDown = false;
@@ -58,10 +40,6 @@ export class MastraManager implements OnModuleInit, OnApplicationShutdown {
   constructor(
     private readonly discovery: DiscoveryService,
     private readonly mastra: Mastra,
-    @Optional()
-    private readonly externalContextCreator?: ExternalContextCreator,
-    @Optional()
-    private readonly applicationConfig?: ApplicationConfig,
   ) {}
 
   /**
@@ -71,17 +49,6 @@ export class MastraManager implements OnModuleInit, OnApplicationShutdown {
     if (this.initialized) {
       return;
     }
-
-    const bindAdHocTool = (tool: AnyMastraTool): void => {
-      concealToolInstanceDependencies(tool);
-      if (!this.externalContextCreator) {
-        return;
-      }
-      bindToolGuards(tool, this.externalContextCreator, {
-        applicationConfig: this.applicationConfig,
-      });
-      this.trackBoundTool(tool);
-    };
 
     const initialToolKeys = new Set(Object.keys(this.mastra.listTools() ?? {}));
     const initialAgentKeys = new Set(
@@ -152,12 +119,14 @@ export class MastraManager implements OnModuleInit, OnApplicationShutdown {
         }
       }
 
-      // 1. Register & bind discovered Tool providers first so their module context is preserved
-      // even when also referenced by preconfigured agents or Mastra options.
+      // 1. Conceal DI properties on preconfigured tools and register discovered Tool providers.
       const preconfiguredToolsRecord = this.mastra.listTools() ?? {};
-      const preconfiguredMastraTools = Object.values(preconfiguredToolsRecord);
-      const seenProviderTools = new Map<string, AnyMastraTool>();
+      const preconfiguredTools = Object.values(preconfiguredToolsRecord);
+      for (const tool of preconfiguredTools) {
+        concealToolInstanceDependencies(tool);
+      }
 
+      const seenProviderTools = new Map<string, AnyMastraTool>();
       for (const { provider, target } of toolProviders) {
         const instance: unknown = provider.instance;
         if (
@@ -180,7 +149,7 @@ export class MastraManager implements OnModuleInit, OnApplicationShutdown {
           );
         }
 
-        const preconfiguredIdMatch = preconfiguredMastraTools.find(
+        const preconfiguredIdMatch = preconfiguredTools.find(
           (candidate) =>
             isMastraToolInstance(candidate) && candidate.id === instance.id,
         );
@@ -198,36 +167,21 @@ export class MastraManager implements OnModuleInit, OnApplicationShutdown {
         }
 
         concealToolInstanceDependencies(instance);
+        seenProviderTools.set(instance.id, instance);
 
-        if (this.externalContextCreator) {
-          bindToolGuards(instance, this.externalContextCreator, {
-            wrapper: provider,
-            moduleRef: provider.host,
-            applicationConfig: this.applicationConfig,
-          });
-          this.trackBoundTool(instance);
-        }
-
-        if (!preconfiguredKeyMatch && !preconfiguredIdMatch) {
+        if (!preconfiguredIdMatch) {
           this.mastra.addTool(instance);
         }
-        seenProviderTools.set(instance.id, instance);
 
         this.logger.log(
           `Registered Mastra tool "${String(instance.id)}" (${instance.constructor.name})`,
         );
       }
 
-      this.syncMastraToolsRegistry(bindAdHocTool);
-
-      // 2. Register & wrap preconfigured and discovered Agents.
-      for (const agent of Object.values(this.mastra.listAgents())) {
+      // 2. Wrap preconfigured Agents and register discovered Agent providers.
+      for (const agent of Object.values(this.mastra.listAgents() ?? {})) {
         if (agent instanceof MastraAgent) {
-          wrapAgentToolDiscovery(agent, {
-            bindUnboundTool: bindAdHocTool,
-            externalContextCreator: this.externalContextCreator,
-          });
-          this.boundAgents.add(agent);
+          wrapAgentDiscovery(agent);
           this.agents.set(agent.id, agent);
         }
       }
@@ -254,11 +208,7 @@ export class MastraManager implements OnModuleInit, OnApplicationShutdown {
           );
         }
 
-        wrapAgentToolDiscovery(instance, {
-          bindUnboundTool: bindAdHocTool,
-          externalContextCreator: this.externalContextCreator,
-        });
-        this.boundAgents.add(instance);
+        wrapAgentDiscovery(instance);
         this.mastra.addAgent(instance);
         this.agents.set(instance.id, instance);
 
@@ -267,11 +217,13 @@ export class MastraManager implements OnModuleInit, OnApplicationShutdown {
         );
       }
 
-      // Bind any ad-hoc class-based tools that `mastra.addAgent(...)` added into Mastra.
-      this.syncMastraToolsRegistry(bindAdHocTool);
+      // Conceal DI fields on any tools Mastra auto-registered from agent tool maps.
+      for (const tool of Object.values(this.mastra.listTools() ?? {})) {
+        concealToolInstanceDependencies(tool);
+      }
 
       // 3. Register preconfigured and discovered Workflows.
-      for (const workflow of Object.values(this.mastra.listWorkflows())) {
+      for (const workflow of Object.values(this.mastra.listWorkflows() ?? {})) {
         if (workflow instanceof MastraWorkflow) {
           this.workflows.set(workflow.id, workflow);
         }
@@ -307,8 +259,7 @@ export class MastraManager implements OnModuleInit, OnApplicationShutdown {
         );
       }
 
-      this.bindAdHocToolFn = bindAdHocTool;
-      this.installMastraRegistrationHooks(bindAdHocTool);
+      this.installMastraRegistrationHooks();
       this.initialized = true;
     } catch (error) {
       for (const key of Object.keys(this.mastra.listTools() ?? {})) {
@@ -328,21 +279,16 @@ export class MastraManager implements OnModuleInit, OnApplicationShutdown {
       }
       this.agents.clear();
       this.workflows.clear();
-      this.releaseBoundPrimitives();
       throw error;
     }
   }
 
-  private installMastraRegistrationHooks(
-    bindAdHocTool: (tool: AnyMastraTool) => void,
-  ): void {
+  private installMastraRegistrationHooks(): void {
     const originalAddTool = this.mastra.addTool.bind(this.mastra);
     const originalAddAgent = this.mastra.addAgent.bind(this.mastra);
 
     this.mastra.addTool = ((tool: AnyMastraTool, key?: string) => {
-      if (isClassBasedMastraTool(tool)) {
-        bindAdHocTool(tool);
-      }
+      concealToolInstanceDependencies(tool);
       originalAddTool(tool, key);
     }) as typeof this.mastra.addTool;
 
@@ -352,70 +298,21 @@ export class MastraManager implements OnModuleInit, OnApplicationShutdown {
       options?: Parameters<Mastra["addAgent"]>[2],
     ) => {
       if (agent instanceof MastraAgent) {
-        wrapAgentToolDiscovery(agent, {
-          bindUnboundTool: bindAdHocTool,
-          externalContextCreator: this.externalContextCreator,
-        });
-        this.boundAgents.add(agent);
+        wrapAgentDiscovery(agent);
       }
       originalAddAgent(agent, key, options);
       if (agent instanceof MastraAgent) {
         this.agents.set(agent.id, agent);
       }
-      this.syncMastraToolsRegistry(bindAdHocTool);
+      for (const tool of Object.values(this.mastra.listTools() ?? {})) {
+        concealToolInstanceDependencies(tool);
+      }
     }) as typeof this.mastra.addAgent;
 
     this.restoreMastraRegistrationHooks = () => {
       this.mastra.addTool = originalAddTool;
       this.mastra.addAgent = originalAddAgent;
     };
-  }
-
-  private ensureToolBound(tool: AnyMastraTool | undefined): void {
-    if (tool && isClassBasedMastraTool(tool)) {
-      this.bindAdHocToolFn?.(tool);
-    }
-  }
-
-  private trackBoundTool(tool: AnyMastraTool): void {
-    if (this.trackedTools.has(tool)) {
-      return;
-    }
-    this.trackedTools.add(tool);
-    const ref = new WeakRef(tool);
-    this.boundToolRefs.add(ref);
-    this.boundToolCleanup.register(tool, ref, ref);
-  }
-
-  private releaseBoundPrimitives(): void {
-    this.restoreMastraRegistrationHooks?.();
-    this.restoreMastraRegistrationHooks = undefined;
-    this.bindAdHocToolFn = undefined;
-
-    for (const ref of this.boundToolRefs) {
-      this.boundToolCleanup.unregister(ref);
-      const tool = ref.deref();
-      if (tool) {
-        this.trackedTools.delete(tool);
-        unbindToolGuards(tool, this.externalContextCreator);
-      }
-    }
-    this.boundToolRefs.clear();
-
-    for (const agent of this.boundAgents) {
-      unbindAgentToolDiscovery(agent, this.externalContextCreator);
-    }
-    this.boundAgents.clear();
-  }
-
-  private syncMastraToolsRegistry(
-    bindAdHocTool: (tool: AnyMastraTool) => void,
-  ): void {
-    for (const tool of Object.values(this.mastra.listTools() ?? {})) {
-      if (isClassBasedMastraTool(tool)) {
-        bindAdHocTool(tool);
-      }
-    }
   }
 
   /**
@@ -427,7 +324,6 @@ export class MastraManager implements OnModuleInit, OnApplicationShutdown {
     const uniqueTools = new Set<AnyMastraTool>();
     for (const tool of Object.values(this.mastra.listTools() ?? {})) {
       if (isMastraToolInstance(tool)) {
-        this.ensureToolBound(tool);
         uniqueTools.add(tool);
       }
     }
@@ -435,73 +331,21 @@ export class MastraManager implements OnModuleInit, OnApplicationShutdown {
   }
 
   /**
-   * Looks up a registered Mastra tool by its exact live registry map key (`mastra.listTools()[key]`).
-   * @param key - Registration key in Mastra's tools record
-   * @returns Matching tool instance or undefined
-   */
-  getToolByRegistrationKey(key: string): AnyMastraTool | undefined {
-    this.onModuleInit();
-    const liveTools = this.mastra.listTools();
-    if (!liveTools || !Object.hasOwn(liveTools, key)) {
-      return undefined;
-    }
-    const fromMastra = liveTools[key];
-    if (isMastraToolInstance(fromMastra)) {
-      this.ensureToolBound(fromMastra);
-      return fromMastra;
-    }
-    return undefined;
-  }
-
-  /**
-   * Looks up a registered Mastra tool using the same precedence as Mastra's server routes:
-   * intrinsic `tool.id` first, then registration key.
+   * Looks up a registered Mastra tool by its intrinsic `tool.id` or registration key.
    * @param id - Tool id or registration key
    * @returns Matching tool instance or undefined
    */
   getTool(id: string): AnyMastraTool | undefined {
     this.onModuleInit();
     try {
-      const byMastraLookup = this.mastra.getToolById(id);
-      if (isMastraToolInstance(byMastraLookup)) {
-        this.ensureToolBound(byMastraLookup);
-        return byMastraLookup;
+      const tool = this.mastra.getToolById(id);
+      if (isMastraToolInstance(tool)) {
+        return tool;
       }
     } catch {
       // Mastra throws when a tool ID is not registered.
     }
     return undefined;
-  }
-
-  /**
-   * Checks whether a registered tool or tool instance can be exposed in the current context.
-   * @param idOrTool - Tool id, registration key, or tool instance
-   * @returns `true` when the tool exists and passes exposure-time guards
-   */
-  async canAccessTool(idOrTool: string | AnyMastraTool): Promise<boolean> {
-    this.onModuleInit();
-    const tool =
-      typeof idOrTool === "string" ? this.getTool(idOrTool) : idOrTool;
-    if (!tool) {
-      return false;
-    }
-    this.ensureToolBound(tool);
-    return await canExposeMastraTool(tool);
-  }
-
-  /**
-   * Returns all registered Mastra tools accessible to the current caller.
-   * @returns Array of accessible Mastra tool instances
-   */
-  async getAccessibleTools(): Promise<AnyMastraTool[]> {
-    const allTools = this.getTools();
-    const checks = await Promise.all(
-      allTools.map(async (tool) => ({
-        tool,
-        allowed: await canExposeMastraTool(tool),
-      })),
-    );
-    return checks.filter((entry) => entry.allowed).map((entry) => entry.tool);
   }
 
   /**
@@ -543,19 +387,15 @@ export class MastraManager implements OnModuleInit, OnApplicationShutdown {
   }
 
   /**
-   * Drains Mastra runs, flushes observability exporters, closes underlying storage handles,
-   * and then releases container guard bindings on bound tools and agents.
+   * Shuts down the underlying Mastra instance once when the NestJS application closes.
    */
   async onApplicationShutdown(): Promise<void> {
     if (this.shutDown) {
       return;
     }
-
     this.shutDown = true;
-    try {
-      await this.mastra.shutdown();
-    } finally {
-      this.releaseBoundPrimitives();
-    }
+    this.restoreMastraRegistrationHooks?.();
+    this.restoreMastraRegistrationHooks = undefined;
+    await this.mastra.shutdown();
   }
 }

@@ -1,6 +1,6 @@
 # @nest-boot/mastra
 
-NestJS-native [Mastra](https://mastra.ai/) integration for Nest Boot with dependency-injected `BaseAgent`, `BaseTool`, `BaseStep`, and `BaseWorkflow` base classes, automatic provider discovery, embedded Mastra Studio, `@nest-boot/auth` route protection, and environment-driven PostgreSQL / ClickHouse storage.
+NestJS-native [Mastra](https://mastra.ai/) integration for Nest Boot with dependency-injected `BaseAgent`, `BaseTool`, `BaseStep`, and `BaseWorkflow` base classes, automatic provider discovery, `@Can`-based agent capability filtering, embedded Mastra Studio, `@nest-boot/auth` route protection, and environment-driven PostgreSQL / ClickHouse storage.
 
 ## Installation
 
@@ -42,19 +42,19 @@ buildAbility: ({ builder, permissions }) => {
 
 ## Base Classes
 
-- `BaseAgent` — injectable Mastra `Agent` subclass with automatic kebab-case `id` derivation and automatic exposure-time tool authorization filtering.
-- `BaseTool(definition)` — injectable Mastra `Tool` class factory preserving native input/output validation, `super(options)` runtime configuration, and NestJS Guard authorization (`@Can`, `@Public`, `@UseGuards`, `APP_GUARD`).
+- `BaseAgent` — injectable Mastra `Agent` subclass with automatic kebab-case `id` derivation and `@Can`-based discovery filtering across `listTools()`, `listAgents()`, and `listWorkflows()`.
+- `BaseTool(definition)` — injectable Mastra `Tool` class factory preserving native input/output validation and `super(options)` runtime configuration.
 - `BaseStep(schemas)` — injectable workflow `Step` class factory with full static schema typing.
 - `BaseWorkflow(schemas)` — injectable Mastra `Workflow` class factory with lifecycle hooks (`onStart`, `onFinish`, `onError`) and NestJS DI-safe `commit()`.
 
-## Tool Authorization
+## Agent Discovery Authorization (`@Can`)
 
-Singleton `BaseTool` (and Mastra `Tool`) providers are automatically discovered by `MastraManager`, registered in `Mastra`, and protected at two layers via NestJS `ExternalContextCreator`:
+Singleton `BaseTool`, `BaseAgent`, and `BaseWorkflow` providers are automatically discovered by `MastraManager` and registered in `Mastra`.
 
-1. **Exposure-time filtering (`"mastra:tool:discovery"`)** — `agent.listTools()` (used by `generate()`, `stream()`, Studio, and `/api/mastra/agents/*`) and `/api/mastra/tools*` automatically hide tools whose authentication, static `@Can(action, Subject)`, or `@UseGuards(...)` checks deny access.
-2. **Execution-time enforcement (`"mastra:tool:execution"`)** — `tool.execute(...)` runs the full NestJS Guard pipeline (including dynamic `@Can(action, (self, input, context) => ...)` callbacks receiving the schema-validated `input` and tool `context`) before executing the tool body.
+To prevent an `Agent` from discovering and invoking unauthorized tools, sub-agents, or workflows on behalf of the current caller, decorate the `BaseTool`, `BaseAgent`, or `BaseWorkflow` class with `@Can(...)` from `@nest-boot/auth`:
 
-Global `APP_GUARD` enhancers (such as `@nest-boot/auth`'s `AuthGuard`) run on both context types, matching `@nestjs/graphql`. Custom `APP_GUARD` implementations that inspect transport-specific objects (e.g. `switchToHttp().getRequest()`) should branch on `context.getType()`. Always read caller identity and permissions from `@nest-boot/auth` (`AuthContext` / `@nest-boot/request-context`); Mastra's `context.requestContext` carries untrusted caller-supplied parameters.
+- **Unrestricted by default**: Tools, sub-agents, and workflows without `@Can(...)` remain visible to any agent that configures them (including anonymous chat endpoints and background `@Cron` / `@Processor` jobs), and direct programmatic calls inside NestJS services are never blocked.
+- **Filtered at agent discovery**: When an agent resolves `listTools()`, `listAgents()`, or `listWorkflows()` (used across `generate()`, `stream()`, and `network()`), any entry whose `@Can(...)` check fails against the current `RequestContext` ability is omitted before schemas or execution dispatch tables are built.
 
 ## Environment Variables
 

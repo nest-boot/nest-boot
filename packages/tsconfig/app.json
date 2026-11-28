@@ -3,8 +3,15 @@
   "display": "App",
   "extends": "./base.json",
   "compilerOptions": {
+    "rootDir": "${configDir}",
     "paths": {
       "@/*": ["${configDir}/src/*"]
     }
-  }
+  },
+  "include": [
+    "${configDir}/src",
+    "${configDir}/test",
+    "${configDir}/vitest.config.ts"
+  ],
+  "exclude": ["${configDir}/node_modules", "${configDir}/dist"]
 }

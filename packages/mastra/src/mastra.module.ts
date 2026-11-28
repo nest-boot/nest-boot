@@ -39,36 +39,31 @@ import {
 import { DiscoveryModule } from "@nestjs/core";
 import { omit } from "lodash-es";
 
+import type {
+  MastraModuleAsyncOptions,
+  MastraModuleOptions,
+} from "./interfaces/mastra-module-options.interface.js";
+import {
+  MASTRA_CONTROLLER_TYPE,
+  UNSUPPORTED_SERVER_KEYS,
+} from "./mastra.constants.js";
 import { MastraController } from "./mastra.controller.js";
 import { MastraManager } from "./mastra.manager.js";
 import {
-  type ASYNC_OPTIONS_TYPE,
   ConfigurableModuleClass,
   MASTRA_MODULE_OPTIONS,
-  type MastraModuleOptions,
-  normalizeMastraServerOptions,
-  normalizeMastraStudioOptions,
   type OPTIONS_TYPE,
-  resolveMastraStudioBasePath,
 } from "./mastra.module-definition.js";
 import { MastraStudioMiddleware } from "./mastra-studio.middleware.js";
-import { resolveMastraControllerOptions } from "./resolve-mastra-controller-options.util.js";
-import { assertMastraPrimitivesAvailable } from "./tool-guard.js";
-
-const MASTRA_CONTROLLER_TYPE = Symbol("MASTRA_CONTROLLER_TYPE");
+import {
+  normalizeMastraServerOptions,
+  normalizeMastraStudioOptions,
+  resolveMastraStudioBasePath,
+} from "./utils/normalize-mastra-options.util.js";
+import { resolveMastraControllerOptions } from "./utils/resolve-mastra-controller-options.util.js";
 
 const POSTGRES_PROTOCOLS = new Set(["postgres:", "postgresql:"]);
 const HTTP_PROTOCOLS = new Set(["http:", "https:"]);
-const UNSUPPORTED_SERVER_KEYS = [
-  "port",
-  "host",
-  "apiRoutes",
-  "middleware",
-  "cors",
-  "apiPrefix",
-  "auth",
-  "customRouteAuthConfig",
-] as const;
 
 /**
  * Resolves a PostgreSQL connection string from `MASTRA_DATABASE_URL ?? DATABASE_URL`
@@ -228,10 +223,6 @@ function extractMastraCoreConfig(options: MastraModuleOptions): MastraConfig {
     }
   }
   const mastraConfig = omit(options, ["server", "studio"]);
-  assertMastraPrimitivesAvailable({
-    tools: mastraConfig.tools,
-    agents: mastraConfig.agents,
-  });
 
   const storage = mastraConfig.storage ?? createDefaultMastraStorage();
   const observability =
@@ -333,8 +324,6 @@ const MASTRA_SHARED_EXPORTS = [
   MastraManager,
   MastraService,
 ];
-
-export type MastraModuleAsyncOptions = typeof ASYNC_OPTIONS_TYPE;
 
 /**
  * Global NestJS-native Mastra module.

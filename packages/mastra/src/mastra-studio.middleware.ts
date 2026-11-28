@@ -25,13 +25,13 @@ import express, {
   type Router,
 } from "express";
 
+import type { MastraModuleOptions } from "./interfaces/mastra-module-options.interface.js";
+import { MASTRA_MODULE_OPTIONS } from "./mastra.module-definition.js";
 import {
-  MASTRA_MODULE_OPTIONS,
-  type MastraModuleOptions,
   normalizeMastraServerOptions,
   normalizeMastraStudioOptions,
   resolveMastraStudioBasePath,
-} from "./mastra.module-definition.js";
+} from "./utils/normalize-mastra-options.util.js";
 
 const requireFromHere = createRequire(import.meta.url);
 

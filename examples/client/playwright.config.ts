@@ -7,7 +7,6 @@ const serverUrl = process.env.SERVER_E2E_URL ?? "http://127.0.0.1:4100";
 const clientPort = new URL(clientUrl).port || "80";
 const serverPort = new URL(serverUrl).port || "80";
 const clientHealthUrl = `http://[::1]:${clientPort}`;
-const serverHealthUrl = `http://[::1]:${serverPort}`;
 const browserChannel = process.env.PLAYWRIGHT_BROWSER_CHANNEL;
 const parsedWorkers = Number(process.env.PLAYWRIGHT_WORKERS);
 const configuredWorkers =
@@ -52,8 +51,8 @@ export default defineConfig({
   webServer: [
     {
       command: skipBuild
-        ? "pnpm --filter @nest-boot/example-server start:e2e"
-        : "pnpm --filter @nest-boot/example-server build && pnpm --filter @nest-boot/example-server start:e2e",
+        ? "node ./examples/client/e2e/utils/start-e2e-backend.ts"
+        : "pnpm --filter @nest-boot/example-server build && node ./examples/client/e2e/utils/start-e2e-backend.ts",
       cwd: workspaceRoot,
       env: { PORT: serverPort, APP_URL: clientUrl, AUTH_URL: serverUrl },
       gracefulShutdown: {
@@ -62,7 +61,9 @@ export default defineConfig({
       },
       reuseExistingServer: false,
       timeout: 120_000,
-      url: `${serverHealthUrl}/api/auth/ok`,
+      wait: {
+        stdout: /Example E2E backend ready/,
+      },
     },
     {
       command: skipBuild

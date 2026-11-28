@@ -1,4 +1,5 @@
 import config from "./library.json" with { type: "json" };
+
 it("declares the library preset", () => {
   expect(config).toEqual({
     $schema: "https://json.schemastore.org/tsconfig",
@@ -8,15 +9,14 @@ it("declares the library preset", () => {
       composite: true,
       declaration: true,
       removeComments: false,
-      rootDir: "${configDir}/src",
+      rootDir: "${configDir}",
       outDir: "${configDir}/dist",
     },
-    include: ["${configDir}/src/**/*"],
-    exclude: [
-      "${configDir}/node_modules",
-      "${configDir}/dist",
+    include: [
+      "${configDir}/src",
       "${configDir}/test",
-      "${configDir}/**/*.spec.ts",
+      "${configDir}/vitest.config.ts",
     ],
+    exclude: ["${configDir}/node_modules", "${configDir}/dist"],
   });
 });
