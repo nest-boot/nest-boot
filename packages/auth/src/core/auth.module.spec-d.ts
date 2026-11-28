@@ -1,13 +1,13 @@
 import type { AbilityBuilder } from "@casl/ability";
 import { expectTypeOf } from "vitest";
 
-import { AuthModule } from "../src/core/auth.module.js";
 import type {
   AuthAbility,
   BuildAbilityContext,
   PermissionName,
   RoleName,
-} from "../src/index.js";
+} from "../index.js";
+import { AuthModule } from "./auth.module.js";
 
 // Checked by the auth typecheck task, not by the runtime test runner.
 type ValidRoles = "owner" | "admin" | "super-admin" | "level2" | "a";

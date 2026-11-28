@@ -7,7 +7,7 @@ export default defineConfig([
   eslintPlugin.configs.recommended,
   {
     files: ["src/rules/*.ts"],
-    ignores: ["**/*.spec.ts", "src/rules/index.ts"],
+    ignores: ["**/*.spec.ts", "**/*.spec-d.ts", "src/rules/index.ts"],
     rules: {
       "eslint-plugin/require-meta-docs-description": "error",
       "eslint-plugin/require-meta-docs-recommended": "error",

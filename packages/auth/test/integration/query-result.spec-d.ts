@@ -3,17 +3,17 @@ import { expectTypeOf } from "vitest";
 import type {
   ApiKey,
   ApiKeyRecord,
-} from "../src/api-key/entities/api-key.entity.js";
-import type { ApiKeyObject } from "../src/api-key/objects/api-key.object.js";
-import type { SystemApiKey } from "../src/api-key/objects/system-api-key.object.js";
-import type { UserApiKey } from "../src/api-key/objects/user-api-key.object.js";
-import type { WorkspaceApiKey } from "../src/api-key/objects/workspace-api-key.object.js";
-import type { ApiKeyService } from "../src/api-key/services/api-key.service.js";
-import type { SystemApiKeyService } from "../src/api-key/services/system-api-key.service.js";
-import type { UserApiKeyService } from "../src/api-key/services/user-api-key.service.js";
-import type { WorkspaceApiKeyService } from "../src/api-key/services/workspace-api-key.service.js";
-import type { AccountService } from "../src/core/services/account.service.js";
-import type { SessionService } from "../src/core/services/session.service.js";
+} from "../../src/api-key/entities/api-key.entity.js";
+import type { ApiKeyObject } from "../../src/api-key/objects/api-key.object.js";
+import type { SystemApiKey } from "../../src/api-key/objects/system-api-key.object.js";
+import type { UserApiKey } from "../../src/api-key/objects/user-api-key.object.js";
+import type { WorkspaceApiKey } from "../../src/api-key/objects/workspace-api-key.object.js";
+import type { ApiKeyService } from "../../src/api-key/services/api-key.service.js";
+import type { SystemApiKeyService } from "../../src/api-key/services/system-api-key.service.js";
+import type { UserApiKeyService } from "../../src/api-key/services/user-api-key.service.js";
+import type { WorkspaceApiKeyService } from "../../src/api-key/services/workspace-api-key.service.js";
+import type { AccountService } from "../../src/core/services/account.service.js";
+import type { SessionService } from "../../src/core/services/session.service.js";
 
 describe("Credential-free query result types", () => {
   it("omits session tokens and account credentials from list result types", () => {

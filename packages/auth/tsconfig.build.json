@@ -1,8 +1,3 @@
 {
-  "extends": "@nest-boot/tsconfig/library.json",
-  "compilerOptions": {
-    "rootDir": "./src"
-  },
-  "include": ["src"],
-  "exclude": ["node_modules", "test", "dist", "**/*.spec.ts"]
+  "extends": "@nest-boot/tsconfig/library.build.json"
 }
