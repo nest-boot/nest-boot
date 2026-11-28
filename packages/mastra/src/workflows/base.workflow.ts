@@ -1,21 +1,21 @@
-import type {
-  InferPublicSchema,
-  InferStandardSchemaOutput,
-  PublicSchema,
-  StandardSchemaWithJSON,
-} from "@mastra/core/schema";
+import type { InferPublicSchema, PublicSchema } from "@mastra/core/schema";
 import {
-  type AnyWorkflow,
   type DefaultEngineType,
   type Step,
   Workflow as MastraWorkflow,
-  type WorkflowConfig,
   type WorkflowErrorCallbackInfo,
   type WorkflowFinishCallbackResult,
   type WorkflowOptions,
   type WorkflowStartCallbackInfo,
 } from "@mastra/core/workflows";
 import { kebabCase } from "lodash-es";
+
+import type {
+  BaseWorkflowConstructor,
+  BaseWorkflowLifecycleHooks,
+  BaseWorkflowOptions,
+  BaseWorkflowSchemas,
+} from "../interfaces/base-workflow-options.interface.js";
 
 const BASE_WORKFLOW_MARKER = Symbol("nest-mastra-base-workflow");
 /**
@@ -26,99 +26,8 @@ const BASE_WORKFLOW_MARKER = Symbol("nest-mastra-base-workflow");
  */
 const NON_THENABLE_SENTINEL = Object.freeze({});
 
-type WorkflowStaticKeys =
-  | "id"
-  | "description"
-  | "inputSchema"
-  | "outputSchema"
-  | "stateSchema"
-  | "requestContextSchema";
-
-/** Extracts the validated input type from a `BaseWorkflow` subclass or Mastra `Workflow`. */
-export type WorkflowInput<T extends AnyWorkflow> = InferStandardSchemaOutput<
-  T["inputSchema"]
->;
-
-/** Extracts the validated output type from a `BaseWorkflow` subclass or Mastra `Workflow`. */
-export type WorkflowOutput<T extends AnyWorkflow> = InferStandardSchemaOutput<
-  T["outputSchema"]
->;
-
-/** Extracts the optional state type from a `BaseWorkflow` subclass or Mastra `Workflow`. */
-export type WorkflowState<T extends AnyWorkflow> =
-  NonNullable<T["stateSchema"]> extends StandardSchemaWithJSON
-    ? InferStandardSchemaOutput<NonNullable<T["stateSchema"]>>
-    : unknown;
-
-/** Extracts the optional request context type from a `BaseWorkflow` subclass or Mastra `Workflow`. */
-export type WorkflowRequestContext<T extends AnyWorkflow> =
-  NonNullable<T["requestContextSchema"]> extends StandardSchemaWithJSON
-    ? InferStandardSchemaOutput<NonNullable<T["requestContextSchema"]>>
-    : unknown;
-
 type InferOptionalSchema<TSchema extends PublicSchema | undefined> =
   TSchema extends PublicSchema ? InferPublicSchema<TSchema> : unknown;
-
-/** Static definition (`id`, `description`, and schemas) passed exclusively to `BaseWorkflow(definition)`. */
-export type BaseWorkflowSchemas<
-  TInputSchema extends PublicSchema,
-  TOutputSchema extends PublicSchema,
-  TStateSchema extends PublicSchema | undefined = undefined,
-  TRequestContextSchema extends PublicSchema | undefined = undefined,
-> = Omit<
-  Pick<
-    WorkflowConfig<
-      string,
-      InferOptionalSchema<TStateSchema>,
-      InferPublicSchema<TInputSchema>,
-      InferPublicSchema<TOutputSchema>,
-      Step[],
-      InferOptionalSchema<TRequestContextSchema>
-    >,
-    WorkflowStaticKeys
-  >,
-  "id"
-> & {
-  id?: string;
-  inputSchema: TInputSchema;
-  outputSchema: TOutputSchema;
-  stateSchema?: TStateSchema;
-  requestContextSchema?: TRequestContextSchema;
-};
-
-/** Runtime options passed exclusively to `super(options)` inside a `BaseWorkflow` subclass. */
-export type BaseWorkflowOptions = Omit<
-  WorkflowConfig<string, any, any, any, Step[], any>,
-  WorkflowStaticKeys | "mastra" | "steps"
->;
-
-/** Optional lifecycle hooks subclasses may implement as class methods. */
-export interface BaseWorkflowLifecycleHooks {
-  onStart?(info: WorkflowStartCallbackInfo): Promise<void> | void;
-  onFinish?(result: WorkflowFinishCallbackResult): Promise<void> | void;
-  onError?(errorInfo: WorkflowErrorCallbackInfo): Promise<void> | void;
-}
-
-/** Constructor type returned by the `BaseWorkflow(schemas)` class factory. */
-export type BaseWorkflowConstructor<
-  TInput,
-  TOutput,
-  TState = unknown,
-  TRequestContext = unknown,
-> = abstract new (
-  options?: BaseWorkflowOptions,
-) => MastraWorkflow<
-  DefaultEngineType,
-  Step[],
-  string,
-  TState,
-  TInput,
-  TOutput,
-  TInput,
-  TRequestContext,
-  1
-> &
-  BaseWorkflowLifecycleHooks;
 
 /**
  * NestJS-native Mastra workflow base class factory directly extending Mastra `Workflow`.

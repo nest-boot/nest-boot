@@ -7,7 +7,8 @@ import {
   UnauthorizedException,
 } from "@nestjs/common";
 
-import { type AnyMastraTool, BaseTool } from "./base.tool.js";
+import { BaseTool } from "../tools/base.tool.js";
+import type { AnyMastraTool } from "../types/tool.type.js";
 
 type CanAuthorizedSubject = Parameters<typeof can>[1];
 

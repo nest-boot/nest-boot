@@ -2,10 +2,8 @@ import { Mastra } from "@mastra/core/mastra";
 import { Can } from "@nest-boot/auth";
 import type { DynamicControllerOptions } from "@nest-boot/common";
 
-import {
-  type MastraModuleOptions,
-  normalizeMastraServerOptions,
-} from "./mastra.module-definition.js";
+import type { MastraModuleOptions } from "../interfaces/mastra-module-options.interface.js";
+import { normalizeMastraServerOptions } from "./normalize-mastra-options.util.js";
 
 /**
  * Resolves route path and class decorators for the dynamic `MastraController`.

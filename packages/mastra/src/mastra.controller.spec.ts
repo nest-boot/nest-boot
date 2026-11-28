@@ -11,8 +11,8 @@ import { NotFoundException, PayloadTooLargeException } from "@nestjs/common";
 import { ApplicationConfig } from "@nestjs/core";
 import type { Request, Response } from "express";
 
+import type { MastraModuleOptions } from "./interfaces/mastra-module-options.interface.js";
 import { MastraController } from "./mastra.controller.js";
-import type { MastraModuleOptions } from "./mastra.module-definition.js";
 
 /**
  * Builds a minimal Express-like request object for `MastraController` unit tests.

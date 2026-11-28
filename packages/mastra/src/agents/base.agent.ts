@@ -1,11 +1,8 @@
-import { Agent as MastraAgent, type AgentConfig } from "@mastra/core/agent";
+import { Agent as MastraAgent } from "@mastra/core/agent";
 import { kebabCase } from "lodash-es";
 
-import { wrapAgentDiscovery } from "./agent-discovery.js";
-
-export type BaseAgentConfig = Omit<AgentConfig, "id"> & {
-  id?: string;
-};
+import type { BaseAgentConfig } from "../interfaces/base-agent-options.interface.js";
+import { wrapAgentDiscovery } from "../utils/agent-discovery.util.js";
 
 /**
  * Base NestJS-injectable Mastra agent that automatically derives its `id`
