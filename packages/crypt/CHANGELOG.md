@@ -1,3 +1,13 @@
+## 8.1.0
+
+### Minor Changes
+
+- e65ce7c: Support optional HKDF `context` domain separation (`CryptOptions`) in `CryptService.encrypt()`, `CryptService.decrypt()`, and `@EncryptedProperty({ context })`, and refactor `@nest-boot/jwt` to encrypt database signing keys via the injected `CryptService` (`{ context: "jwt" }`) instead of a separate `secret` option.
+- 4c9ae88: Align dynamic module static configuration methods with the NestJS community guidelines:
+  
+  - Mark `I18nModule` and `ViewModule` with `@Global()` directly (removing `isGlobal` registration extras and supporting zero-config direct `I18nModule` imports alongside `ViewModule`).
+  - Switch global once-per-application infrastructure modules (`CryptModule`, `GraphQLConnectionModule`, `HashModule`, `I18nModule`, `LoggerModule`, `MailerModule`, `RedisModule`, `StorageModule`, and `ViewModule`) from `register` / `registerAsync` to `forRoot` / `forRootAsync`, with optional default `options = {}` on `forRoot()`.
+
 ## 8.0.4 (2026-10-10)
 
 ### 🚀 Features

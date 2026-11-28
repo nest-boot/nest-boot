@@ -1,3 +1,18 @@
+## 8.1.0
+
+### Minor Changes
+
+- 4c9ae88: Align dynamic module static configuration methods with the NestJS community guidelines:
+  
+  - Mark `I18nModule` and `ViewModule` with `@Global()` directly (removing `isGlobal` registration extras and supporting zero-config direct `I18nModule` imports alongside `ViewModule`).
+  - Switch global once-per-application infrastructure modules (`CryptModule`, `GraphQLConnectionModule`, `HashModule`, `I18nModule`, `LoggerModule`, `MailerModule`, `RedisModule`, `StorageModule`, and `ViewModule`) from `register` / `registerAsync` to `forRoot` / `forRootAsync`, with optional default `options = {}` on `forRoot()`.
+
+### Patch Changes
+
+- Updated dependencies [97fad07]
+- Updated dependencies [043a007]
+  - @nest-boot/health-check@8.1.0
+
 ## 8.0.4 (2026-10-10)
 
 ### 🚀 Features

@@ -1,3 +1,11 @@
+## 8.1.0
+
+### Minor Changes
+
+- 3f52d8a: Add the `@/*` path alias (`${configDir}/src/*`) to `@nest-boot/tsconfig/app.json`, resolve configured TypeScript `paths` aliases during `nb` source execution in `@nest-boot/command`, and preserve reflected `@Field()` complexity defaults when merged with untyped `@ResolveField()` handlers in `@nestjs/graphql` 14.2+.
+- df7cae5: Add `library.build.json` and `app.build.json` build presets (excluding `test`, `**/*.spec.ts`, and `**/*.spec-d.ts`) and align `library.json` and `app.json` as project check/IDE presets including `src`, `test`, and `vitest.config.ts`.
+- 7acb465: Require Vitest 5 (`^5.1.1`) in peer dependencies.
+
 # 8.0.0 (2026-10-10)
 
 ### 🚀 Features
