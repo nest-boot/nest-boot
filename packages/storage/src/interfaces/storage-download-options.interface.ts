@@ -3,7 +3,7 @@ export interface StorageDownloadOptions {
   /** Mounts the download route and allows link signing. Defaults to true. */
   enabled?: boolean;
 
-  /** Static route path under the Nest global prefix. Defaults to `/files`. */
+  /** Static route path under the Nest global prefix. Defaults to `/downloads`. */
   path?: string;
 
   /** Public origin serving the download route. Defaults to root-relative links. */
@@ -22,4 +22,13 @@ export interface StorageDownloadOptions {
 
   /** Overrides the response content type. Return null to disallow an object key. */
   resolveContentType?: (key: string) => string | null;
+}
+
+/** Options for {@link StorageService.createFileDownloadUrl}. */
+export interface StorageCreateFileDownloadUrlOptions {
+  /** Identity for which the caller authorized the download (written to JWT `sub`). */
+  subject: string;
+
+  /** Overrides `download.expiresIn` for this link (in seconds, between 1 and 604800). */
+  expiresIn?: number;
 }

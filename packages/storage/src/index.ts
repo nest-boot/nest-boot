@@ -1,4 +1,4 @@
 export * from "./interfaces/index.js";
-export { StorageDownloadService } from "./services/storage-download.service.js";
-export * from "./storage.js";
 export * from "./storage.module.js";
+export * from "./storage.service.js";
+export * from "./storage-upload-limits.constants.js";

@@ -1,11 +1,12 @@
 import { randomUUID } from "node:crypto";
-import { finished } from "node:stream/promises";
+import { createServer, type Server } from "node:http";
+import { Readable } from "node:stream";
 
 import { CreateBucketCommand, S3Client } from "@aws-sdk/client-s3";
 import { type INestApplication, Injectable, Module } from "@nestjs/common";
 import { Test } from "@nestjs/testing";
 
-import { Storage, StorageModule } from "../../src/index.js";
+import { StorageModule, StorageService } from "../../src/index.js";
 
 const requiredS3Env = [
   "STORAGE_ACCESS_KEY_ID",
@@ -35,7 +36,7 @@ function getS3Bucket(): string {
 
 @Injectable()
 class StorageConsumer {
-  constructor(readonly storage: Storage) {}
+  constructor(readonly storage: StorageService) {}
 }
 
 @Module({ providers: [StorageConsumer] })
@@ -43,7 +44,16 @@ class FeatureModule {}
 
 @Module({
   imports: [
-    StorageModule.forRoot({ bucket: testBucket, rootPath: testRoot }),
+    StorageModule.forRoot({
+      bucket: testBucket,
+      rootPath: testRoot,
+      ssrf: {
+        allowedHosts: ["127.0.0.1"],
+      },
+      upload: {
+        limits: [{ fileSize: 1024 * 1024, mimeTypes: ["text/*", "image/*"] }],
+      },
+    }),
     FeatureModule,
   ],
 })
@@ -51,7 +61,8 @@ class AppModule {}
 
 describeIfS3Configured("StorageModule - e2e", () => {
   let app: INestApplication;
-  let storage: Storage;
+  let storage: StorageService;
+  const createdKeys: string[] = [];
 
   beforeAll(async () => {
     const setupClient = createSetupClient();
@@ -64,117 +75,157 @@ describeIfS3Configured("StorageModule - e2e", () => {
 
     app = module.createNestApplication();
     await app.init();
-    storage = app.get(Storage);
+    storage = app.get(StorageService);
   }, 60_000);
 
   afterAll(async () => {
-    const entries = await storage.listEntries("", { recursive: true });
-    await storage.deleteFile(
-      entries
-        .filter((entry) => entry.type === "file")
-        .map((entry) => entry.path),
-    );
+    if (createdKeys.length > 0) {
+      await storage.deleteFile(createdKeys);
+    }
     await app.close();
   }, 60_000);
 
-  it("provides the same global Storage to feature modules", () => {
+  it("provides the same global StorageService to feature modules", () => {
     const consumer = app.get(StorageConsumer);
 
     expect(consumer.storage).toBe(storage);
     expect(() => app.get(S3Client)).toThrow();
   });
 
-  it("stores, lists, copies, moves, and deletes files", async () => {
-    await Promise.all([
-      storage.writeFile("root.txt", "root", { ContentType: "text/plain" }),
-      storage.writeFile("docs/read me.txt", "read me", {
-        ContentType: "text/plain",
-      }),
-      storage.writeFile("docs/guides/start.txt", "start", {
-        ContentType: "text/plain",
-      }),
-    ]);
-
-    expect(entryKinds(await storage.listEntries())).toEqual([
-      { path: "docs", type: "directory" },
-      { path: "root.txt", type: "file" },
-    ]);
-    expect(entryKinds(await storage.listEntries("docs"))).toEqual([
-      { path: "docs/guides", type: "directory" },
-      { path: "docs/read me.txt", type: "file" },
-    ]);
-    expect(
-      entryKinds(await storage.listEntries("", { recursive: true })),
-    ).toEqual([
-      { path: "docs", type: "directory" },
-      { path: "docs/guides", type: "directory" },
-      { path: "docs/guides/start.txt", type: "file" },
-      { path: "docs/read me.txt", type: "file" },
-      { path: "root.txt", type: "file" },
-    ]);
-
-    await storage.copyFile("docs/read me.txt", "copies/read me.txt");
-    await storage.moveFile("copies/read me.txt", "moved/read me.txt");
-    await storage.deleteFile(["root.txt", "moved/read me.txt"]);
-
-    const entries = await storage.listEntries("", { recursive: true });
-    expect(
-      entries.filter((entry) => entry.type === "file").map(({ path }) => path),
-    ).toEqual(["docs/guides/start.txt", "docs/read me.txt"]);
-  }, 30_000);
-
-  it("reads files and supports readable and writable streams", async () => {
-    await expect(storage.readFile("docs/read me.txt", "utf8")).resolves.toBe(
-      "read me",
+  it("uploads into fixed tmp/ and files/YYYY/MM/DD/ paths, stats, streams, and deletes", async () => {
+    const tempKey = await storage.uploadTemporaryFile("temporary note", {
+      contentType: "text/plain",
+    });
+    const permanentKey = await storage.uploadFile(
+      Readable.from(["permanent report"]),
+      { contentType: "text/plain" },
     );
-    await expect(storage.readFile("docs/read me.txt")).resolves.toEqual(
-      Buffer.from("read me"),
+
+    expect(tempKey).toMatch(/^tmp\/[^/]+\.txt$/);
+    expect(permanentKey).toMatch(/^files\/\d{4}\/\d{2}\/\d{2}\/[^/]+\.txt$/);
+
+    await expect(storage.statFile(permanentKey)).resolves.toMatchObject({
+      size: 16,
+      contentType: "text/plain",
+    });
+    await expect(storage.statFile("files/missing.txt")).resolves.toBeNull();
+
+    await expect(storage.readFile(permanentKey, "utf8")).resolves.toBe(
+      "permanent report",
+    );
+    await expect(storage.readFile(tempKey)).resolves.toEqual(
+      Buffer.from("temporary note"),
     );
 
     const chunks: Buffer[] = [];
-    for await (const chunk of storage.createReadStream("docs/read me.txt", {
+    for await (const chunk of storage.createReadStream(permanentKey, {
       start: 0,
-      end: 3,
+      end: 8,
     })) {
       chunks.push(Buffer.from(chunk));
     }
-    expect(Buffer.concat(chunks).toString()).toBe("read");
+    expect(Buffer.concat(chunks).toString()).toBe("permanent");
 
-    const writable = storage.createWriteStream("streams/output.txt", {
-      ContentType: "text/plain",
+    await storage.deleteFile([tempKey, permanentKey]);
+    await expect(storage.statFile(permanentKey)).resolves.toBeNull();
+  }, 30_000);
+
+  it("stages client presigned POST uploads, previews resourceUrl, and promotes via uploadFileFromUrl", async () => {
+    const upload = await storage.createTemporaryFileUploadUrl({
+      name: "note.txt",
+      fileSize: 12,
+      mimeType: "text/plain",
     });
-    writable.end("stream upload");
-    await finished(writable);
-    await expect(storage.readFile("streams/output.txt", "utf8")).resolves.toBe(
-      "stream upload",
+
+    const form = new FormData();
+    for (const field of upload.fields) {
+      form.append(field.name, field.value);
+    }
+    form.append("file", new Blob(["hello staged"], { type: "text/plain" }));
+
+    const uploadResponse = await fetch(upload.url, {
+      method: "POST",
+      body: form,
+    });
+    expect(uploadResponse.status).toBe(201);
+
+    const previewResponse = await fetch(upload.resourceUrl);
+    expect(previewResponse.ok).toBe(true);
+    expect(previewResponse.headers.get("content-disposition")).toBe(
+      "attachment",
+    );
+    await expect(previewResponse.text()).resolves.toBe("hello staged");
+
+    const permanentKey = await storage.uploadFileFromUrl(upload.resourceUrl);
+    const secondPermanentKey = await storage.uploadFileFromUrl(
+      upload.resourceUrl,
+    );
+    const stagedFieldKey =
+      upload.fields.find((field) => field.name === "key")?.value ?? "";
+    const relativeTmpKey = stagedFieldKey.slice(testRoot.length + 1);
+    createdKeys.push(relativeTmpKey, permanentKey, secondPermanentKey);
+
+    expect(permanentKey).toMatch(/^files\/\d{4}\/\d{2}\/\d{2}\/.+\.txt$/);
+    expect(secondPermanentKey).not.toBe(permanentKey);
+    await expect(storage.statFile(relativeTmpKey)).resolves.toMatchObject({
+      size: 12,
+    });
+    const permanentStat = await storage.statFile(permanentKey);
+    expect(permanentStat).toMatchObject({
+      size: 12,
+      contentType: "text/plain",
+    });
+    expect(permanentStat?.metadata).toBeUndefined();
+    await expect(storage.readFile(permanentKey, "utf8")).resolves.toBe(
+      "hello staged",
+    );
+
+    // Unsigned tmp URL or tampered signature cannot promote staged objects with server credentials
+    const unsignedTmpUrl = upload.resourceUrl.split("?", 1)[0] ?? "";
+    await expect(storage.uploadFileFromUrl(unsignedTmpUrl)).rejects.toThrow(
+      "Invalid or expired temporary file URL",
     );
   }, 30_000);
 
-  it("creates direct and temporary object URLs", async () => {
-    await expect(storage.getUrl("docs/read me.txt")).resolves.toContain(
-      `${testRoot}/docs/read%20me.txt`,
-    );
-
-    const temporaryUrl = await storage.createTemporaryUrl("docs/read me.txt", {
-      expiresIn: 60,
+  it("streams external URLs directly into S3 without RequestContext while honoring ssrf.allowedHosts", async () => {
+    const server: Server = createServer((_req, res) => {
+      res.writeHead(200, { "content-type": "image/png" });
+      res.end("remote-png-data");
     });
-    const response = await fetch(temporaryUrl);
+    await new Promise<void>((resolve) => {
+      server.listen(0, "127.0.0.1", () => {
+        resolve();
+      });
+    });
 
-    expect(response.ok).toBe(true);
-    await expect(response.text()).resolves.toBe("read me");
+    try {
+      const address = server.address();
+      if (!address || typeof address === "string") {
+        throw new Error("Expected TCP server address");
+      }
+
+      const key = await storage.uploadFileFromUrl(
+        `http://127.0.0.1:${String(address.port)}/avatar.png`,
+        { allowedMimeTypes: ["image/*"] },
+      );
+      createdKeys.push(key);
+      expect(key).toMatch(/^files\/\d{4}\/\d{2}\/\d{2}\/.+\.png$/);
+      await expect(storage.readFile(key, "utf8")).resolves.toBe(
+        "remote-png-data",
+      );
+
+      await expect(
+        storage.uploadFileFromUrl("http://169.254.169.254/latest/meta-data/"),
+      ).rejects.toThrow("disallowed network address");
+    } finally {
+      await new Promise<void>((resolve) => {
+        server.close(() => {
+          resolve();
+        });
+      });
+    }
   }, 30_000);
 });
-
-/**
- * Returns paths and entry types returned by the storage listing.
- * @param entries - Storage entries whose paths and kinds are inspected.
- * @returns Paths and entry types returned by the storage listing.
- */
-function entryKinds(
-  entries: Awaited<ReturnType<Storage["listEntries"]>>,
-): { path: string; type: "file" | "directory" }[] {
-  return entries.map(({ path, type }) => ({ path, type }));
-}
 
 /**
  * Creates the test bucket when it is not already available.
@@ -199,7 +250,7 @@ async function ensureBucketExists(
 }
 
 /**
- * Returns s3 client used to prepare integration test resources.
+ * Returns S3 client used to prepare integration test resources.
  * @returns S3 client used to prepare integration test resources.
  */
 function createSetupClient(): S3Client {
@@ -234,9 +285,9 @@ function getSetupBucket(): string {
 }
 
 /**
- * Returns nonempty value of the required storage setting.
+ * Returns non-empty value of the required storage setting.
  * @param name - Name used to identify the resource.
- * @returns Nonempty value of the required storage setting.
+ * @returns Non-empty value of the required storage setting.
  */
 function requiredStorageEnv(name: string): string {
   const value = process.env[name];

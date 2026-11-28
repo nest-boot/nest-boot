@@ -8,8 +8,9 @@ import {
   VERSION_NEUTRAL,
 } from "@nestjs/common";
 
-import { StorageDownloadService } from "../services/storage-download.service.js";
-import { DEFAULT_STORAGE_DOWNLOAD_PATH } from "../utils/resolve-storage-download-path.util.js";
+import { RESOLVE_FILE_DOWNLOAD_URL } from "../storage.constants.js";
+import { StorageService } from "../storage.service.js";
+import { DEFAULT_STORAGE_DOWNLOAD_PATH } from "../utils/resolve-storage-route-path.util.js";
 
 /** Validates storage download requests and redirects to S3. */
 @Controller({
@@ -17,8 +18,18 @@ import { DEFAULT_STORAGE_DOWNLOAD_PATH } from "../utils/resolve-storage-download
   version: VERSION_NEUTRAL,
 })
 export class StorageDownloadController {
-  constructor(private readonly downloads: StorageDownloadService) {}
+  /**
+   * Creates a StorageDownloadController instance.
+   * @param storage - Storage service that verifies tokens and signs S3 redirects.
+   */
+  constructor(private readonly storage: StorageService) {}
 
+  /**
+   * Verifies the query download token and redirects the client to S3.
+   * @param key - Wildcard path segments identifying the requested file.
+   * @param token - Signed JWT download token from the query string.
+   * @returns Redirect target descriptor containing the S3 presigned URL.
+   */
   // Express 5 path-to-regexp named wildcard; Nest Boot HTTP packages target Express 5.
   @Get("*key")
   @Redirect()
@@ -28,6 +39,8 @@ export class StorageDownloadController {
     @Param("key") key: string[],
     @Query("token") token: unknown,
   ): Promise<{ url: string }> {
-    return { url: await this.downloads.downloadUrl(key.join("/"), token) };
+    return {
+      url: await this.storage[RESOLVE_FILE_DOWNLOAD_URL](key.join("/"), token),
+    };
   }
 }

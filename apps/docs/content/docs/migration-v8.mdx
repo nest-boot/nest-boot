@@ -103,7 +103,7 @@ Queue job contracts now live in `readonly jobSchemas`, replacing BaseQueue's Dat
 - Replace `register()` and `registerAsync()` with `forRoot()` and `forRootAsync()`
   on global application-wide modules (`CryptModule`, `GraphQLConnectionModule`,
   `HashModule`, `I18nModule`, `LoggerModule`, `MailerModule`, `RedisModule`,
-  `MetricsModule`, `HealthCheckModule`, `StagedUploadModule`, `StorageModule`,
+  `MetricsModule`, `HealthCheckModule`, `StorageModule`,
   and `ViewModule`). `I18nModule` and `ViewModule` are now decorated with
   `@Global()` directly (supporting direct static imports as well); remove any
   `isGlobal` option passed during registration.
@@ -113,15 +113,18 @@ Queue job contracts now live in `readonly jobSchemas`, replacing BaseQueue's Dat
 - When using MikroORM, upgrade to version 7.2 and import SQL types and drivers
   from the supported package entry points such as `@mikro-orm/sql` and
   `@mikro-orm/sqlite`.
-- Replace `@nest-boot/file-upload` with `@nest-boot/staged-upload`. The core
-  module is now global and transport-independent. GraphQL applications must
-  also install and import `@nest-boot/staged-upload-graphql` to keep the
-  `createStagedUploads` mutation. Import `StagedUploadInput`, `StagedUpload`,
-  and `StagedUploadField` from the GraphQL package; use `StagedUploadRequest`
-  and `StagedUploadResult` for transport-independent service types.
-- If you already use the v8 beta GraphQL adapter, replace
-  `@nest-boot/graphql-staged-upload` with `@nest-boot/staged-upload-graphql`
-  and rename `GraphQLStagedUploadModule` to `StagedUploadGraphQLModule`.
+- Replace `@nest-boot/file-upload`, `@nest-boot/staged-upload`, and
+  `@nest-boot/staged-upload-graphql` with unified `@nest-boot/storage`
+  (`StorageService`) and `@nest-boot/storage-graphql` (`StorageGraphQLModule`).
+  Configure upload limits under `StorageModule.forRoot({ upload })`, inject
+  `StorageService` instead of `Storage` or `StagedUploadService`, replace
+  arbitrary-key writes and `persist()` with `createTemporaryFileUploadUrl()`,
+  `uploadFileFromUrl()`, `uploadTemporaryFile()`, and `uploadFile()` (which manage
+  fixed `tmp/` and `files/YYYY/MM/DD/` keys automatically), and update GraphQL
+  clients to call `createTemporaryFileUploadUrls`. Drain pending legacy staged
+  uploads before deployment (or have clients request a fresh upload form),
+  because `uploadFileFromUrl()` requires the signed `resourceUrl` returned by
+  `createTemporaryFileUploadUrl()` and rejects unsigned S3 POST `Location` URLs.
 - Remove `@nest-boot/row-level-security`. Use the upstream PostgreSQL or PGlite
   driver, `@Entity({ policies })`, and `em.setSessionContext()` instead of the
   custom drivers, decorators, runtime state, and `AuthTransactionContext`.

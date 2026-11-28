@@ -3,7 +3,7 @@ import { type StorageModuleOptions } from "../interfaces/storage-module-options.
 /**
  * Loads storage configuration with explicit options overriding the environment.
  * @param options - Configuration for this operation.
- * @returns Storage options derived from environment variables.
+ * @returns Storage options derived from environment variables and explicit options.
  */
 export function loadStorageOptionsFromEnv(
   options: StorageModuleOptions = {},
@@ -30,6 +30,7 @@ export function loadStorageOptionsFromEnv(
     ...(accessKeyId ? { accessKeyId } : {}),
     ...(bucket ? { bucket } : {}),
     ...(bucketEndpoint === undefined ? {} : { bucketEndpoint }),
+    ...(options.download ? { download: options.download } : {}),
     ...(endpointUrl ? { endpointUrl } : {}),
     ...(forcePathStyle === undefined ? {} : { forcePathStyle }),
     ...(internalBucketEndpoint === undefined ? {} : { internalBucketEndpoint }),
@@ -37,6 +38,8 @@ export function loadStorageOptionsFromEnv(
     ...(region ? { region } : {}),
     ...(rootPath ? { rootPath } : {}),
     ...(secretAccessKey ? { secretAccessKey } : {}),
+    ...(options.ssrf ? { ssrf: options.ssrf } : {}),
+    ...(options.upload ? { upload: options.upload } : {}),
   };
 }
 

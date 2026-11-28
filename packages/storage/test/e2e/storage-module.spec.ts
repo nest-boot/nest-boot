@@ -2,12 +2,12 @@ import { S3Client } from "@aws-sdk/client-s3";
 import { Injectable, Module } from "@nestjs/common";
 import { Test, type TestingModule } from "@nestjs/testing";
 
-import { Storage } from "../../src/storage.js";
 import { StorageModule } from "../../src/storage.module.js";
+import { StorageService } from "../../src/storage.service.js";
 
 @Injectable()
 class StorageConsumer {
-  constructor(readonly storage: Storage) {}
+  constructor(readonly storage: StorageService) {}
 }
 
 @Module({ providers: [StorageConsumer] })
@@ -33,7 +33,7 @@ describe("StorageModule", () => {
     vi.stubEnv("STORAGE_BUCKET", "environment-bucket");
     vi.stubEnv("STORAGE_ROOT_PATH", "environment-root");
     const module = await compile(StorageModule);
-    const storage = module.get(Storage);
+    const storage = module.get(StorageService);
     const { client, internalClient } = storageClients(storage);
 
     await expect(client.config.region()).resolves.toBe("us-west-2");
@@ -53,13 +53,12 @@ describe("StorageModule", () => {
       accessKeyId: "access-key",
       secretAccessKey: "secret-key",
     });
-    await expect(storage.getUrl("file.txt")).resolves.toBe(
-      "https://environment-bucket.s3.local/environment-root/file.txt",
-    );
+    expect(storage.bucket).toBe("environment-bucket");
+    expect(storage.rootPath).toBe("environment-root");
     expect(() => module.get(S3Client)).toThrow();
   });
 
-  it("supports synchronous registration, globally exports Storage, and keeps the clients private", async () => {
+  it("supports synchronous registration, globally exports StorageService, and keeps clients private", async () => {
     const module = await compile(
       StorageModule.forRoot({
         accessKeyId: "registered-access-key",
@@ -76,7 +75,7 @@ describe("StorageModule", () => {
       }),
       FeatureModule,
     );
-    const storage = module.get(Storage);
+    const storage = module.get(StorageService);
     const consumer = module.get(StorageConsumer);
     const { client, internalClient } = storageClients(storage);
 
@@ -86,9 +85,8 @@ describe("StorageModule", () => {
     expect(internalClient.config.bucketEndpoint).toBe(true);
     expect(client.config.forcePathStyle).toBe(false);
     expect(internalClient.config.forcePathStyle).toBe(false);
-    await expect(storage.getUrl("file.txt")).resolves.toBe(
-      "https://registered-bucket.s3.public.example.com/tenant/file.txt",
-    );
+    expect(storage.bucket).toBe("registered-bucket");
+    expect(storage.rootPath).toBe("tenant");
     expect(() => module.get(S3Client)).toThrow();
   });
 
@@ -100,7 +98,7 @@ describe("StorageModule", () => {
       }),
     );
     const module = await compile(StorageModule.forRootAsync({ useFactory }));
-    const storage = module.get(Storage);
+    const storage = module.get(StorageService);
 
     expect(useFactory).toHaveBeenCalledOnce();
     await expect(storageClients(storage).client.config.region()).resolves.toBe(
@@ -117,7 +115,7 @@ describe("StorageModule", () => {
         region: "us-east-1",
       }),
     );
-    const storage = module.get(Storage);
+    const storage = module.get(StorageService);
     const { client, internalClient } = storageClients(storage);
     const destroy = vi.spyOn(client, "destroy");
 
@@ -139,7 +137,7 @@ describe("StorageModule", () => {
         region: "us-east-1",
       }),
     );
-    const storage = module.get(Storage);
+    const storage = module.get(StorageService);
     const { client, internalClient } = storageClients(storage);
     const destroyClient = vi.spyOn(client, "destroy");
     const destroyInternalClient = vi.spyOn(internalClient, "destroy");
@@ -199,7 +197,7 @@ describe("StorageModule", () => {
  * @param storage - Storage service used for file operations.
  * @returns Public and internal S3 clients used by the storage instance.
  */
-function storageClients(storage: Storage): {
+function storageClients(storage: StorageService): {
   client: S3Client;
   internalClient: S3Client;
 } {

@@ -1,16 +1,31 @@
-import {
-  type GetObjectCommandInput,
-  type PutObjectCommandInput,
-} from "@aws-sdk/client-s3";
+import { type GetObjectCommandInput } from "@aws-sdk/client-s3";
 
-/** Data accepted by {@link Storage.writeFile}. */
+/** Data accepted by {@link StorageService.uploadFile} and {@link StorageService.uploadTemporaryFile}. */
 export type StorageFileData =
   | string
   | NodeJS.ArrayBufferView
   | Iterable<string | NodeJS.ArrayBufferView>
   | AsyncIterable<string | NodeJS.ArrayBufferView>;
 
-/** Options for {@link Storage.readFile}. */
+/** Object metadata returned by {@link StorageService.statFile}. */
+export interface StorageFileStat {
+  /** File size in bytes. */
+  size: number;
+
+  /** MIME type reported by S3, when present. */
+  contentType?: string;
+
+  /** File modification timestamp reported by S3. */
+  lastModified?: Date;
+
+  /** File entity tag reported by S3. */
+  etag?: string;
+
+  /** User-defined metadata reported by S3, when non-empty. */
+  metadata?: Record<string, string>;
+}
+
+/** Options for {@link StorageService.readFile}. */
 export interface StorageReadFileOptions extends Omit<
   GetObjectCommandInput,
   "Bucket" | "Key"
@@ -22,7 +37,7 @@ export interface StorageReadFileOptions extends Omit<
   signal?: AbortSignal;
 }
 
-/** Options for {@link Storage.createReadStream}. */
+/** Options for {@link StorageService.createReadStream}. */
 export interface StorageReadStreamOptions extends Omit<
   GetObjectCommandInput,
   "Bucket" | "Key" | "Range"
@@ -41,31 +56,4 @@ export interface StorageReadStreamOptions extends Omit<
 
   /** Inclusive initial byte offset. */
   start?: number;
-}
-
-/** Options shared by buffered and streaming writes. */
-export interface StorageWriteFileOptions extends Omit<
-  PutObjectCommandInput,
-  "Body" | "Bucket" | "Key"
-> {
-  /** Character encoding used when the input data is a string. */
-  encoding?: BufferEncoding;
-
-  /** Keep uploaded multipart pieces when the upload fails. Defaults to false. */
-  leavePartsOnError?: boolean;
-
-  /** Multipart upload part size in bytes. The AWS minimum is 5 MiB. */
-  partSize?: number;
-
-  /** Number of multipart upload parts processed concurrently. Defaults to 4. */
-  queueSize?: number;
-
-  /** Optional signal that aborts the upload. */
-  signal?: AbortSignal;
-}
-
-/** Options for {@link Storage.createWriteStream}. */
-export interface StorageWriteStreamOptions extends StorageWriteFileOptions {
-  /** Internal stream buffer size in bytes. */
-  highWaterMark?: number;
 }
