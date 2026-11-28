@@ -427,6 +427,15 @@ describe("StorageService", () => {
   });
 
   describe("managed tmp/ and files/ upload and uploadFileFromUrl workflows", () => {
+    it.each(["not a URL", "ftp://bucket.s3.local/uploads/tmp/image.png"])(
+      "does not recognize %s as a temporary file URL",
+      async (url) => {
+        const storage = new StorageService({ bucket: "uploads" });
+
+        await expect(storage.isTemporaryFileUrl(url)).resolves.toBe(false);
+      },
+    );
+
     it.each([
       [["image/*"], "image/png", true],
       [["image/png", "application/pdf"], "application/pdf", true],
