@@ -558,6 +558,12 @@ describe("StorageService", () => {
           name: "guide.pdf",
         }),
       ).resolves.toMatchObject({ url: "https://bucket.s3.local/uploads" });
+      expect(createPresignedPostMock.mock.calls[0]?.[1]).toMatchObject({
+        Expires: 86_400,
+      });
+      expect(getSignedUrlMock.mock.calls[0]?.[2]).toMatchObject({
+        expiresIn: 86_400,
+      });
       await expect(
         defaultStorage.createTemporaryFileUploadUrl({
           fileSize: 1024,

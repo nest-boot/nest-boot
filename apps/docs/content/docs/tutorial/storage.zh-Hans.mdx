@@ -97,7 +97,7 @@ export class AppModule {}
 ### 客户端临时上传与外部 URL 统一入库
 
 1. 调用 `createTemporaryFileUploadUrl(file)`（或通过 REST `POST /uploads`、GraphQL `createTemporaryFileUploadUrls`），返回 `{ url, resourceUrl, fields }`。
-2. 客户端向 `url` 提交包含 `fields` 的表单后，`resourceUrl` 即为该临时文件的预签名可读地址（私有桶也可直接预览）。
+2. 客户端向 `url` 提交包含 `fields` 的表单后，`resourceUrl` 即为该临时文件的预签名可读地址（私有桶也可直接预览）。两者默认从签发起有效一天，可通过 `upload.expiresIn` 设置有效秒数。
 3. 业务层将 `resourceUrl` 或任意外部 HTTP/HTTPS 地址（例如第三方 OAuth 头像地址）统一传给 `uploadFileFromUrl(url)`：
    - 若识别为本桶已签名的 `tmp/` `resourceUrl`，直接执行 S3 `CopyObject` 复制到新的 `files/YYYY/MM/DD/<uuid>.<ext>` 正式对象（每次成功调用都会生成独立的正式 `key`，不会覆盖此前已入库的文件），**零带宽开销**；
    - 若为外部地址，默认拦截回环/私网/云元数据等 SSRF 地址（可通过 `ssrf.enabled` 整体开关或通过 `ssrf.allowedHosts` 放行可信内网主机），拿到 HTTP 响应流后直接管道传输至 `@aws-sdk/lib-storage` 的 `Upload` 边下边传写入 `files/YYYY/MM/DD/`，无需本地落盘。
@@ -189,7 +189,8 @@ await storage.deleteFile([tempKey, fileKey]);
 ## JWT 签名文件下载
 
 注册 `@nest-boot/jwt` 的 `JwtModule` 后，`StorageModule` 默认挂载 `/downloads/*`
-下载路由（`download.decorators` 默认 `[Public()]`）：
+下载路由（`download.decorators` 默认 `[Public()]`）。下载链接从签发起默认有效 24 小时。
+可以通过 `download.expiresIn` 设置默认有效秒数，或在生成单条链接时通过 `expiresIn` 覆盖。
 
 ```typescript
 const downloadUrl = await storage.createFileDownloadUrl(fileKey, {

@@ -9,7 +9,7 @@ To keep bucket layouts predictable, all write and upload operations manage keys 
 - `tmp/<uuid>.<ext>`: temporary uploads (`createTemporaryFileUploadUrl`, `uploadTemporaryFile`)
 - `files/YYYY/MM/DD/<uuid>.<ext>`: permanent business files (`uploadFileFromUrl`, `uploadFile`)
 
-`createTemporaryFileUploadUrl` returns `{ url, resourceUrl, fields }`. Once the client uploads to `url` with `fields`, `resourceUrl` is a temporary readable URL (supporting previews even on private buckets). Pass either `resourceUrl` or an external HTTP/HTTPS URL to `uploadFileFromUrl(url)`:
+`createTemporaryFileUploadUrl` returns `{ url, resourceUrl, fields }`. The upload form and temporary read URL both expire one day after signing by default. Set `upload.expiresIn` to override the lifetime in seconds. Once the client uploads to `url` with `fields`, `resourceUrl` can preview the object even on private buckets. Pass either `resourceUrl` or an external HTTP/HTTPS URL to `uploadFileFromUrl(url)`:
 
 - **Staged `tmp/` URLs**: promoted via zero-bandwidth S3 `CopyObject` without deleting the `tmp/` source.
 - **External HTTP/HTTPS URLs**: streamed directly into S3 via `@aws-sdk/lib-storage` `Upload` (zero local disk staging) with SSRF private-IP protection (configurable via `ssrf: { enabled?, allowedHosts? }` in `StorageModuleOptions`). All server-side `upload*` methods honor `upload.timeout` (default `30_000` ms, overridable per call via `options.timeout`).
@@ -18,4 +18,4 @@ Enable `upload.enabled: true` to mount the built-in REST endpoint (`POST /upload
 
 ## Signed downloads
 
-When `JwtModule` from `@nest-boot/jwt` is registered, `StorageModule` mounts `/downloads/*` (with `download.decorators` defaulting to `[Public()]`) and signs download links via `createFileDownloadUrl(key, { subject })`.
+When `JwtModule` from `@nest-boot/jwt` is registered, `StorageModule` mounts `/downloads/*` (with `download.decorators` defaulting to `[Public()]`) and signs download links via `createFileDownloadUrl(key, { subject })`. Links are valid for 24 hours from signing by default. Set `download.expiresIn` to override the lifetime in seconds.

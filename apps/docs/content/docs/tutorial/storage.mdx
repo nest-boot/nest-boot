@@ -100,7 +100,7 @@ All write operations target one of two fixed directories relative to `rootPath`:
 ### Unified client upload and external URL ingestion
 
 1. Call `createTemporaryFileUploadUrl(file)` (directly, via REST `POST /uploads`, or via GraphQL `createTemporaryFileUploadUrls`). It returns `{ url, resourceUrl, fields }`.
-2. After the client submits the multipart form to `url` with `fields`, `resourceUrl` is a temporary presigned GET URL that can preview the file even on a private bucket.
+2. After the client submits the multipart form to `url` with `fields`, `resourceUrl` is a temporary presigned GET URL that can preview the file even on a private bucket. Both are valid for one day from signing by default. Set `upload.expiresIn` to override the lifetime in seconds.
 3. Pass `resourceUrl` (or any external `https://...` URL, such as an OAuth avatar URL) to `uploadFileFromUrl(url)`. When `url` belongs to this bucket's `tmp/` directory, `StorageService` copies the object directly inside S3 with zero bandwidth; when `url` is an external URL, `StorageService` blocks private/loopback SSRF targets by default (customizable via `ssrf.enabled` and `ssrf.allowedHosts`) and pipes the HTTP response stream directly into S3 via `@aws-sdk/lib-storage` `Upload` without local disk staging. By default, both `createTemporaryFileUploadUrl` and `uploadFileFromUrl` enforce `upload.limits` (`DEFAULT_STORAGE_UPLOAD_LIMITS`: raster images 10 MiB, PDF/Office/text/CSV/JSON 25 MiB, audio 50 MiB, video 100 MiB, archives 100 MiB; first matching MIME rule wins), and `uploadFileFromUrl` accepts per-call `allowedMimeTypes` / `maxFileSize` overrides.
 
 ```typescript
@@ -192,7 +192,9 @@ await storage.deleteFile([tempKey, fileKey]);
 
 When `JwtModule` from `@nest-boot/jwt` is registered, `StorageModule` mounts a
 version-neutral download redirect route at `/downloads/*` (defaulting
-`download.decorators` to `[Public()]`):
+`download.decorators` to `[Public()]`). Links are valid for 24 hours from signing
+by default. Set `download.expiresIn` to override this default in seconds, or set
+`expiresIn` when creating an individual link.
 
 ```typescript
 const downloadUrl = await storage.createFileDownloadUrl(fileKey, {

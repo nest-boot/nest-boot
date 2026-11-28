@@ -89,7 +89,7 @@ const DOWNLOAD_JWT_SCOPE = {
   type: "storage-download+jwt",
   audience: "storage-download",
 } as const;
-const DEFAULT_EXPIRES_IN = 60 * 60;
+const DEFAULT_EXPIRES_IN = 24 * 60 * 60;
 const DEFAULT_EXTERNAL_MAX_FILE_SIZE = 100 * 1024 * 1024;
 const DEFAULT_UPLOAD_TIMEOUT_MS = 30_000;
 const MAX_DELETE_OBJECTS = 1000;
@@ -578,6 +578,30 @@ export class StorageService {
           .map(([name, value]) => ({ name, value })),
       ],
     };
+  }
+
+  /**
+   * Checks whether a URL matches this bucket and root's temporary URL format.
+   * The signature is authenticated by `uploadFileFromUrl` when it copies the file.
+   * @param url - Candidate file URL.
+   * @returns Whether the URL matches this storage instance's temporary URL format.
+   * @throws {BadRequestException} If a matching temporary URL is invalid or expired.
+   */
+  async isTemporaryFileUrl(url: string): Promise<boolean> {
+    const parsed = URL.parse(url);
+    if (
+      !parsed ||
+      (parsed.protocol !== "http:" && parsed.protocol !== "https:")
+    ) {
+      return false;
+    }
+
+    return (
+      (await this.matchOwnTemporaryUrl(
+        url,
+        AbortSignal.timeout(this.uploadTimeout),
+      )) !== undefined
+    );
   }
 
   /**

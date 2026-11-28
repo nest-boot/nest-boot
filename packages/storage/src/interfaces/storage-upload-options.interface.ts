@@ -25,7 +25,7 @@ export interface StorageUploadOptions {
    */
   decorators?: ClassDecorator[];
 
-  /** Presigned upload and temporary resource URL expiration time in seconds. Defaults to 3600. */
+  /** Presigned upload and temporary resource URL expiration in seconds. Defaults to 86,400 (one day). */
   expiresIn?: number;
 
   /**
