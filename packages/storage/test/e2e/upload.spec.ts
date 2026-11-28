@@ -67,7 +67,27 @@ class UploadHeaderInterceptor implements NestInterceptor {
   }
 }
 
+beforeEach(() => {
+  for (const name of [
+    "AWS_ENDPOINT_URL",
+    "AWS_ENDPOINT_URL_S3",
+    "STORAGE_ACCESS_KEY_ID",
+    "STORAGE_BUCKET",
+    "STORAGE_BUCKET_ENDPOINT",
+    "STORAGE_ENDPOINT_URL",
+    "STORAGE_FORCE_PATH_STYLE",
+    "STORAGE_INTERNAL_BUCKET_ENDPOINT",
+    "STORAGE_INTERNAL_ENDPOINT_URL",
+    "STORAGE_REGION",
+    "STORAGE_ROOT_PATH",
+    "STORAGE_SECRET_ACCESS_KEY",
+  ]) {
+    vi.stubEnv(name, "");
+  }
+});
+
 afterEach(() => {
+  vi.unstubAllEnvs();
   vi.resetAllMocks();
 });
 

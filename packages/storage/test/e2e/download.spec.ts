@@ -62,6 +62,27 @@ class DownloadHeaderInterceptor implements NestInterceptor {
   }
 }
 
+const ISOLATED_ENV_KEYS = [
+  "AWS_ENDPOINT_URL",
+  "AWS_ENDPOINT_URL_S3",
+  "STORAGE_ACCESS_KEY_ID",
+  "STORAGE_BUCKET",
+  "STORAGE_BUCKET_ENDPOINT",
+  "STORAGE_ENDPOINT_URL",
+  "STORAGE_FORCE_PATH_STYLE",
+  "STORAGE_INTERNAL_BUCKET_ENDPOINT",
+  "STORAGE_INTERNAL_ENDPOINT_URL",
+  "STORAGE_REGION",
+  "STORAGE_ROOT_PATH",
+  "STORAGE_SECRET_ACCESS_KEY",
+];
+
+beforeEach(() => {
+  for (const name of ISOLATED_ENV_KEYS) {
+    vi.stubEnv(name, "");
+  }
+});
+
 afterEach(() => {
   vi.restoreAllMocks();
   vi.unstubAllEnvs();

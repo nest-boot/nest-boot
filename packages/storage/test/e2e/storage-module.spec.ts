@@ -16,6 +16,25 @@ class FeatureModule {}
 describe("StorageModule", () => {
   const modules: TestingModule[] = [];
 
+  beforeEach(() => {
+    for (const name of [
+      "AWS_ENDPOINT_URL",
+      "AWS_ENDPOINT_URL_S3",
+      "STORAGE_ACCESS_KEY_ID",
+      "STORAGE_BUCKET",
+      "STORAGE_BUCKET_ENDPOINT",
+      "STORAGE_ENDPOINT_URL",
+      "STORAGE_FORCE_PATH_STYLE",
+      "STORAGE_INTERNAL_BUCKET_ENDPOINT",
+      "STORAGE_INTERNAL_ENDPOINT_URL",
+      "STORAGE_REGION",
+      "STORAGE_ROOT_PATH",
+      "STORAGE_SECRET_ACCESS_KEY",
+    ]) {
+      vi.stubEnv(name, "");
+    }
+  });
+
   afterEach(async () => {
     await Promise.all(modules.splice(0).map((module) => module.close()));
     vi.unstubAllEnvs();
