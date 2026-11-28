@@ -16,6 +16,8 @@ To keep bucket layouts predictable, all write and upload operations manage keys 
 
 Enable `upload.enabled: true` to mount the built-in REST endpoint (`POST /uploads` by default), or install `@nest-boot/storage-graphql` and import `StorageGraphQLModule` to expose the `createTemporaryFileUploadUrls` GraphQL mutation. When `upload.limits` is omitted, `DEFAULT_STORAGE_UPLOAD_LIMITS` enforces safe presets across both `createTemporaryFileUploadUrl` and `uploadFileFromUrl` (raster images 10 MiB, PDF/Office/text/CSV/JSON 25 MiB, audio 50 MiB, video 100 MiB, archives 100 MiB; blocking HTML/SVG/scripts by default).
 
+Use `await storage.isTemporaryFile(keyOrUrl)` to recognize a storage-relative temporary key or a temporary resource URL from this bucket. Promotion through `uploadFileFromUrl` verifies the resource URL's signature.
+
 ## Signed downloads
 
 When `JwtModule` from `@nest-boot/jwt` is registered, `StorageModule` mounts `/downloads/*` (with `download.decorators` defaulting to `[Public()]`) and signs download links via `createFileDownloadUrl(key, { subject })`. Links are valid for 24 hours from signing by default. Set `download.expiresIn` to override the lifetime in seconds.

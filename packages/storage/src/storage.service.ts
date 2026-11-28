@@ -581,24 +581,24 @@ export class StorageService {
   }
 
   /**
-   * Checks whether a URL matches this bucket and root's temporary URL format.
-   * The signature is authenticated by `uploadFileFromUrl` when it copies the file.
-   * @param url - Candidate file URL.
-   * @returns Whether the URL matches this storage instance's temporary URL format.
-   * @throws {BadRequestException} If a matching temporary URL is invalid or expired.
+   * Identifies a temporary file by its storage-relative key or presigned resource URL.
+   * Signature verification and object lookup happen when `uploadFileFromUrl` copies the file.
+   * @param keyOrUrl - A storage-relative file key or an absolute HTTP(S) URL.
+   * @returns Whether the key or URL matches this storage instance's temporary file format.
+   * @throws {BadRequestException} If a URL under this bucket's temporary path is invalid or expired.
    */
-  async isTemporaryFileUrl(url: string): Promise<boolean> {
-    const parsed = URL.parse(url);
-    if (
-      !parsed ||
-      (parsed.protocol !== "http:" && parsed.protocol !== "https:")
-    ) {
+  async isTemporaryFile(keyOrUrl: string): Promise<boolean> {
+    const parsed = URL.parse(keyOrUrl);
+    if (!parsed) {
+      return isTemporaryFileKey(keyOrUrl);
+    }
+    if (parsed.protocol !== "http:" && parsed.protocol !== "https:") {
       return false;
     }
 
     return (
       (await this.matchOwnTemporaryUrl(
-        url,
+        keyOrUrl,
         AbortSignal.timeout(this.uploadTimeout),
       )) !== undefined
     );
@@ -1450,14 +1450,25 @@ function decodeTemporarySuffix(encodedSuffix: string): string {
     throw new BadRequestException("Invalid file source URL");
   }
 
-  if (
-    !isValidPathSegment(filename) ||
-    !UUID_V4_FILENAME_PATTERN.test(filename)
-  ) {
+  const key = `${TEMPORARY_DIRECTORY}/${filename}`;
+  if (!isTemporaryFileKey(key)) {
     throw new BadRequestException("Invalid file source URL");
   }
 
-  return `${TEMPORARY_DIRECTORY}/${filename}`;
+  return key;
+}
+
+/**
+ * Checks the key format generated for temporary objects beneath the storage root.
+ * @param key - Storage-relative object key.
+ * @returns Whether the key contains one UUIDv4 filename under `tmp/`.
+ */
+function isTemporaryFileKey(key: string): boolean {
+  const prefix = `${TEMPORARY_DIRECTORY}/`;
+  return (
+    key.startsWith(prefix) &&
+    UUID_V4_FILENAME_PATTERN.test(key.slice(prefix.length))
+  );
 }
 
 /**

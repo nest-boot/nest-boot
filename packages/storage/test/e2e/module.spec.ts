@@ -149,11 +149,11 @@ describeIfS3Configured("StorageModule - e2e", () => {
     });
     expect(uploadResponse.status).toBe(201);
 
-    await expect(storage.isTemporaryFileUrl(upload.resourceUrl)).resolves.toBe(
+    await expect(storage.isTemporaryFile(upload.resourceUrl)).resolves.toBe(
       true,
     );
     await expect(
-      storage.isTemporaryFileUrl("https://example.test/tmp/external.txt"),
+      storage.isTemporaryFile("https://example.test/tmp/external.txt"),
     ).resolves.toBe(false);
 
     const previewResponse = await fetch(upload.resourceUrl);
@@ -189,7 +189,7 @@ describeIfS3Configured("StorageModule - e2e", () => {
 
     // Unsigned tmp URL or tampered signature cannot promote staged objects with server credentials
     const unsignedTmpUrl = upload.resourceUrl.split("?", 1)[0] ?? "";
-    await expect(storage.isTemporaryFileUrl(unsignedTmpUrl)).rejects.toThrow(
+    await expect(storage.isTemporaryFile(unsignedTmpUrl)).rejects.toThrow(
       "Invalid or expired temporary file URL",
     );
     await expect(storage.uploadFileFromUrl(unsignedTmpUrl)).rejects.toThrow(
