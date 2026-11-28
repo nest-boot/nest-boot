@@ -8,8 +8,10 @@
   },
   "license": "MIT",
   "files": [
+    "app.build.json",
     "app.json",
     "base.json",
+    "library.build.json",
     "library.json"
   ],
   "scripts": {
@@ -43,8 +45,10 @@
     "node": ">=24.21.0"
   },
   "exports": {
+    "./app.build.json": "./app.build.json",
     "./app.json": "./app.json",
     "./base.json": "./base.json",
+    "./library.build.json": "./library.build.json",
     "./library.json": "./library.json",
     "./package.json": "./package.json"
   }

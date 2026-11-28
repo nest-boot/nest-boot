@@ -6,11 +6,8 @@ import {
   rmSync,
   writeFileSync,
 } from "node:fs";
-
 import { tmpdir } from "node:os";
-
 import { join, resolve } from "node:path";
-
 import ts from "typescript";
 
 const packageRoot = resolve(import.meta.dirname, "../..");
@@ -32,6 +29,7 @@ function resolveConfig(
   writeFileSync(join(projectRoot, "src", "index.spec.ts"), "export {};\n");
   writeFileSync(join(projectRoot, "src", "index.spec-d.ts"), "export {};\n");
   writeFileSync(join(projectRoot, "test", "fixture.ts"), "export {};\n");
+  writeFileSync(join(projectRoot, "vitest.config.ts"), "export default {};\n");
   const configPath = join(projectRoot, configName);
   writeFileSync(
     configPath,
@@ -76,48 +74,71 @@ afterEach(() => {
 });
 
 describe("Nest CLI 12 ESM presets", () => {
-  it("resolves application output relative to the consuming project", () => {
-    const parsed = resolveConfig("app.json");
+  it("resolves application check and build presets relative to the consuming project", () => {
+    const parsedCheck = resolveConfig("app.json");
     const projectRoot = currentProjectRoot();
-    expect(parsed.options.outDir).toBe(join(projectRoot, "dist"));
-    expect(parsed.options.tsBuildInfoFile).toBeUndefined();
-    expect(parsed.options.module).toBe(ts.ModuleKind.NodeNext);
-    expect(parsed.options.moduleResolution).toBe(
+    expect(parsedCheck.options.rootDir).toBe(projectRoot);
+    expect(parsedCheck.options.outDir).toBe(join(projectRoot, "dist"));
+    expect(parsedCheck.options.tsBuildInfoFile).toBeUndefined();
+    expect(parsedCheck.options.module).toBe(ts.ModuleKind.NodeNext);
+    expect(parsedCheck.options.moduleResolution).toBe(
       ts.ModuleResolutionKind.NodeNext,
     );
-    expect(parsed.options.strict).toBe(true);
-    expect(parsed.options.strictPropertyInitialization).toBe(false);
-    expect(parsed.options.removeComments).toBe(true);
-    expect(parsed.options.paths).toEqual({
+    expect(parsedCheck.options.strict).toBe(true);
+    expect(parsedCheck.options.strictPropertyInitialization).toBe(false);
+    expect(parsedCheck.options.removeComments).toBe(true);
+    expect(parsedCheck.options.paths).toEqual({
       "@/*": [join(projectRoot, "src/*")],
     });
+    expect(parsedCheck.fileNames.sort()).toEqual(
+      [
+        join(projectRoot, "src", "index.ts"),
+        join(projectRoot, "src", "index.spec.ts"),
+        join(projectRoot, "src", "index.spec-d.ts"),
+        join(projectRoot, "test", "fixture.ts"),
+        join(projectRoot, "vitest.config.ts"),
+      ].sort(),
+    );
     const resolvedAlias = ts.resolveModuleName(
       "@/index.js",
       join(projectRoot, "src", "main.ts"),
-      parsed.options,
+      parsedCheck.options,
       ts.sys,
     );
     expect(resolvedAlias.resolvedModule?.resolvedFileName).toBe(
       join(projectRoot, "src", "index.ts"),
     );
-  });
-  it("uses separate default build info for library checks and builds", () => {
-    resolveConfig("library.json", "tsconfig.build.json");
-    const projectRoot = currentProjectRoot();
-    const checkConfig = join(projectRoot, "tsconfig.json");
-    writeFileSync(
-      checkConfig,
-      JSON.stringify({
-        extends: "./tsconfig.build.json",
-        compilerOptions: { rootDir: ".", noEmit: true },
-      }),
-    );
-    const parsed = parseConfig(checkConfig);
-    const program = ts.createIncrementalProgram({
-      rootNames: parsed.fileNames,
-      options: parsed.options,
+
+    const parsedBuild = resolveConfig("app.build.json", "tsconfig.build.json");
+    const buildProjectRoot = currentProjectRoot();
+    expect(parsedBuild.options.rootDir).toBe(join(buildProjectRoot, "src"));
+    expect(parsedBuild.options.outDir).toBe(join(buildProjectRoot, "dist"));
+    expect(parsedBuild.options.paths).toEqual({
+      "@/*": [join(buildProjectRoot, "src/*")],
     });
-    expect(program.emit().diagnostics).toEqual([]);
+    expect(parsedBuild.fileNames).toEqual([
+      join(buildProjectRoot, "src", "index.ts"),
+    ]);
+  });
+
+  it("uses separate default build info for library checks and builds", () => {
+    const parsedCheck = resolveConfig("library.json", "tsconfig.json");
+    const projectRoot = currentProjectRoot();
+    expect(parsedCheck.options.rootDir).toBe(projectRoot);
+    expect(parsedCheck.fileNames.sort()).toEqual(
+      [
+        join(projectRoot, "src", "index.ts"),
+        join(projectRoot, "src", "index.spec.ts"),
+        join(projectRoot, "src", "index.spec-d.ts"),
+        join(projectRoot, "test", "fixture.ts"),
+        join(projectRoot, "vitest.config.ts"),
+      ].sort(),
+    );
+    const checkProgram = ts.createIncrementalProgram({
+      rootNames: parsedCheck.fileNames,
+      options: { ...parsedCheck.options, noEmit: true },
+    });
+    expect(checkProgram.emit().diagnostics).toEqual([]);
     expect(readdirSync(join(projectRoot, "dist"))).toEqual([
       "tsconfig.tsbuildinfo",
     ]);
@@ -125,8 +146,9 @@ describe("Nest CLI 12 ESM presets", () => {
       false,
     );
   });
+
   it("matches the generated library boundaries in the consuming project", () => {
-    const parsed = resolveConfig("library.json", "tsconfig.build.json");
+    const parsed = resolveConfig("library.build.json", "tsconfig.build.json");
     const projectRoot = currentProjectRoot();
     expect(parsed.options.composite).toBe(true);
     expect(parsed.options.removeComments).toBe(false);

@@ -1,5 +1,5 @@
 ---
-"@nest-boot/tsconfig": patch
+"@nest-boot/tsconfig": minor
 ---
 
-Exclude `**/*.spec-d.ts` compile-time type test files from library build outputs in `@nest-boot/tsconfig/library.json`.
+Add `library.build.json` and `app.build.json` build presets (excluding `test`, `**/*.spec.ts`, and `**/*.spec-d.ts`) and align `library.json` and `app.json` as project check/IDE presets including `src`, `test`, and `vitest.config.ts`.
