@@ -428,6 +428,21 @@ describe("StorageService", () => {
 
   describe("managed tmp/ and files/ upload and uploadFileFromUrl workflows", () => {
     it.each([
+      [`tmp/${UUID_A}.png`, true],
+      [`tmp/${UUID_A}`, true],
+      [`files/2026/11/28/${UUID_A}.png`, false],
+      [`tmp/nested/${UUID_A}.png`, false],
+      [`tmp/${UUID_A}.png/child`, false],
+      ["tmp/avatar.png", false],
+      ["not a URL", false],
+      ["ftp://bucket.s3.local/uploads/tmp/image.png", false],
+    ])("recognizes %s as temporary: %s", async (keyOrUrl, expected) => {
+      const storage = new StorageService({ bucket: "uploads" });
+
+      await expect(storage.isTemporaryFile(keyOrUrl)).resolves.toBe(expected);
+    });
+
+    it.each([
       [["image/*"], "image/png", true],
       [["image/png", "application/pdf"], "application/pdf", true],
       [["image/{png,jpeg}"], "image/jpeg", true],
@@ -558,6 +573,12 @@ describe("StorageService", () => {
           name: "guide.pdf",
         }),
       ).resolves.toMatchObject({ url: "https://bucket.s3.local/uploads" });
+      expect(createPresignedPostMock.mock.calls[0]?.[1]).toMatchObject({
+        Expires: 86_400,
+      });
+      expect(getSignedUrlMock.mock.calls[0]?.[2]).toMatchObject({
+        expiresIn: 86_400,
+      });
       await expect(
         defaultStorage.createTemporaryFileUploadUrl({
           fileSize: 1024,

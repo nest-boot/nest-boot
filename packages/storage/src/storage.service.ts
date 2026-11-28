@@ -89,7 +89,7 @@ const DOWNLOAD_JWT_SCOPE = {
   type: "storage-download+jwt",
   audience: "storage-download",
 } as const;
-const DEFAULT_EXPIRES_IN = 60 * 60;
+const DEFAULT_EXPIRES_IN = 24 * 60 * 60;
 const DEFAULT_EXTERNAL_MAX_FILE_SIZE = 100 * 1024 * 1024;
 const DEFAULT_UPLOAD_TIMEOUT_MS = 30_000;
 const MAX_DELETE_OBJECTS = 1000;
@@ -578,6 +578,30 @@ export class StorageService {
           .map(([name, value]) => ({ name, value })),
       ],
     };
+  }
+
+  /**
+   * Identifies a temporary file by its storage-relative key or presigned resource URL.
+   * Signature verification and object lookup happen when `uploadFileFromUrl` copies the file.
+   * @param keyOrUrl - A storage-relative file key or an absolute HTTP(S) URL.
+   * @returns Whether the key or URL matches this storage instance's temporary file format.
+   * @throws {BadRequestException} If a URL under this bucket's temporary path is invalid or expired.
+   */
+  async isTemporaryFile(keyOrUrl: string): Promise<boolean> {
+    const parsed = URL.parse(keyOrUrl);
+    if (!parsed) {
+      return isTemporaryFileKey(keyOrUrl);
+    }
+    if (parsed.protocol !== "http:" && parsed.protocol !== "https:") {
+      return false;
+    }
+
+    return (
+      (await this.matchOwnTemporaryUrl(
+        keyOrUrl,
+        AbortSignal.timeout(this.uploadTimeout),
+      )) !== undefined
+    );
   }
 
   /**
@@ -1426,14 +1450,25 @@ function decodeTemporarySuffix(encodedSuffix: string): string {
     throw new BadRequestException("Invalid file source URL");
   }
 
-  if (
-    !isValidPathSegment(filename) ||
-    !UUID_V4_FILENAME_PATTERN.test(filename)
-  ) {
+  const key = `${TEMPORARY_DIRECTORY}/${filename}`;
+  if (!isTemporaryFileKey(key)) {
     throw new BadRequestException("Invalid file source URL");
   }
 
-  return `${TEMPORARY_DIRECTORY}/${filename}`;
+  return key;
+}
+
+/**
+ * Checks the key format generated for temporary objects beneath the storage root.
+ * @param key - Storage-relative object key.
+ * @returns Whether the key contains one UUIDv4 filename under `tmp/`.
+ */
+function isTemporaryFileKey(key: string): boolean {
+  const prefix = `${TEMPORARY_DIRECTORY}/`;
+  return (
+    key.startsWith(prefix) &&
+    UUID_V4_FILENAME_PATTERN.test(key.slice(prefix.length))
+  );
 }
 
 /**

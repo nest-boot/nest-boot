@@ -308,7 +308,7 @@ it.each([
         type: "storage-download+jwt",
         audience: "storage-download",
         subject: "user:42",
-        expiresIn: 3600,
+        expiresIn: 86_400,
       });
 
       const url = new URL(`${path}?token=signed-token`, baseAppUrl);

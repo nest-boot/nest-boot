@@ -9,7 +9,7 @@ export interface StorageDownloadOptions {
   /** Public origin serving the download route. Defaults to root-relative links. */
   baseURL?: string;
 
-  /** Download token lifetime in seconds. Defaults to one hour. */
+  /** Download token lifetime in seconds. Defaults to 86,400 (one day). */
   expiresIn?: number;
 
   /**
