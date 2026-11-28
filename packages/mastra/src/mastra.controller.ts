@@ -26,12 +26,10 @@ import {
 import { ApplicationConfig } from "@nestjs/core";
 import type { Request, Response } from "express";
 
-import {
-  DEFAULT_MASTRA_SERVER_PREFIX,
-  MASTRA_MODULE_OPTIONS,
-  type MastraModuleOptions,
-  normalizeMastraServerOptions,
-} from "./mastra.module-definition.js";
+import type { MastraModuleOptions } from "./interfaces/mastra-module-options.interface.js";
+import { DEFAULT_MASTRA_SERVER_PREFIX } from "./mastra.constants.js";
+import { MASTRA_MODULE_OPTIONS } from "./mastra.module-definition.js";
+import { normalizeMastraServerOptions } from "./utils/normalize-mastra-options.util.js";
 
 const DANGEROUS_QUERY_KEYS = new Set(["__proto__", "prototype", "constructor"]);
 const BODY_HTTP_METHODS = new Set(["POST", "PUT", "PATCH", "DELETE"]);

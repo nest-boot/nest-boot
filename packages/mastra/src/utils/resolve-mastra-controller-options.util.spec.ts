@@ -1,7 +1,7 @@
 import { Mastra } from "@mastra/core/mastra";
 import { SetMetadata } from "@nestjs/common";
 
-import { DEFAULT_MASTRA_SERVER_PREFIX } from "./mastra.module-definition.js";
+import { DEFAULT_MASTRA_SERVER_PREFIX } from "../mastra.constants.js";
 import { resolveMastraControllerOptions } from "./resolve-mastra-controller-options.util.js";
 
 describe("resolveMastraControllerOptions", () => {

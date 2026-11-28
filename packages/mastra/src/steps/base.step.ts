@@ -1,7 +1,6 @@
 import type { MastraScorers } from "@mastra/core/evals";
 import {
   type InferPublicSchema,
-  type InferStandardSchemaOutput,
   type PublicSchema,
   type StandardSchemaWithJSON,
   toStandardSchema,
@@ -13,146 +12,19 @@ import type {
   InnerOutput,
   Step,
   StepMetadata,
-  StepParams,
 } from "@mastra/core/workflows";
 import { kebabCase } from "lodash-es";
 
+import type {
+  BaseStepConstructor,
+  BaseStepOptions,
+  BaseStepSchemas,
+} from "../interfaces/base-step-options.interface.js";
+
 const BASE_STEP_MARKER = Symbol("nest-mastra-base-step");
-
-type StepStaticKeys =
-  | "id"
-  | "description"
-  | "inputSchema"
-  | "outputSchema"
-  | "stateSchema"
-  | "resumeSchema"
-  | "suspendSchema"
-  | "requestContextSchema";
-
-export type AnyMastraStep = Step<
-  string,
-  any,
-  any,
-  any,
-  any,
-  any,
-  DefaultEngineType,
-  any
->;
-
-/** Extracts the validated input type from a `BaseStep` subclass or Mastra `Step`. */
-export type StepInput<T extends AnyMastraStep> = InferStandardSchemaOutput<
-  T["inputSchema"]
->;
-
-/** Extracts the validated output type from a `BaseStep` subclass or Mastra `Step`. */
-export type StepOutput<T extends AnyMastraStep> = InferStandardSchemaOutput<
-  T["outputSchema"]
->;
-
-/** Extracts the optional workflow state type from a `BaseStep` subclass or Mastra `Step`. */
-export type StepState<T extends AnyMastraStep> =
-  NonNullable<T["stateSchema"]> extends StandardSchemaWithJSON
-    ? InferStandardSchemaOutput<NonNullable<T["stateSchema"]>>
-    : unknown;
-
-/** Extracts the optional resume payload type from a `BaseStep` subclass or Mastra `Step`. */
-export type StepResume<T extends AnyMastraStep> =
-  NonNullable<T["resumeSchema"]> extends StandardSchemaWithJSON
-    ? InferStandardSchemaOutput<NonNullable<T["resumeSchema"]>>
-    : unknown;
-
-/** Extracts the optional suspend payload type from a `BaseStep` subclass or Mastra `Step`. */
-export type StepSuspend<T extends AnyMastraStep> =
-  NonNullable<T["suspendSchema"]> extends StandardSchemaWithJSON
-    ? InferStandardSchemaOutput<NonNullable<T["suspendSchema"]>>
-    : unknown;
-
-/** Extracts the optional request context type from a `BaseStep` subclass or Mastra `Step`. */
-export type StepRequestContext<T extends AnyMastraStep> =
-  NonNullable<T["requestContextSchema"]> extends StandardSchemaWithJSON
-    ? InferStandardSchemaOutput<NonNullable<T["requestContextSchema"]>>
-    : unknown;
-
-/** Typed `execute` parameter object derived from a `BaseStep` subclass or Mastra `Step`. */
-export type StepExecuteParams<T extends AnyMastraStep> = ExecuteFunctionParams<
-  StepState<T>,
-  StepInput<T>,
-  StepOutput<T>,
-  StepResume<T>,
-  StepSuspend<T>,
-  DefaultEngineType,
-  StepRequestContext<T>
->;
-
-/** Static definition (`id`, `description`, and schemas) passed exclusively to `BaseStep(definition)`. */
-export type BaseStepSchemas<
-  TInputSchema extends PublicSchema,
-  TOutputSchema extends PublicSchema,
-  TStateSchema extends PublicSchema | undefined = undefined,
-  TResumeSchema extends PublicSchema | undefined = undefined,
-  TSuspendSchema extends PublicSchema | undefined = undefined,
-  TRequestContextSchema extends PublicSchema | undefined = undefined,
-> = Omit<
-  Pick<
-    StepParams<
-      string,
-      TStateSchema,
-      TInputSchema,
-      TOutputSchema,
-      TResumeSchema,
-      TSuspendSchema,
-      TRequestContextSchema
-    >,
-    StepStaticKeys
-  >,
-  "id"
-> & {
-  id?: string;
-};
-
-/** Runtime options passed exclusively to `super(options)` inside a `BaseStep` subclass. */
-export type BaseStepOptions = Omit<
-  StepParams<string, any, any, any, any, any, any>,
-  StepStaticKeys | "execute"
->;
 
 type InferOptionalSchema<TSchema extends PublicSchema | undefined> =
   TSchema extends PublicSchema ? InferPublicSchema<TSchema> : unknown;
-
-/** Constructor type returned by the `BaseStep(schemas)` class factory. */
-export type BaseStepConstructor<
-  TInput,
-  TOutput,
-  TState = unknown,
-  TResume = unknown,
-  TSuspend = unknown,
-  TRequestContext = unknown,
-> = abstract new (options?: BaseStepOptions) => Omit<
-  Step<
-    string,
-    TState,
-    TInput,
-    TOutput,
-    TResume,
-    TSuspend,
-    DefaultEngineType,
-    TRequestContext
-  >,
-  "execute"
-> & {
-  execute(
-    params: ExecuteFunctionParams<
-      TState,
-      TInput,
-      TOutput,
-      TResume,
-      TSuspend,
-      DefaultEngineType,
-      TRequestContext
-    >,
-  ): Promise<TOutput | InnerOutput>;
-};
 
 /**
  * NestJS-native Mastra workflow step base class factory.

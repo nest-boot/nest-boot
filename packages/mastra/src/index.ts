@@ -1,57 +1,54 @@
-export { BaseAgent, type BaseAgentConfig } from "./base.agent.js";
-export {
-  type AnyMastraStep,
-  BaseStep,
-  type BaseStepConstructor,
-  type BaseStepOptions,
-  type BaseStepSchemas,
-  type StepExecuteParams,
-  type StepInput,
-  type StepOutput,
-  type StepRequestContext,
-  type StepResume,
-  type StepState,
-  type StepSuspend,
-} from "./base.step.js";
-export {
-  type AnyMastraTool,
-  BaseTool,
-  type BaseToolConstructor,
-  type BaseToolOptions,
-  type BaseToolSchemas,
-  type ToolContext,
-  type ToolInput,
-  type ToolOutput,
-  type ToolRequestContext,
-  type ToolResume,
-  type ToolSuspend,
-} from "./base.tool.js";
-export {
-  BaseWorkflow,
-  type BaseWorkflowConstructor,
-  type BaseWorkflowLifecycleHooks,
-  type BaseWorkflowOptions,
-  type BaseWorkflowSchemas,
-  type WorkflowInput,
-  type WorkflowOutput,
-  type WorkflowRequestContext,
-  type WorkflowState,
-} from "./base.workflow.js";
+export { BaseAgent } from "./agents/base.agent.js";
+export type {
+  BaseAgentConfig,
+  BaseStepConstructor,
+  BaseStepOptions,
+  BaseStepSchemas,
+  BaseToolConstructor,
+  BaseToolOptions,
+  BaseToolSchemas,
+  BaseWorkflowConstructor,
+  BaseWorkflowLifecycleHooks,
+  BaseWorkflowOptions,
+  BaseWorkflowSchemas,
+  MastraModuleAsyncOptions,
+  MastraModuleOptions,
+  MastraServerModuleOptions,
+  MastraServerOptions,
+  MastraStudioOptions,
+} from "./interfaces/index.js";
+export { DEFAULT_MASTRA_SERVER_PREFIX } from "./mastra.constants.js";
 export { MastraController } from "./mastra.controller.js";
 export { MastraManager } from "./mastra.manager.js";
+export { MastraModule } from "./mastra.module.js";
+export { MASTRA_MODULE_OPTIONS } from "./mastra.module-definition.js";
+export { BaseStep } from "./steps/base.step.js";
+export { BaseTool } from "./tools/base.tool.js";
+export type {
+  AnyMastraStep,
+  AnyMastraTool,
+  StepExecuteParams,
+  StepInput,
+  StepOutput,
+  StepRequestContext,
+  StepResume,
+  StepState,
+  StepSuspend,
+  ToolContext,
+  ToolInput,
+  ToolOutput,
+  ToolRequestContext,
+  ToolResume,
+  ToolSuspend,
+  WorkflowInput,
+  WorkflowOutput,
+  WorkflowRequestContext,
+  WorkflowState,
+} from "./types/index.js";
 export {
-  MastraModule,
-  type MastraModuleAsyncOptions,
-} from "./mastra.module.js";
-export {
-  DEFAULT_MASTRA_SERVER_PREFIX,
-  MASTRA_MODULE_OPTIONS,
-  type MastraModuleOptions,
-  type MastraServerModuleOptions,
-  type MastraServerOptions,
-  type MastraStudioOptions,
   normalizeMastraServerOptions,
   normalizeMastraStudioOptions,
   resolveMastraServerPrefix,
   resolveMastraStudioBasePath,
-} from "./mastra.module-definition.js";
+} from "./utils/normalize-mastra-options.util.js";
+export { BaseWorkflow } from "./workflows/base.workflow.js";

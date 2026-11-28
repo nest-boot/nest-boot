@@ -9,7 +9,8 @@ import {
 } from "@mastra/core/workflows";
 import { z } from "zod";
 
-import { BaseWorkflow, type BaseWorkflowOptions } from "./base.workflow.js";
+import type { BaseWorkflowOptions } from "../interfaces/base-workflow-options.interface.js";
+import { BaseWorkflow } from "./base.workflow.js";
 
 const schema = z.object({ value: z.string() });
 

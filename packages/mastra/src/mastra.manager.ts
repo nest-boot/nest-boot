@@ -14,12 +14,13 @@ import {
 import { DiscoveryService } from "@nestjs/core";
 import type { InstanceWrapper } from "@nestjs/core/injector/instance-wrapper.js";
 
+import { BaseTool } from "./tools/base.tool.js";
+import type { AnyMastraTool } from "./types/tool.type.js";
 import {
   concealToolInstanceDependencies,
   isMastraToolInstance,
   wrapAgentDiscovery,
-} from "./agent-discovery.js";
-import { type AnyMastraTool, BaseTool } from "./base.tool.js";
+} from "./utils/agent-discovery.util.js";
 
 /**
  * Discovers singleton NestJS providers extending Mastra `Tool` (`BaseTool`),
