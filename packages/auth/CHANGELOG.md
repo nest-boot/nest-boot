@@ -1,3 +1,52 @@
+## 8.7.0
+
+### Minor Changes
+
+- 043a007: Default authentication endpoints to the relative path `/auth` and follow the NestJS global prefix, including custom `basePath` values. With `app.setGlobalPrefix("api")`, endpoints remain at `/api/auth` without route exclusions or a duplicated prefix.
+  
+  Initialize Better Auth after the application prefix is configured so HTTP handlers, session endpoints, OAuth callbacks, and authentication email links share the effective path. Both synchronous and asynchronous module registration are supported.
+  
+  Applications without a global prefix must update client URLs and provider callback registrations to `/auth`, or explicitly configure `basePath: "/api/auth"`. Applications with the `api` global prefix should remove old `api/auth` exclusions and redundant `api` segments in `basePath`.
+  
+  Use a public origin for `baseURL`, `AUTH_URL`, or `APP_URL`. If a URL contains a pathname, it must match the effective auth mount; conflicting paths now fail during startup. Early public service reads are reconciled with the final prefix, and root paths and trailing-slash exclusions follow the actual middleware mount.
+  
+  Resolve Better Auth URL environment fallbacks, including `BETTER_AUTH_URL`, before creating the backend so inherited paths cannot bypass the effective-mount validation. Framework URL options keep precedence; matching inherited URLs are normalized and empty URL behavior is preserved.
+- 5c2a6bf: Connection queries require exactly one of `first` or `last`, with a page size from 1 to 100. Use `after` with `first` or `before` with `last`. This also applies to Auth and job connections.
+  
+  Generated Connections provide a default complexity callback for queries and nested fields. The rate limiter reserves one point per requested edge and charges it per resolved edge, including for cursor-only selections. It also prices normalized filters. Invalid pagination reports `BAD_USER_INPUT` on the executed field.
+  
+  With Nest Boot's `GraphQLModule`, its `Query`, `Mutation`, `ResolveField`, and `Field` decorators use a return type's static `complexity` as a field default, including on Connection subclasses. Explicit field costs take precedence. Set field complexity explicitly for custom Connections that supply their own pagination cost.
+  
+  The `connectionComplexity` export has been removed from `@nest-boot/graphql-rate-limit`. Use the generated `Connection.complexity` or provide a field-level `complexity` callback for custom pagination.
+  
+  Complexity callbacks receive `resolved.result` during settlement. The Nest Boot GraphQL decorators and `defineComplexity` infer the result using the same rule as NestJS's `@Field` default value.
+  
+  The shared ESLint config enables `nest-boot/graphql-no-direct-nestjs-import`. Import public GraphQL APIs from `@nest-boot/graphql` to use the field decorators that register default complexity.
+- 8f3375a: Move counts out of paginated connections. Connection types now return `edges` and `pageInfo`; `totalCount`, `totalCountRelation`, and the count-selection `info` option have been removed. Auth and Queue API connections follow the same contract.
+  
+  Define a separate count field with `Count`, the connection's generated `CountArgs`, and `ConnectionManager.count`. Reuse the list's scope and filter inputs. The result reports `EXACT` for up to 10,000 matches and `AT_LEAST` above that threshold. The generated filter provides an automatic complexity of 10 base points plus the same filter costs as a list. Auth exposes `Query.usersCount`, `Query.workspacesCount`, and `Workspace.membersCount` under the permissions of their respective lists.
+- 169da36: Move `Public` and `IS_PUBLIC_KEY` into a new `@nest-boot/common` package (while re-exporting them from `@nest-boot/auth` for backwards compatibility) alongside `createDynamicController` and `withDynamicController`, and add a standalone `@nest-boot/jwt` module backed by `jose` with mandatory database-backed signing key rotation and a JWKS controller defaulting `jwks.decorators` to `[Public()]`.
+
+### Patch Changes
+
+- ce0a4d3: Charge the base cost of each connection row once. Generated edge nodes, including Auth API-key nodes, have a zero base cost. Child fields and nested objects keep their own costs.
+- 361f26f: Refactor `@nest-boot/eslint` onto the latest standard ESLint plugin toolchain (`@typescript-eslint/utils`, `@typescript-eslint/rule-tester`, `eslint-doc-generator`, and `eslint-plugin-eslint-plugin`), exporting a single standard ESLint v9 plugin object (`{ meta, rules, configs }`), removing custom fixer/decorator/barrel-origin wrappers, and generating verified rule documentation under `docs/rules/`. Also use TypeScript type information in `nest-boot/graphql-field-config-from-types` and `nest-boot/database-entity-property-config-from-types` for custom scalars, constructors, enum objects, instantiated MikroORM column types, `bigint`, and JSON-backed unions, and add explicit `@HideField()` decorators to non-GraphQL credential fields on `Account` and `Session` in `@nest-boot/auth`.
+- Updated dependencies [3f52d8a]
+- Updated dependencies [ce0a4d3]
+- Updated dependencies [5c2a6bf]
+- Updated dependencies [97fad07]
+- Updated dependencies [4c9ae88]
+- Updated dependencies [ec31b0c]
+- Updated dependencies [043a007]
+- Updated dependencies [79d781a]
+- Updated dependencies [8f3375a]
+- Updated dependencies [169da36]
+  - @nest-boot/graphql@8.1.0
+  - @nest-boot/graphql-connection@8.3.0
+  - @nest-boot/common@8.0.1
+  - @nest-boot/hash@8.1.0
+  - @nest-boot/mailer@8.1.0
+
 ## 8.6.0
 
 ### Minor Changes

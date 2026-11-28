@@ -1,3 +1,34 @@
+## 8.1.0
+
+### Minor Changes
+
+- 5c2a6bf: Connection queries require exactly one of `first` or `last`, with a page size from 1 to 100. Use `after` with `first` or `before` with `last`. This also applies to Auth and job connections.
+  
+  Generated Connections provide a default complexity callback for queries and nested fields. The rate limiter reserves one point per requested edge and charges it per resolved edge, including for cursor-only selections. It also prices normalized filters. Invalid pagination reports `BAD_USER_INPUT` on the executed field.
+  
+  With Nest Boot's `GraphQLModule`, its `Query`, `Mutation`, `ResolveField`, and `Field` decorators use a return type's static `complexity` as a field default, including on Connection subclasses. Explicit field costs take precedence. Set field complexity explicitly for custom Connections that supply their own pagination cost.
+  
+  The `connectionComplexity` export has been removed from `@nest-boot/graphql-rate-limit`. Use the generated `Connection.complexity` or provide a field-level `complexity` callback for custom pagination.
+  
+  Complexity callbacks receive `resolved.result` during settlement. The Nest Boot GraphQL decorators and `defineComplexity` infer the result using the same rule as NestJS's `@Field` default value.
+  
+  The shared ESLint config enables `nest-boot/graphql-no-direct-nestjs-import`. Import public GraphQL APIs from `@nest-boot/graphql` to use the field decorators that register default complexity.
+- 79d781a: Add 10 points by default to the result cost of each root GraphQL mutation field. Set `mutationComplexity` on `@Mutation` to customize that field's base cost, including zero. Explicit complexity and return type defaults price the result, with selected child fields providing the fallback.
+- caadcfd: Install `graphql-query-complexity` v2 as a runtime dependency of the rate limiter. Applications that installed it solely for rate limiting can remove their direct dependency. The rate limiter requires GraphQL.js 16.6 or later within the v16 line.
+
+### Patch Changes
+
+- ea37e1d: Increase the default GraphQL rate-limit bucket capacity to 2,000 points and the restore rate to 100 points per second. Requests whose estimated cost equals the configured maximum can use the available bucket balance.
+- ec31b0c: Return HTTP 429 with the GraphQL error code `TOO_MANY_REQUESTS` when an operation reaches the complexity limit or a client has insufficient points.
+- c5635f8: Exclude `__typename` from GraphQL request complexity, including when `defaultComplexity` is nonzero. This applies to aliases and to selections at any depth in queries and mutations.
+- c60029b: Defer unresolved operations and invalid operation variables to Apollo Server before complexity points are reserved, preserving `BAD_USER_INPUT` and HTTP 400 responses.
+- Updated dependencies [3f52d8a]
+- Updated dependencies [5c2a6bf]
+- Updated dependencies [ec31b0c]
+- Updated dependencies [043a007]
+- Updated dependencies [79d781a]
+  - @nest-boot/graphql@8.1.0
+
 ## 8.0.8 (2026-10-10)
 
 ### 🚀 Features

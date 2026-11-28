@@ -1,3 +1,25 @@
+## 8.1.0
+
+### Minor Changes
+
+- 4c9ae88: Align dynamic module static configuration methods with the NestJS community guidelines:
+  
+  - Mark `I18nModule` and `ViewModule` with `@Global()` directly (removing `isGlobal` registration extras and supporting zero-config direct `I18nModule` imports alongside `ViewModule`).
+  - Switch global once-per-application infrastructure modules (`CryptModule`, `GraphQLConnectionModule`, `HashModule`, `I18nModule`, `LoggerModule`, `MailerModule`, `RedisModule`, `StorageModule`, and `ViewModule`) from `register` / `registerAsync` to `forRoot` / `forRootAsync`, with optional default `options = {}` on `forRoot()`.
+- dc8fece: Unify object storage, two-stage `tmp/` -> `files/` temporary file uploads, and JWT-signed downloads into `StorageService` in `@nest-boot/storage`, add an opt-in `POST /uploads` dynamic REST upload controller alongside the `/downloads/*` signed download controller, and replace `@nest-boot/staged-upload` and `@nest-boot/staged-upload-graphql` with `@nest-boot/storage` and `@nest-boot/storage-graphql` (`StorageGraphQLModule` / `createTemporaryFileUploadUrls`).
+- e8efb52: Add `StorageService.isTemporaryFile()` to recognize a storage-relative temporary
+  key or this bucket's presigned temporary resource URL.
+  Temporary upload forms, preview URLs, and signed download links now default to
+  a 24-hour lifetime.
+
+### Patch Changes
+
+- Updated dependencies [e65ce7c]
+- Updated dependencies [97fad07]
+- Updated dependencies [169da36]
+  - @nest-boot/jwt@8.0.1
+  - @nest-boot/common@8.0.1
+
 ## 8.0.4 (2026-10-10)
 
 ### 🚀 Features

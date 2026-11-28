@@ -1,3 +1,36 @@
+## 8.3.0
+
+### Minor Changes
+
+- 5c2a6bf: Connection queries require exactly one of `first` or `last`, with a page size from 1 to 100. Use `after` with `first` or `before` with `last`. This also applies to Auth and job connections.
+  
+  Generated Connections provide a default complexity callback for queries and nested fields. The rate limiter reserves one point per requested edge and charges it per resolved edge, including for cursor-only selections. It also prices normalized filters. Invalid pagination reports `BAD_USER_INPUT` on the executed field.
+  
+  With Nest Boot's `GraphQLModule`, its `Query`, `Mutation`, `ResolveField`, and `Field` decorators use a return type's static `complexity` as a field default, including on Connection subclasses. Explicit field costs take precedence. Set field complexity explicitly for custom Connections that supply their own pagination cost.
+  
+  The `connectionComplexity` export has been removed from `@nest-boot/graphql-rate-limit`. Use the generated `Connection.complexity` or provide a field-level `complexity` callback for custom pagination.
+  
+  Complexity callbacks receive `resolved.result` during settlement. The Nest Boot GraphQL decorators and `defineComplexity` infer the result using the same rule as NestJS's `@Field` default value.
+  
+  The shared ESLint config enables `nest-boot/graphql-no-direct-nestjs-import`. Import public GraphQL APIs from `@nest-boot/graphql` to use the field decorators that register default complexity.
+- 4c9ae88: Align dynamic module static configuration methods with the NestJS community guidelines:
+  
+  - Mark `I18nModule` and `ViewModule` with `@Global()` directly (removing `isGlobal` registration extras and supporting zero-config direct `I18nModule` imports alongside `ViewModule`).
+  - Switch global once-per-application infrastructure modules (`CryptModule`, `GraphQLConnectionModule`, `HashModule`, `I18nModule`, `LoggerModule`, `MailerModule`, `RedisModule`, `StorageModule`, and `ViewModule`) from `register` / `registerAsync` to `forRoot` / `forRootAsync`, with optional default `options = {}` on `forRoot()`.
+- 8f3375a: Move counts out of paginated connections. Connection types now return `edges` and `pageInfo`; `totalCount`, `totalCountRelation`, and the count-selection `info` option have been removed. Auth and Queue API connections follow the same contract.
+  
+  Define a separate count field with `Count`, the connection's generated `CountArgs`, and `ConnectionManager.count`. Reuse the list's scope and filter inputs. The result reports `EXACT` for up to 10,000 matches and `AT_LEAST` above that threshold. The generated filter provides an automatic complexity of 10 base points plus the same filter costs as a list. Auth exposes `Query.usersCount`, `Query.workspacesCount`, and `Workspace.membersCount` under the permissions of their respective lists.
+
+### Patch Changes
+
+- ce0a4d3: Charge the base cost of each connection row once. Generated edge nodes, including Auth API-key nodes, have a zero base cost. Child fields and nested objects keep their own costs.
+- Updated dependencies [3f52d8a]
+- Updated dependencies [5c2a6bf]
+- Updated dependencies [ec31b0c]
+- Updated dependencies [043a007]
+- Updated dependencies [79d781a]
+  - @nest-boot/graphql@8.1.0
+
 ## 8.2.0
 
 ### Minor Changes

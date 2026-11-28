@@ -1,5 +1,11 @@
 # @nest-boot/command
 
+## 8.2.0
+
+### Minor Changes
+
+- 3f52d8a: Add the `@/*` path alias (`${configDir}/src/*`) to `@nest-boot/tsconfig/app.json`, resolve configured TypeScript `paths` aliases during `nb` source execution in `@nest-boot/command`, and preserve reflected `@Field()` complexity defaults when merged with untyped `@ResolveField()` handlers in `@nestjs/graphql` 14.2+.
+
 ## 8.1.0
 
 ### Minor Changes

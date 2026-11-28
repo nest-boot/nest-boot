@@ -1,3 +1,15 @@
+## 8.1.0
+
+### Minor Changes
+
+- e65ce7c: Support optional HKDF `context` domain separation (`CryptOptions`) in `CryptService.encrypt()`, `CryptService.decrypt()`, and `@EncryptedProperty({ context })`, and refactor `@nest-boot/jwt` to encrypt database signing keys via the injected `CryptService` (`{ context: "jwt" }`) instead of a separate `secret` option.
+
+### Patch Changes
+
+- Updated dependencies [e65ce7c]
+- Updated dependencies [4c9ae88]
+  - @nest-boot/crypt@8.1.0
+
 ## 8.0.2 (2026-10-10)
 
 ### 🚀 Features

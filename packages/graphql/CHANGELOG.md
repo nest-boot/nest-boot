@@ -1,3 +1,28 @@
+## 8.1.0
+
+### Minor Changes
+
+- 5c2a6bf: Connection queries require exactly one of `first` or `last`, with a page size from 1 to 100. Use `after` with `first` or `before` with `last`. This also applies to Auth and job connections.
+  
+  Generated Connections provide a default complexity callback for queries and nested fields. The rate limiter reserves one point per requested edge and charges it per resolved edge, including for cursor-only selections. It also prices normalized filters. Invalid pagination reports `BAD_USER_INPUT` on the executed field.
+  
+  With Nest Boot's `GraphQLModule`, its `Query`, `Mutation`, `ResolveField`, and `Field` decorators use a return type's static `complexity` as a field default, including on Connection subclasses. Explicit field costs take precedence. Set field complexity explicitly for custom Connections that supply their own pagination cost.
+  
+  The `connectionComplexity` export has been removed from `@nest-boot/graphql-rate-limit`. Use the generated `Connection.complexity` or provide a field-level `complexity` callback for custom pagination.
+  
+  Complexity callbacks receive `resolved.result` during settlement. The Nest Boot GraphQL decorators and `defineComplexity` infer the result using the same rule as NestJS's `@Field` default value.
+  
+  The shared ESLint config enables `nest-boot/graphql-no-direct-nestjs-import`. Import public GraphQL APIs from `@nest-boot/graphql` to use the field decorators that register default complexity.
+- ec31b0c: Export `GraphQLBadUserInputError`, `GraphQLForbiddenError`, and `GraphQLUnauthenticatedError` for common GraphQL error codes. Export `GraphQLTooManyRequestsError` for rate-limit rejections that return HTTP 429 in Apollo Server.
+- 043a007: Default to `path: "/graphql"` and `useGlobalPrefix: true`, delegating route prefixing to the official NestJS GraphQL driver. Applications with the `api` global prefix continue to serve `/api/graphql`; applications without a global prefix now serve `/graphql`.
+  
+  To preserve the previous fixed endpoint, explicitly configure `{ path: "/api/graphql", useGlobalPrefix: false }`. Both defaults remain overridable in synchronous and asynchronous registration.
+- 79d781a: Add 10 points by default to the result cost of each root GraphQL mutation field. Set `mutationComplexity` on `@Mutation` to customize that field's base cost, including zero. Explicit complexity and return type defaults price the result, with selected child fields providing the fallback.
+
+### Patch Changes
+
+- 3f52d8a: Add the `@/*` path alias (`${configDir}/src/*`) to `@nest-boot/tsconfig/app.json`, resolve configured TypeScript `paths` aliases during `nb` source execution in `@nest-boot/command`, and preserve reflected `@Field()` complexity defaults when merged with untyped `@ResolveField()` handlers in `@nestjs/graphql` 14.2+.
+
 ## 8.0.4 (2026-10-10)
 
 ### 🚀 Features
