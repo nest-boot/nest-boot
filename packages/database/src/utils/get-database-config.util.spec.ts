@@ -76,7 +76,6 @@ describe("getDatabaseConfig", () => {
       migrations: {
         path: "dist/database/migrations",
         pathTs: "src/database/migrations",
-        snapshotOnMigrate: false,
       },
       seeder: {
         defaultSeeder: "DatabaseSeeder",
