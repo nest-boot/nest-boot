@@ -30,6 +30,7 @@ function resolveConfig(
     "export const value = 1;\n",
   );
   writeFileSync(join(projectRoot, "src", "index.spec.ts"), "export {};\n");
+  writeFileSync(join(projectRoot, "src", "index.spec-d.ts"), "export {};\n");
   writeFileSync(join(projectRoot, "test", "fixture.ts"), "export {};\n");
   const configPath = join(projectRoot, configName);
   writeFileSync(

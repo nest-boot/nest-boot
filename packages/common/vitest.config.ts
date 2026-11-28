@@ -9,7 +9,7 @@ export default defineConfig({
     root: "./",
     passWithNoTests: true,
     coverage: {
-      exclude: ["**/*.spec.ts", "bin/**", "test/**"],
+      exclude: ["**/*.spec.ts", "**/*.spec-d.ts", "bin/**", "test/**"],
       autoAttachSubprocess: true,
       reporter: ["text", "html", "json", "json-summary"],
     },

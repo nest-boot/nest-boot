@@ -17,6 +17,7 @@ it("declares the library preset", () => {
       "${configDir}/dist",
       "${configDir}/test",
       "${configDir}/**/*.spec.ts",
+      "${configDir}/**/*.spec-d.ts",
     ],
   });
 });

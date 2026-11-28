@@ -7,7 +7,7 @@ import {
   SearchableProperty,
   type SearchablePropertyOptions,
   whenChanged,
-} from "../src/index.js";
+} from "../index.js";
 
 interface Book {
   title: string;

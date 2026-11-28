@@ -9,6 +9,7 @@
     "test",
     "dist",
     "**/*.spec.ts",
+    "**/*.spec-d.ts",
     "vitest.config.ts"
   ]
 }

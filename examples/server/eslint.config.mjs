@@ -27,7 +27,7 @@ export default defineConfig([
     },
   },
   {
-    files: ['**/*.spec.ts', 'test/**/*.ts'],
+    files: ['**/*.spec.ts', '**/*.spec-d.ts', 'test/**/*.ts'],
     rules: {
       '@typescript-eslint/no-dynamic-delete': 'off',
       '@typescript-eslint/no-empty-function': 'off',

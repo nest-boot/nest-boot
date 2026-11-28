@@ -1,4 +1,4 @@
-import { existsSync, readFileSync, readdirSync } from "node:fs";
+import { existsSync, readdirSync, readFileSync } from "node:fs";
 import { join, relative, sep } from "node:path";
 
 const ignored = new Set([
@@ -18,6 +18,21 @@ let units = 0;
 let integration = 0;
 let endToEnd = 0;
 let browser = 0;
+let typeTests = 0;
+
+function hasAdjacentImplementation(stem) {
+  return [
+    ".ts",
+    ".tsx",
+    ".mts",
+    ".cts",
+    ".js",
+    ".jsx",
+    ".mjs",
+    ".cjs",
+    ".json",
+  ].some((extension) => existsSync(stem + extension));
+}
 
 function visit(directory, packageRoot, browserDirectory) {
   for (const entry of readdirSync(directory, { withFileTypes: true })) {
@@ -34,6 +49,34 @@ function visit(directory, packageRoot, browserDirectory) {
       problems.push(
         `${file}: E2E tests use test/e2e/**/*.spec.* instead of *.e2e-spec.*`,
       );
+      continue;
+    }
+
+    if (/\.(?:type-test|test-d)\.[cm]?[jt]sx?$/.test(entry.name)) {
+      problems.push(`${file}: type tests use the *.spec-d.* naming convention`);
+      continue;
+    }
+
+    if (/\.spec-d\.[cm]?[jt]sx?$/.test(entry.name)) {
+      typeTests++;
+      if (rel.startsWith(`test${sep}`)) {
+        if (
+          !rel.startsWith(`test${sep}integration${sep}`) &&
+          !rel.startsWith(`test${sep}e2e${sep}`)
+        ) {
+          problems.push(
+            `${file}: type tests under test/ must live in test/integration/ or test/e2e/`,
+          );
+        }
+        continue;
+      }
+
+      const stem = file.replace(/\.spec-d\.[cm]?[jt]sx?$/, "");
+      if (!hasAdjacentImplementation(stem)) {
+        problems.push(
+          `${file}: co-located type tests must share their adjacent implementation's filename stem`,
+        );
+      }
       continue;
     }
 
@@ -67,19 +110,7 @@ function visit(directory, packageRoot, browserDirectory) {
         problems.push(`${file}: unit tests use the *.spec.* naming convention`);
       }
       const stem = file.replace(/\.(?:spec|test)\.[cm]?[jt]sx?$/, "");
-      if (
-        ![
-          ".ts",
-          ".tsx",
-          ".mts",
-          ".cts",
-          ".js",
-          ".jsx",
-          ".mjs",
-          ".cjs",
-          ".json",
-        ].some((extension) => existsSync(stem + extension))
-      ) {
+      if (!hasAdjacentImplementation(stem)) {
         problems.push(
           `${file}: unit tests must share their adjacent implementation's filename stem`,
         );
@@ -107,6 +138,6 @@ if (problems.length) {
   process.exitCode = 1;
 } else {
   process.stdout.write(
-    `Test layout verified: ${units} unit files, ${integration} integration files, ${endToEnd} E2E files, ${browser} browser files.\n`,
+    `Test layout verified: ${units} unit files, ${integration} integration files, ${endToEnd} E2E files, ${browser} browser files, ${typeTests} type test files.\n`,
   );
 }

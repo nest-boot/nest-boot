@@ -5,7 +5,7 @@ export default defineConfig({
     passWithNoTests: true,
     coverage: {
       include: ["packages/*/src/**/*.ts", "packages/*/dist/**/*.js"],
-      exclude: ["**/*.spec.ts", "packages/*/dist/test/**"],
+      exclude: ["**/*.spec.ts", "**/*.spec-d.ts", "packages/*/dist/test/**"],
       autoAttachSubprocess: true,
       reporter: ["text", "html", "json", "json-summary"],
     },
