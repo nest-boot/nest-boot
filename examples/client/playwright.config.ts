@@ -50,8 +50,10 @@ export default defineConfig({
   ],
   webServer: [
     {
-      command: "node ./e2e/utils/start-e2e-backend.ts",
-      cwd: clientDir,
+      command: skipBuild
+        ? "node ./examples/client/e2e/utils/start-e2e-backend.ts"
+        : "pnpm --filter @nest-boot/example-server build && node ./examples/client/e2e/utils/start-e2e-backend.ts",
+      cwd: workspaceRoot,
       env: { PORT: serverPort, APP_URL: clientUrl, AUTH_URL: serverUrl },
       gracefulShutdown: {
         signal: "SIGTERM",
