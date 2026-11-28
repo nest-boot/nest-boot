@@ -1,3 +1,7 @@
+import type { StorageDownloadOptions } from "./storage-download-options.interface.js";
+import type { StorageSsrfOptions } from "./storage-ssrf-options.interface.js";
+import type { StorageUploadOptions } from "./storage-upload-options.interface.js";
+
 /** Configuration options for the global StorageModule and its S3 client. */
 export interface StorageModuleOptions {
   /** Long-lived access key used for S3-compatible authentication. */
@@ -16,7 +20,10 @@ export interface StorageModuleOptions {
    */
   bucketEndpoint?: boolean;
 
-  /** External S3 endpoint used for uploads and as the public URL fallback. */
+  /** Configuration for JWT-signed file download links and the redirect route. */
+  download?: StorageDownloadOptions;
+
+  /** External S3 endpoint used for uploads, presigned URLs, and public URLs. */
   endpointUrl?: string;
 
   /** Whether requests use path-style bucket addressing. */
@@ -45,4 +52,10 @@ export interface StorageModuleOptions {
 
   /** Long-lived secret access key used for S3-compatible authentication. */
   secretAccessKey?: string;
+
+  /** SSRF protection settings applied when `uploadFileFromUrl` fetches external HTTP/HTTPS URLs. */
+  ssrf?: StorageSsrfOptions;
+
+  /** Configuration for temporary file uploads, promotion paths, and the optional REST upload route. */
+  upload?: StorageUploadOptions;
 }

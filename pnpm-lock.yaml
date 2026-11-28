@@ -2377,11 +2377,11 @@ importers:
         specifier: ^4.3.6
         version: 4.6.5
 
-  packages/staged-upload:
+  packages/storage:
     dependencies:
-      dayjs:
-        specifier: ^1.11.18
-        version: 1.11.19
+      '@nest-boot/common':
+        specifier: workspace:^
+        version: link:../common
       mime-types:
         specifier: ^2.1.35
         version: 2.1.35
@@ -2392,22 +2392,31 @@ importers:
       '@aws-sdk/client-s3':
         specifier: ^3.1123.0
         version: 3.1123.0
+      '@aws-sdk/lib-storage':
+        specifier: ^3.1123.0
+        version: 3.1123.0
+      '@aws-sdk/s3-presigned-post':
+        specifier: ^3.1123.0
+        version: 3.1123.0
+      '@aws-sdk/s3-request-presigner':
+        specifier: ^3.1123.0
+        version: 3.1123.0
       '@nest-boot/eslint':
         specifier: workspace:^
         version: link:../eslint
-      '@nest-boot/storage':
+      '@nest-boot/jwt':
         specifier: workspace:^
-        version: link:../storage
+        version: link:../jwt
       '@nest-boot/tsconfig':
         specifier: workspace:^
         version: link:../tsconfig
       '@nestjs/common':
         specifier: ^12.6.2
         version: 12.6.2
-      '@nestjs/config':
-        specifier: ^12.1.1
-        version: 12.1.1
       '@nestjs/core':
+        specifier: ^12.6.2
+        version: 12.6.2
+      '@nestjs/platform-express':
         specifier: ^12.6.2
         version: 12.6.2
       '@nestjs/testing':
@@ -2423,8 +2432,8 @@ importers:
         specifier: ^4.0.3
         version: 4.0.3
       '@vitest/coverage-v8':
-        specifier: ^5.1.1
-        version: 5.1.1
+        specifier: ^5.1.2
+        version: 5.1.2
       eslint:
         specifier: ^9.39.3
         version: 9.39.3
@@ -2441,10 +2450,10 @@ importers:
         specifier: ^8.3.8
         version: 8.3.8
       vitest:
-        specifier: ^5.1.1
-        version: 5.1.1
+        specifier: ^5.1.2
+        version: 5.1.2
 
-  packages/staged-upload-graphql:
+  packages/storage-graphql:
     devDependencies:
       '@apollo/server':
         specifier: ^5.5.1
@@ -2458,9 +2467,6 @@ importers:
       '@nest-boot/graphql':
         specifier: workspace:^
         version: link:../graphql
-      '@nest-boot/staged-upload':
-        specifier: workspace:^
-        version: link:../staged-upload
       '@nest-boot/storage':
         specifier: workspace:^
         version: link:../storage
@@ -2487,13 +2493,13 @@ importers:
         version: 12.6.2
       '@types/node':
         specifier: ^24.0.0
-        version: 24.13.3
+        version: 24.19.0
       '@types/supertest':
         specifier: ^7.2.1
         version: 7.2.1
       '@vitest/coverage-v8':
-        specifier: ^5.1.1
-        version: 5.1.1
+        specifier: ^5.1.2
+        version: 5.1.2
       eslint:
         specifier: ^9.39.3
         version: 9.39.3
@@ -2519,65 +2525,8 @@ importers:
         specifier: ^8.3.8
         version: 8.3.8
       vitest:
-        specifier: ^5.1.1
-        version: 5.1.1
-
-  packages/storage:
-    devDependencies:
-      '@aws-sdk/client-s3':
-        specifier: ^3.1123.0
-        version: 3.1123.0
-      '@aws-sdk/lib-storage':
-        specifier: ^3.1123.0
-        version: 3.1123.0
-      '@aws-sdk/s3-presigned-post':
-        specifier: ^3.1123.0
-        version: 3.1123.0
-      '@aws-sdk/s3-request-presigner':
-        specifier: ^3.1123.0
-        version: 3.1123.0
-      '@nest-boot/eslint':
-        specifier: workspace:^
-        version: link:../eslint
-      '@nest-boot/tsconfig':
-        specifier: workspace:^
-        version: link:../tsconfig
-      '@nestjs/common':
-        specifier: ^12.6.2
-        version: 12.6.2
-      '@nestjs/core':
-        specifier: ^12.6.2
-        version: 12.6.2
-      '@nestjs/platform-express':
-        specifier: ^12.6.2
-        version: 12.6.2
-      '@nestjs/testing':
-        specifier: ^12.6.2
-        version: 12.6.2
-      '@types/node':
-        specifier: ^24.0.0
-        version: 24.13.3
-      '@vitest/coverage-v8':
-        specifier: ^5.1.1
-        version: 5.1.1
-      eslint:
-        specifier: ^9.39.3
-        version: 9.39.3
-      reflect-metadata:
-        specifier: ^0.2.2
-        version: 0.2.2
-      rxjs:
-        specifier: ^7.8.2
-        version: 7.8.2
-      typescript:
-        specifier: ^6.0.3
-        version: 6.0.3
-      vite:
-        specifier: ^8.3.8
-        version: 8.3.8
-      vitest:
-        specifier: ^5.1.1
-        version: 5.1.1
+        specifier: ^5.1.2
+        version: 5.1.2
 
   packages/temporary-directory:
     devDependencies:

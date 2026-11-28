@@ -18,7 +18,6 @@
     "mastra",
     "metrics",
     "storage",
-    "staged-upload",
     "validator",
     "view"
   ]

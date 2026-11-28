@@ -94,7 +94,7 @@ exports 只提供 `import` 入口，不再提供 CommonJS `require` 入口。
 
 - 全局共享配置模块（`CryptModule`、`GraphQLConnectionModule`、`HashModule`、`I18nModule`、
   `LoggerModule`、`MailerModule`、`RedisModule`、`MetricsModule`、`HealthCheckModule`、
-  `StagedUploadModule`、`StorageModule` 与 `ViewModule`）统一将 `register()` /
+  `StorageModule` 与 `ViewModule`）统一将 `register()` /
   `registerAsync()` 替换为 `forRoot()` / `forRootAsync()`。`I18nModule` 与 `ViewModule`
   统一直接在模块类上标注 `@Global()`（同时支持零配置直接静态导入），请移除注册时传入的
   `isGlobal` 选项。
@@ -103,14 +103,16 @@ exports 只提供 `import` 入口，不再提供 CommonJS `require` 入口。
 - 将 Apollo Playground 配置替换为 `graphiql`。
 - 使用 MikroORM 时升级到版本 7，并从受支持的包入口（例如
   `@mikro-orm/sql` 和 `@mikro-orm/sqlite`）导入 SQL 类型与驱动。
-- 将 `@nest-boot/file-upload` 替换为 `@nest-boot/staged-upload`。核心模块现在是
-  与传输层无关的全局模块；GraphQL 应用还必须安装并导入
-  `@nest-boot/staged-upload-graphql`，才能继续使用 `createStagedUploads` Mutation。
-  `StagedUploadInput`、`StagedUpload` 与 `StagedUploadField` 改从 GraphQL 包导入；
-  与传输层无关的服务类型使用 `StagedUploadRequest` 与 `StagedUploadResult`。
-- 已使用 v8 beta GraphQL 适配包的应用，将 `@nest-boot/graphql-staged-upload`
-  改为 `@nest-boot/staged-upload-graphql`，模块类从 `GraphQLStagedUploadModule`
-  改为 `StagedUploadGraphQLModule`。
+- 将 `@nest-boot/file-upload`、`@nest-boot/staged-upload` 与
+  `@nest-boot/staged-upload-graphql` 统一迁移到 `@nest-boot/storage`
+  （`StorageService`）和 `@nest-boot/storage-graphql`（`StorageGraphQLModule`）。
+  上传限制改为在 `StorageModule.forRoot({ upload })` 中配置，服务注入统一改为
+  `StorageService`，移除任意 `key` 写入与旧 `persist()` 并改用自动管理固定 `tmp/` 与
+  `files/YYYY/MM/DD/` 目录的 `createTemporaryFileUploadUrl()`、
+  `uploadFileFromUrl()`、`uploadTemporaryFile()` 与 `uploadFile()`，同时将
+  GraphQL Mutation 更新为 `createTemporaryFileUploadUrls`。发布切换前请先排空在途的旧版临时上传（或要求旧表单客户端重新获取上传凭证），因为
+  `uploadFileFromUrl()` 仅接受 `createTemporaryFileUploadUrl()` 返回的带签名 `resourceUrl`，不再接受未签名的
+  S3 POST `Location` 地址。
 - 移除 `@nest-boot/row-level-security`，使用 MikroORM 7.2 的官方 PostgreSQL 或
   PGlite 驱动、`@Entity({ policies })` 和 `em.setSessionContext()`，替代自定义
   驱动、装饰器、运行时状态和 `AuthTransactionContext`。迁移类改用官方
